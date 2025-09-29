@@ -1,0 +1,9 @@
+[package]
+name = "napoloen_amp"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+eframe = "0.32.3"
+rfd = "0.15.4"
+napoleon_amp_core = { path = "napoleon_amp_core" }
