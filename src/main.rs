@@ -1,8 +1,8 @@
 mod napoleon_client;
 
+use crate::napoleon_client::NapoleonClientApp;
 use eframe::egui::ViewportBuilder;
 use eframe::NativeOptions;
-use crate::napoleon_client::NapoleonClientApp;
 
 fn main() {
     let options = NativeOptions {
@@ -10,8 +10,9 @@ fn main() {
         ..Default::default()
     };
 
-    eframe::run_native("Egui App", options, Box::new(|cc| {
-        Ok(Box::new(NapoleonClientApp::default()))
-    }));
+    let _ = eframe::run_native(
+        "Egui App",
+        options,
+        Box::new(|cc| Ok(Box::new(NapoleonClientApp::new()))),
+    );
 }
-

@@ -11,8 +11,8 @@ use symphonia::default::get_probe;
 
 #[derive(Debug)]
 pub enum AddSongErr {
-    File(io::Error),
-    Symphonia(symphonia::core::errors::Error),
+    FileErr(io::Error),
+    SymphoniaErr(symphonia::core::errors::Error),
 }
 
 pub fn add_song_from_path(song_path: PathBuf) -> Result<(), AddSongErr> {
@@ -54,13 +54,14 @@ pub fn add_song_from_path(song_path: PathBuf) -> Result<(), AddSongErr> {
                             .to_str()
                             .expect("Shouldn't fail")
                     ));
-                    println!("fp: {:?}", file_path);
+
                     fs::create_dir_all(file_path.parent().expect("Has parent"))
                         .expect("Couldnt create directories");
+
                     fs::copy(song_path, file_path).expect("Unhandled");
                     Ok(())
                 }
-                Err(e) => Err(AddSongErr::Symphonia(e)),
+                Err(e) => Err(AddSongErr::SymphoniaErr(e)),
             }
         }
         Err(_) => unimplemented!(),
