@@ -1,2 +1,2 @@
-mod data;
-mod instance;
+pub mod data;
+pub mod instance;
