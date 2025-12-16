@@ -54,9 +54,15 @@ impl PathNamed {
 }
 
 pub trait NamedPathLike {
-    fn name(&self) -> &str;
+    fn get_path_named(&self) -> &PathNamed;
 
-    fn path(&self) -> &PathBuf;
+    fn name(&self) -> &str {
+        &*self.get_path_named().name
+    }
+
+    fn path(&self) -> &PathBuf {
+        &self.get_path_named().path
+    }
 
     fn path_string(&self) -> String {
         self.path()
@@ -67,12 +73,8 @@ pub trait NamedPathLike {
 }
 
 impl NamedPathLike for PathNamed {
-    fn name(&self) -> &str {
-        &*self.name
-    }
-
-    fn path(&self) -> &PathBuf {
-        &self.path
+    fn get_path_named(&self) -> &PathNamed {
+        self
     }
 }
 

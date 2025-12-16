@@ -1,7 +1,7 @@
 use crate::napoleon_client::{CreateFolderContentDialog, CreateFolderContentDialogVariant};
 use eframe::egui::{Id, Modal, Ui};
 use napoleon_amp_core::data::folder::content::FolderContentVariant;
-use napoleon_amp_core::data::folder::{Folder, FolderImpl, GetOrLoadContent};
+use napoleon_amp_core::data::folder::Folder;
 use napoleon_amp_core::data::playlist::Playlist;
 use napoleon_amp_core::data::NamedPathLike;
 use std::rc::Rc;
@@ -54,11 +54,11 @@ impl FolderList {
 
                         match create_folder_variant {
                             CreateFolderContentDialogVariant::SubFolder => {
-                                self.current_folder.add_folder(name.clone());
+                                Folder::add_folder(&self.current_folder, name.clone());
                             }
 
                             CreateFolderContentDialogVariant::Playlist => {
-                                self.current_folder.add_playlist(name.clone())
+                                Folder::add_playlist(&self.current_folder, name.clone());
                             }
                         }
 
@@ -102,7 +102,7 @@ impl FolderList {
         let mut next_folder_folder_content = None;
         let mut next_playlist_content = None;
 
-        for folder_content in self.current_folder.get_or_load_content().iter() {
+        for folder_content in Folder::get_or_load_content(&self.current_folder).iter() {
             match &folder_content.variant {
                 FolderContentVariant::Playlist(playlist) => {
                     if ui.button(playlist.name()).clicked() {

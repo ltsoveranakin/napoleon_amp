@@ -4,7 +4,6 @@ use crate::data::folder::content::{FolderContent, FolderContentVariant};
 use crate::data::playlist::Playlist;
 use crate::data::{unwrap_inner_ref, NamedPathLike, PathNamed};
 use std::cell::{Ref, RefCell};
-use std::path::PathBuf;
 use std::rc::Rc;
 // TODO: fix cyclic rc memory leak
 pub struct Folder {
@@ -20,30 +19,12 @@ impl Folder {
         }
     }
 
-    pub fn name(&self) -> &str {
-        &self.path_named.name
-    }
-}
-
-pub trait FolderImpl {
-    fn add_content(&self, folder_content_variant: FolderContentVariant);
-
-    fn add_folder(&self, folder_name: String);
-
-    fn add_playlist(&self, playlist_name: String);
-}
-
-pub trait GetOrLoadContent {
-    fn get_or_load_content(&self) -> Ref<Vec<FolderContent>>;
-}
-
-impl GetOrLoadContent for Rc<Folder> {
-    fn get_or_load_content(&self) -> Ref<Vec<FolderContent>> {
-        let contents = if self.contents.borrow().is_some() {
-            unwrap_inner_ref(self.contents.borrow())
+    pub fn get_or_load_content(this: &Rc<Self>) -> Ref<Vec<FolderContent>> {
+        let contents = if this.contents.borrow().is_some() {
+            unwrap_inner_ref(this.contents.borrow())
         } else {
             let mut contents = vec![];
-            for dir in self
+            for dir in this
                 .path_named
                 .path
                 .read_dir()
@@ -63,7 +44,7 @@ impl GetOrLoadContent for Rc<Folder> {
                         let sub_folder = Folder::new(path_named);
 
                         Some(FolderContent::new(
-                            Rc::downgrade(self),
+                            Rc::downgrade(this),
                             FolderContentVariant::SubFolder(Rc::new(sub_folder)),
                         ))
                         // can be symlink, check if file to be safe
@@ -73,7 +54,7 @@ impl GetOrLoadContent for Rc<Folder> {
                         let playlist = Playlist::new(path_named);
 
                         Some(FolderContent::new(
-                            Rc::downgrade(self),
+                            Rc::downgrade(this),
                             FolderContentVariant::Playlist(Rc::new(playlist)),
                         ))
                     } else {
@@ -88,54 +69,48 @@ impl GetOrLoadContent for Rc<Folder> {
                 }
             }
 
-            self.contents.replace(Some(contents));
+            this.contents.replace(Some(contents));
 
-            unwrap_inner_ref(self.contents.borrow())
+            unwrap_inner_ref(this.contents.borrow())
         };
 
         contents
     }
-}
 
-impl FolderImpl for Rc<Folder> {
-    fn add_content(&self, folder_content_variant: FolderContentVariant) {
-        if self.contents.borrow().is_none() {
-            self.get_or_load_content();
+    fn add_content(this: &Rc<Self>, folder_content_variant: FolderContentVariant) {
+        if this.contents.borrow().is_none() {
+            Self::get_or_load_content(this);
         }
 
-        let mut contents = self.contents.borrow_mut();
+        let mut contents = this.contents.borrow_mut();
 
         contents
             .as_mut()
             .expect("Loaded contents if none; Guaranteed")
             .push(FolderContent::new(
-                Rc::downgrade(&self),
+                Rc::downgrade(this),
                 folder_content_variant,
             ))
     }
 
-    fn add_folder(&self, folder_name: String) {
-        if let Some(path_named) = self.path_named.extend(format!("{}/", folder_name)) {
+    pub fn add_folder(this: &Rc<Self>, folder_name: String) {
+        if let Some(path_named) = this.path_named.extend(format!("{}/", folder_name)) {
             let folder = Folder::new(path_named);
-            self.add_content(FolderContentVariant::SubFolder(Rc::new(folder)));
+            Self::add_content(this, FolderContentVariant::SubFolder(Rc::new(folder)));
         }
     }
 
-    fn add_playlist(&self, playlist_name: String) {
-        if let Some(path_named) = self.path_named.extend(format!("{}.pnap", playlist_name)) {
+    pub fn add_playlist(this: &Rc<Self>, playlist_name: String) {
+        if let Some(path_named) = this.path_named.extend(format!("{}.pnap", playlist_name)) {
             let playlist = Playlist::new(path_named);
 
-            self.add_content(FolderContentVariant::Playlist(Rc::new(playlist)));
+            Self::add_content(this, FolderContentVariant::Playlist(Rc::new(playlist)));
         }
     }
 }
 
 impl NamedPathLike for Folder {
-    fn name(&self) -> &str {
-        self.path_named.name()
-    }
-
-    fn path(&self) -> &PathBuf {
-        self.path_named.path()
+    fn get_path_named(&self) -> &PathNamed {
+        &self.path_named
     }
 }

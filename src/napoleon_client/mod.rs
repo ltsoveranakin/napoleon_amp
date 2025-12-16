@@ -5,7 +5,7 @@ use eframe::{App, Frame};
 
 use crate::napoleon_client::ui::folder_list::FolderList;
 use crate::napoleon_client::ui::playlist_page::PlaylistPage;
-use napoleon_amp_core::data::folder::{FolderImpl, GetOrLoadContent};
+
 use napoleon_amp_core::instance::NapoleonInstance;
 
 enum CreateFolderContentDialogVariant {

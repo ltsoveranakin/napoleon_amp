@@ -1,7 +1,6 @@
 mod master;
 
 use crate::data::{NamedPathLike, PathNamed};
-use std::path::PathBuf;
 
 pub struct Song {
     path_named: PathNamed,
@@ -14,11 +13,7 @@ impl Song {
 }
 
 impl NamedPathLike for Song {
-    fn name(&self) -> &str {
-        self.path_named.name()
-    }
-
-    fn path(&self) -> &PathBuf {
-        self.path_named.path()
+    fn get_path_named(&self) -> &PathNamed {
+        &self.path_named
     }
 }

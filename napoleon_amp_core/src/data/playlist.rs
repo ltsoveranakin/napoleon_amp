@@ -105,7 +105,7 @@ impl Playlist {
         self.save_contents();
     }
 
-    pub fn play_song(&self, song: &Song) {
+    pub fn set_playing_song(&self, song: &Song) {
         let playback = if self.playback.borrow().is_some() {
             // let playback = unwrap_inner_ref_mut(self.playback.borrow_mut());
 
@@ -133,8 +133,6 @@ impl Playlist {
         let source = Decoder::try_from(file).expect("Unable to create decoder from file");
 
         playback.sink.append(source);
-
-        // playback.stream_handle.mixer().add(source);
     }
 
     fn add_song(&self, song: Song) {
@@ -167,11 +165,7 @@ impl Playlist {
 }
 
 impl NamedPathLike for Playlist {
-    fn name(&self) -> &str {
-        self.path_named.name()
-    }
-
-    fn path(&self) -> &PathBuf {
-        self.path_named.path()
+    fn get_path_named(&self) -> &PathNamed {
+        &self.path_named
     }
 }
