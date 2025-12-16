@@ -1,25 +1,42 @@
-use eframe::egui::{Context, SidePanel};
+mod ui;
+
+use eframe::egui::{CentralPanel, Context, SidePanel};
 use eframe::{App, Frame};
 
-use napoleon_amp_core::collection::folder::{Folder, FolderContent};
+use crate::napoleon_client::ui::folder_list::FolderList;
+use crate::napoleon_client::ui::playlist_page::PlaylistPage;
+use napoleon_amp_core::data::folder::{FolderImpl, GetOrLoadContent};
 use napoleon_amp_core::instance::NapoleonInstance;
+
+enum CreateFolderContentDialogVariant {
+    SubFolder,
+    Playlist,
+}
+
+struct CreateFolderContentDialog {
+    variant: CreateFolderContentDialogVariant,
+    name: String,
+}
+
+enum Dialog {
+    CreateFolderContent(CreateFolderContentDialog),
+}
 
 pub(super) struct NapoleonClientApp {
     core_instance: NapoleonInstance,
-    current_folder: Folder,
-    current_folder_contents: Vec<FolderContent>,
+    folder_list: FolderList,
+    playlist_page: PlaylistPage,
 }
 
 impl NapoleonClientApp {
     pub(super) fn new() -> Self {
-        let core_instance = NapoleonInstance::init().unwrap();
-        let current_folder = core_instance.home_folder.clone();
-        let current_folder_contents = current_folder.get_contents().unwrap();
+        let core_instance = NapoleonInstance::new();
+        let current_folder = core_instance.get_base_folder();
 
         Self {
             core_instance,
-            current_folder,
-            current_folder_contents,
+            folder_list: FolderList::new(current_folder),
+            playlist_page: PlaylistPage::new(),
         }
     }
 }
@@ -27,16 +44,12 @@ impl NapoleonClientApp {
 impl App for NapoleonClientApp {
     fn update(&mut self, ctx: &Context, frame: &mut Frame) {
         SidePanel::left("folder_list").show(ctx, |ui| {
-            if ui.button("New Folder").clicked() {}
-            if ui.button("New PlayList").clicked() {}
+            self.folder_list
+                .draw(ui, &mut self.playlist_page.current_playlist);
+        });
 
-            for folder_content in &self.current_folder_contents {
-                match folder_content {
-                    FolderContent::Playlist(playlist) => {}
-
-                    FolderContent::Folder(folder) => if ui.button(&folder.name).clicked() {},
-                }
-            }
+        CentralPanel::default().show(ctx, |ui| {
+            self.playlist_page.draw(ui);
         });
     }
 }
