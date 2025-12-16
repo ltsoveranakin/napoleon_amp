@@ -1,6 +1,6 @@
 use crate::data::folder::Folder;
 use crate::data::playlist::Playlist;
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
 
 pub enum FolderContentVariant {
     SubFolder(Rc<Folder>),
@@ -8,12 +8,12 @@ pub enum FolderContentVariant {
 }
 
 pub struct FolderContent {
-    parent: Rc<Folder>,
+    parent: Weak<Folder>,
     pub variant: FolderContentVariant,
 }
 
 impl FolderContent {
-    pub(super) fn new(parent: Rc<Folder>, variant: FolderContentVariant) -> Self {
+    pub(super) fn new(parent: Weak<Folder>, variant: FolderContentVariant) -> Self {
         Self { parent, variant }
     }
 }

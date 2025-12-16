@@ -63,7 +63,7 @@ impl GetOrLoadContent for Rc<Folder> {
                         let sub_folder = Folder::new(path_named);
 
                         Some(FolderContent::new(
-                            Rc::clone(self),
+                            Rc::downgrade(self),
                             FolderContentVariant::SubFolder(Rc::new(sub_folder)),
                         ))
                         // can be symlink, check if file to be safe
@@ -73,7 +73,7 @@ impl GetOrLoadContent for Rc<Folder> {
                         let playlist = Playlist::new(path_named);
 
                         Some(FolderContent::new(
-                            Rc::clone(self),
+                            Rc::downgrade(self),
                             FolderContentVariant::Playlist(Rc::new(playlist)),
                         ))
                     } else {
@@ -108,7 +108,10 @@ impl FolderImpl for Rc<Folder> {
         contents
             .as_mut()
             .expect("Loaded contents if none; Guaranteed")
-            .push(FolderContent::new(Rc::clone(&self), folder_content_variant))
+            .push(FolderContent::new(
+                Rc::downgrade(&self),
+                folder_content_variant,
+            ))
     }
 
     fn add_folder(&self, folder_name: String) {
