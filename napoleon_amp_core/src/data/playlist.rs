@@ -1,6 +1,7 @@
 use crate::data::song::Song;
 use crate::data::{unwrap_inner_ref, unwrap_inner_ref_mut, NamedPathLike, PathNamed};
 use crate::paths::song_file;
+use rodio::{Decoder, OutputStream, OutputStreamBuilder, Sink};
 use serbytes::prelude::SerBytes;
 use std::cell::{Ref, RefCell};
 use std::fs;
@@ -25,9 +26,15 @@ impl PlaylistData {
     }
 }
 
+struct Playback {
+    stream_handle: OutputStream,
+    sink: Sink,
+}
+
 pub struct Playlist {
     path_named: PathNamed,
     songs: RefCell<Option<Vec<Song>>>,
+    playback: RefCell<Option<Playback>>,
 }
 
 impl Playlist {
@@ -35,6 +42,7 @@ impl Playlist {
         Self {
             path_named,
             songs: RefCell::new(None),
+            playback: RefCell::new(None),
         }
     }
 
@@ -95,6 +103,38 @@ impl Playlist {
         }
 
         self.save_contents();
+    }
+
+    pub fn play_song(&self, song: &Song) {
+        let playback = if self.playback.borrow().is_some() {
+            // let playback = unwrap_inner_ref_mut(self.playback.borrow_mut());
+
+            let playback_ref = unwrap_inner_ref(self.playback.borrow());
+
+            playback_ref.sink.stop();
+
+            playback_ref
+        } else {
+            let stream_handle = OutputStreamBuilder::open_default_stream()
+                .expect("Unable to open audio stream to default audio device");
+            let sink = Sink::connect_new(&stream_handle.mixer());
+
+            self.playback.replace(Some(Playback {
+                stream_handle,
+                sink,
+            }));
+
+            unwrap_inner_ref(self.playback.borrow())
+        };
+
+        let file = File::open(song.path())
+            .expect(&format!("Unable to open song file for: {:?}", song.path()));
+
+        let source = Decoder::try_from(file).expect("Unable to create decoder from file");
+
+        playback.sink.append(source);
+
+        // playback.stream_handle.mixer().add(source);
     }
 
     fn add_song(&self, song: Song) {

@@ -10,3 +10,4 @@ symphonia = { version = "0.5.4", features = ["mp3", "symphonia-bundle-mp3"] }
 #serbytes = { git = "https://github.com/ltsoveranakin/serbytes.git" }
 serbytes = { path = "../../serdata" }
 serde = { version = "1.0.228", features = ["derive"] }
+rodio = "0.21.1"
