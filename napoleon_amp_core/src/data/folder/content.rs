@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 pub enum FolderContentVariant {
     SubFolder(Rc<Folder>),
-    Playlist(Playlist),
+    Playlist(Rc<Playlist>),
 }
 
 pub struct FolderContent {

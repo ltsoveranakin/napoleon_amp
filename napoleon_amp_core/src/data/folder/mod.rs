@@ -2,12 +2,13 @@ pub mod content;
 
 use crate::data::folder::content::{FolderContent, FolderContentVariant};
 use crate::data::playlist::Playlist;
-use crate::data::PathNamed;
+use crate::data::{unwrap_inner_ref, NamedPathLike, PathNamed};
 use std::cell::{Ref, RefCell};
+use std::path::PathBuf;
 use std::rc::Rc;
 // TODO: fix cyclic rc memory leak
 pub struct Folder {
-    pub path_named: PathNamed,
+    path_named: PathNamed,
     contents: RefCell<Option<Vec<FolderContent>>>,
 }
 
@@ -18,12 +19,18 @@ impl Folder {
             contents: RefCell::new(None),
         }
     }
+
+    pub fn name(&self) -> &str {
+        &self.path_named.name
+    }
 }
 
 pub trait FolderImpl {
     fn add_content(&self, folder_content_variant: FolderContentVariant);
 
     fn add_folder(&self, folder_name: String);
+
+    fn add_playlist(&self, playlist_name: String);
 }
 
 pub trait GetOrLoadContent {
@@ -32,13 +39,9 @@ pub trait GetOrLoadContent {
 
 impl GetOrLoadContent for Rc<Folder> {
     fn get_or_load_content(&self) -> Ref<Vec<FolderContent>> {
-        let contents_ref = self.contents.borrow();
-
-        let contents = if contents_ref.is_some() {
-            Ref::map(contents_ref, |opt| opt.as_ref().expect("Guaranteed Some"))
+        let contents = if self.contents.borrow().is_some() {
+            unwrap_inner_ref(self.contents.borrow())
         } else {
-            // Drop contents ref to prevent an immutable borrow from continuing to exist
-            drop(contents_ref);
             let mut contents = vec![];
             for dir in self
                 .path_named
@@ -71,7 +74,7 @@ impl GetOrLoadContent for Rc<Folder> {
 
                         Some(FolderContent::new(
                             Rc::clone(self),
-                            FolderContentVariant::Playlist(playlist),
+                            FolderContentVariant::Playlist(Rc::new(playlist)),
                         ))
                     } else {
                         None
@@ -87,9 +90,7 @@ impl GetOrLoadContent for Rc<Folder> {
 
             self.contents.replace(Some(contents));
 
-            Ref::map(self.contents.borrow(), |opt| {
-                opt.as_ref().expect("Guaranteed Some")
-            })
+            unwrap_inner_ref(self.contents.borrow())
         };
 
         contents
@@ -115,5 +116,23 @@ impl FolderImpl for Rc<Folder> {
             let folder = Folder::new(path_named);
             self.add_content(FolderContentVariant::SubFolder(Rc::new(folder)));
         }
+    }
+
+    fn add_playlist(&self, playlist_name: String) {
+        if let Some(path_named) = self.path_named.extend(format!("{}.pnap", playlist_name)) {
+            let playlist = Playlist::new(path_named);
+
+            self.add_content(FolderContentVariant::Playlist(Rc::new(playlist)));
+        }
+    }
+}
+
+impl NamedPathLike for Folder {
+    fn name(&self) -> &str {
+        self.path_named.name()
+    }
+
+    fn path(&self) -> &PathBuf {
+        self.path_named.path()
     }
 }

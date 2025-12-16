@@ -1,5 +1,6 @@
 use crate::data::folder::Folder;
 use crate::data::PathNamed;
+use crate::paths::folders_dir;
 use std::rc::Rc;
 
 pub struct NapoleonInstance {
@@ -9,14 +10,7 @@ pub struct NapoleonInstance {
 impl NapoleonInstance {
     pub fn new() -> Self {
         Self {
-            base_folder: Rc::new(Folder::new(
-                PathNamed::new(
-                    dirs_next::home_dir()
-                        .expect("Forced home directory")
-                        .join("/napoleon_amp/songs/"),
-                )
-                .unwrap(),
-            )),
+            base_folder: Rc::new(Folder::new(PathNamed::new(folders_dir()).unwrap())),
         }
     }
 
@@ -24,4 +18,3 @@ impl NapoleonInstance {
         Rc::clone(&self.base_folder)
     }
 }
-

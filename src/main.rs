@@ -7,6 +7,7 @@ use eframe::NativeOptions;
 fn main() {
     let options = NativeOptions {
         viewport: ViewportBuilder::default().with_inner_size([320.0, 240.0]),
+
         ..Default::default()
     };
 
