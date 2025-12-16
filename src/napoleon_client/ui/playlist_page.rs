@@ -82,7 +82,7 @@ impl PlaylistPage {
             // ui.horizontal(|ui| {
             ui.style_mut().wrap_mode = Some(TextWrapMode::Truncate);
             if ui.label(song.name()).clicked() {
-                println!("play song");
+                current_playlist.play_song(song);
             }
             // });
         }
