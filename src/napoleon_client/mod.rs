@@ -4,7 +4,7 @@ use eframe::egui::{CentralPanel, Context, SidePanel};
 use eframe::{App, Frame};
 
 use crate::napoleon_client::ui::folder_list::FolderList;
-use crate::napoleon_client::ui::playlist_page::PlaylistPage;
+use crate::napoleon_client::ui::playlist_page::PlaylistPanel;
 
 use napoleon_amp_core::instance::NapoleonInstance;
 
@@ -25,7 +25,7 @@ enum Dialog {
 pub(super) struct NapoleonClientApp {
     core_instance: NapoleonInstance,
     folder_list: FolderList,
-    playlist_page: PlaylistPage,
+    playlist_page: PlaylistPanel,
 }
 
 impl NapoleonClientApp {
@@ -36,7 +36,7 @@ impl NapoleonClientApp {
         Self {
             core_instance,
             folder_list: FolderList::new(current_folder),
-            playlist_page: PlaylistPage::new(),
+            playlist_page: PlaylistPanel::new(),
         }
     }
 }

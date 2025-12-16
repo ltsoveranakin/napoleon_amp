@@ -4,17 +4,22 @@ use napoleon_amp_core::data::NamedPathLike;
 use std::path::PathBuf;
 use std::rc::Rc;
 
-pub(crate) struct PlaylistPage {
+struct SongsImported {
+    paths: Vec<PathBuf>,
+    failed_song_indexes: Option<Vec<usize>>,
+}
+
+pub(crate) struct PlaylistPanel {
     pub(crate) current_playlist: Option<Rc<Playlist>>,
-    songs_added: Option<Vec<PathBuf>>,
+    songs_imported: Option<SongsImported>,
     delete_original_files: bool,
 }
 
-impl PlaylistPage {
+impl PlaylistPanel {
     pub(crate) fn new() -> Self {
         Self {
             current_playlist: None,
-            songs_added: None,
+            songs_imported: None,
             delete_original_files: false,
         }
     }
@@ -24,7 +29,10 @@ impl PlaylistPage {
             ui.heading(current_playlist.name());
             if ui.button("Add Songs").clicked() {
                 if let Some(paths) = rfd::FileDialog::new().pick_files() {
-                    self.songs_added = Some(paths);
+                    self.songs_imported = Some(SongsImported {
+                        paths,
+                        failed_song_indexes: None,
+                    });
                 }
             }
 
@@ -37,54 +45,120 @@ impl PlaylistPage {
     }
 
     fn draw_modal(&mut self, ui: &mut Ui, current_playlist: &Playlist) {
-        if let Some(songs_added) = &self.songs_added {
-            let modal = Modal::new(Id::new("Import Songs Modal")).show(ui.ctx(), |ui| {
-                ui.set_width(250.);
+        if self.songs_imported.is_none() {
+            return;
+        }
 
-                let songs_text = if songs_added.len() == 1 {
-                    "song"
-                } else {
-                    "songs"
-                };
+        if self
+            .songs_imported
+            .as_ref()
+            .expect("Checked None above")
+            .failed_song_indexes
+            .is_some()
+        {
+            self.draw_modal_failed_import(ui)
+        } else {
+            self.draw_main_import_modal(ui);
+        }
+    }
 
-                ui.heading(format!(
-                    "Importing {} new {}",
-                    songs_added.len(),
-                    songs_text
-                ));
+    fn draw_modal_failed_import(&mut self, ui: &mut Ui) {
+        let songs_imported = self
+            .songs_imported
+            .as_ref()
+            .expect("Songs imported checked None");
+        let modal = Modal::new(Id::new("Failed Import Songs Modal")).show(ui.ctx(), |ui| {
+            ui.set_width(250.);
 
-                ui.checkbox(&mut self.delete_original_files, "Delete Original Files");
+            let failed_song_indexes = songs_imported
+                .failed_song_indexes
+                .as_ref()
+                .expect("Songs failed checked None");
 
-                let r = ui.horizontal(|ui| {
-                    if ui.button("Import").clicked() {
-                        current_playlist.import_songs(songs_added, self.delete_original_files);
-                        return true;
-                    }
+            let failed_count = failed_song_indexes.len();
 
-                    if ui.button("Cancel").clicked() {
-                        return true;
-                    }
+            ui.heading(format!(
+                "Failed to import the following {} {}",
+                failed_count,
+                songs_plural(failed_count)
+            ));
 
-                    return false;
-                });
+            for failed_song_index in failed_song_indexes {
+                let failed_song_path = &songs_imported.paths[*failed_song_index];
 
-                return r.inner;
+                ui.label(failed_song_path.to_str().expect("Valid utf8 path"));
+            }
+
+            if ui.button("Ok").clicked() {
+                true
+            } else {
+                false
+            }
+        });
+
+        if modal.inner || modal.should_close() {
+            self.songs_imported = None;
+        }
+    }
+
+    fn draw_main_import_modal(&mut self, ui: &mut Ui) {
+        let songs_imported = self
+            .songs_imported
+            .as_mut()
+            .expect("Songs imported checked None");
+        let modal = Modal::new(Id::new("Import Songs Modal")).show(ui.ctx(), |ui| {
+            ui.set_width(250.);
+
+            let songs_imported_paths = &songs_imported.paths;
+
+            let count = songs_imported_paths.len();
+
+            ui.heading(format!("Importing {} new {}", count, songs_plural(count)));
+
+            ui.checkbox(&mut self.delete_original_files, "Delete Original Files");
+
+            let r = ui.horizontal(|ui| {
+                if ui.button("Import").clicked() {
+                    return if let Err(failed_song_indexes) = self
+                        .current_playlist
+                        .as_ref()
+                        .expect("Draw only if Some")
+                        .import_songs(songs_imported_paths, self.delete_original_files)
+                    {
+                        songs_imported.failed_song_indexes = Some(failed_song_indexes);
+
+                        false
+                    } else {
+                        true
+                    };
+                }
+
+                if ui.button("Cancel").clicked() {
+                    return true;
+                }
+
+                return false;
             });
 
-            if modal.inner || modal.should_close() {
-                self.songs_added = None;
-            }
+            return r.inner;
+        });
+
+        if modal.inner || modal.should_close() {
+            self.songs_imported = None;
         }
     }
 
     fn draw_songs(&self, ui: &mut Ui, current_playlist: &Playlist) {
-        for song in current_playlist.get_or_load_songs().iter() {
-            // ui.horizontal(|ui| {
+        for (song_index, song) in current_playlist.get_or_load_songs().iter().enumerate() {
             ui.style_mut().wrap_mode = Some(TextWrapMode::Truncate);
+
             if ui.label(song.name()).clicked() {
-                current_playlist.set_playing_song(song);
+                current_playlist.set_playing_song(song_index);
             }
-            // });
         }
     }
+}
+
+fn songs_plural(count: usize) -> &'static str {
+    if count == 1 { "song" } else { "songs" }
 }

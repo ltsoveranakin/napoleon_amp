@@ -4,10 +4,10 @@ use crate::paths::song_file;
 use rodio::{Decoder, OutputStream, OutputStreamBuilder, Sink};
 use serbytes::prelude::SerBytes;
 use std::cell::{Ref, RefCell};
-use std::fs;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::path::PathBuf;
+use std::fs;
 
 #[derive(SerBytes)]
 struct PlaylistData {
@@ -31,10 +31,16 @@ struct Playback {
     sink: Sink,
 }
 
+struct Queue {
+    indexes: Vec<usize>,
+    index: usize,
+}
+
 pub struct Playlist {
     path_named: PathNamed,
     songs: RefCell<Option<Vec<Song>>>,
     playback: RefCell<Option<Playback>>,
+    queue: RefCell<Queue>,
 }
 
 impl Playlist {
@@ -43,6 +49,10 @@ impl Playlist {
             path_named,
             songs: RefCell::new(None),
             playback: RefCell::new(None),
+            queue: RefCell::new(Queue {
+                indexes: Vec::new(),
+                index: 0,
+            }),
         }
     }
 
@@ -71,11 +81,29 @@ impl Playlist {
             unwrap_inner_ref(self.songs.borrow())
         };
 
+        self.update_queue_indexes(songs.len());
+
         songs
     }
 
-    pub fn import_songs(&self, song_paths: &[PathBuf], delete_original: bool) {
-        for original_song_path in song_paths {
+    fn update_queue_indexes(&self, song_count: usize) {
+        if self.queue.borrow().indexes.is_empty() {
+            let indexes = &mut self.queue.borrow_mut().indexes;
+            indexes.clear();
+
+            for i in 0..song_count {
+                indexes.push(i);
+            }
+        }
+    }
+
+    pub fn import_songs(
+        &self,
+        song_paths: &[PathBuf],
+        delete_original: bool,
+    ) -> Result<(), Vec<usize>> {
+        let mut failed_import = Vec::new();
+        for (i, original_song_path) in song_paths.iter().enumerate() {
             let file_name = original_song_path
                 .file_name()
                 .expect("Path terminates in ..");
@@ -85,7 +113,7 @@ impl Playlist {
                 "Unable to verify new song path does not exist at path: {:?}",
                 new_song_path
             )) {
-                panic!("Song path already exists at this location");
+                failed_import.push(i);
             }
 
             File::create(&new_song_path).expect(&format!(
@@ -102,10 +130,30 @@ impl Playlist {
             self.add_song(Song::new(PathNamed::new(new_song_path).expect("song_path")));
         }
 
+        self.update_queue_indexes(self.get_or_load_songs().len());
         self.save_contents();
+
+        if !failed_import.is_empty() {
+            Err(failed_import)
+        } else {
+            Ok(())
+        }
     }
 
-    pub fn set_playing_song(&self, song: &Song) {
+    pub fn set_playing_song(&self, song_index: usize) {
+        self.set_queue(song_index);
+        self.append_song_to_sink(song_index)
+            .expect("Unable to append initial song");
+        // self.append_song_to_sink(song_index + 1).ok();
+    }
+
+    fn set_queue(&self, start_index: usize) {
+        let mut queue = self.queue.borrow_mut();
+
+        queue.index = start_index;
+    }
+
+    fn append_song_to_sink(&self, song_index: usize) -> Result<(), ()> {
         let playback = if self.playback.borrow().is_some() {
             // let playback = unwrap_inner_ref_mut(self.playback.borrow_mut());
 
@@ -127,12 +175,18 @@ impl Playlist {
             unwrap_inner_ref(self.playback.borrow())
         };
 
+        let songs = self.get_or_load_songs();
+
+        let song = songs.get(song_index).ok_or_else(|| ())?;
+
         let file = File::open(song.path())
             .expect(&format!("Unable to open song file for: {:?}", song.path()));
 
         let source = Decoder::try_from(file).expect("Unable to create decoder from file");
 
         playback.sink.append(source);
+
+        Ok(())
     }
 
     fn add_song(&self, song: Song) {
