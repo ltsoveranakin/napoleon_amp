@@ -6,6 +6,8 @@ use napoleon_amp_core::data::playlist::Playlist;
 use napoleon_amp_core::data::NamedPathLike;
 use std::rc::Rc;
 
+enum CurrentFolder {}
+
 pub(crate) struct FolderList {
     pub(crate) current_folder: Rc<Folder>,
     dialog: Option<CreateFolderContentDialog>,
@@ -22,7 +24,7 @@ impl FolderList {
     pub(crate) fn draw(&mut self, ui: &mut Ui, current_playlist: &mut Option<Rc<Playlist>>) {
         self.render_modal(ui);
 
-        self.render_new_buttons(ui);
+        self.render_header_buttons(ui);
 
         self.render_folder_content(ui, current_playlist);
     }
@@ -81,7 +83,7 @@ impl FolderList {
         }
     }
 
-    fn render_new_buttons(&mut self, ui: &mut Ui) {
+    fn render_header_buttons(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui| {
             if ui.button("New Folder").clicked() {
                 self.dialog = Some(CreateFolderContentDialog {
@@ -96,10 +98,17 @@ impl FolderList {
                 });
             }
         });
+
+        if let Some(parent_folder) = &self.current_folder.parent {
+            if ui.button("Back").clicked() {
+                let parent = parent_folder.upgrade().expect("TODO: ");
+                self.current_folder = parent;
+            }
+        }
     }
 
     fn render_folder_content(&mut self, ui: &mut Ui, current_playlist: &mut Option<Rc<Playlist>>) {
-        let mut next_folder_folder_content = None;
+        let mut next_folder_folder = None;
         let mut next_playlist_content = None;
 
         for folder_content in Folder::get_or_load_content(&self.current_folder).iter() {
@@ -112,14 +121,14 @@ impl FolderList {
 
                 FolderContentVariant::SubFolder(folder) => {
                     if ui.button(folder.name()).clicked() {
-                        next_folder_folder_content = Some(Rc::clone(folder));
+                        next_folder_folder = Some(Rc::clone(folder));
                     }
                 }
             }
         }
 
-        if let Some(next_folder_content) = next_folder_folder_content {
-            self.current_folder = next_folder_content;
+        if let Some(next_folder) = next_folder_folder {
+            self.current_folder = next_folder;
         }
 
         if let Some(next_playlist_content) = next_playlist_content {

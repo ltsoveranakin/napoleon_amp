@@ -4,22 +4,24 @@ use crate::data::folder::content::{FolderContent, FolderContentVariant};
 use crate::data::playlist::Playlist;
 use crate::data::{unwrap_inner_ref, NamedPathLike, PathNamed};
 use std::cell::{Ref, RefCell};
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
 // TODO: fix cyclic rc memory leak
 pub struct Folder {
     path_named: PathNamed,
-    contents: RefCell<Option<Vec<FolderContent>>>,
+    contents: RefCell<Option<Vec<Rc<FolderContent>>>>,
+    pub parent: Option<Weak<Self>>,
 }
 
 impl Folder {
-    pub(crate) fn new(path_named: PathNamed) -> Self {
+    pub(crate) fn new(path_named: PathNamed, parent: Option<Weak<Self>>) -> Self {
         Self {
             path_named,
             contents: RefCell::new(None),
+            parent,
         }
     }
 
-    pub fn get_or_load_content(this: &Rc<Self>) -> Ref<Vec<FolderContent>> {
+    pub fn get_or_load_content(this: &Rc<Self>) -> Ref<Vec<Rc<FolderContent>>> {
         let contents = if this.contents.borrow().is_some() {
             unwrap_inner_ref(this.contents.borrow())
         } else {
@@ -41,22 +43,20 @@ impl Folder {
                     if file_type.is_dir() {
                         let path_named =
                             PathNamed::new(dir.path()).expect("Unable to create PathNamed");
-                        let sub_folder = Folder::new(path_named);
+                        let sub_folder = Folder::new(path_named, Some(Rc::downgrade(this)));
 
-                        Some(FolderContent::new(
-                            Rc::downgrade(this),
-                            FolderContentVariant::SubFolder(Rc::new(sub_folder)),
-                        ))
+                        Some(FolderContent::new(FolderContentVariant::SubFolder(
+                            Rc::new(sub_folder),
+                        )))
                         // can be symlink, check if file to be safe
                     } else if file_type.is_file() {
                         let path_named =
                             PathNamed::new(dir.path()).expect("Unable to create PathNamed");
                         let playlist = Playlist::new(path_named);
 
-                        Some(FolderContent::new(
-                            Rc::downgrade(this),
-                            FolderContentVariant::Playlist(Rc::new(playlist)),
-                        ))
+                        Some(FolderContent::new(FolderContentVariant::Playlist(Rc::new(
+                            playlist,
+                        ))))
                     } else {
                         None
                     }
@@ -65,7 +65,7 @@ impl Folder {
                 };
 
                 if let Some(content) = content {
-                    contents.push(content);
+                    contents.push(Rc::new(content));
                 }
             }
 
@@ -87,15 +87,12 @@ impl Folder {
         contents
             .as_mut()
             .expect("Loaded contents if none; Guaranteed")
-            .push(FolderContent::new(
-                Rc::downgrade(this),
-                folder_content_variant,
-            ))
+            .push(Rc::new(FolderContent::new(folder_content_variant)))
     }
 
     pub fn add_folder(this: &Rc<Self>, folder_name: String) {
         if let Some(path_named) = this.path_named.extend(format!("{}/", folder_name)) {
-            let folder = Folder::new(path_named);
+            let folder = Folder::new(path_named, Some(Rc::downgrade(this)));
             Self::add_content(this, FolderContentVariant::SubFolder(Rc::new(folder)));
         }
     }

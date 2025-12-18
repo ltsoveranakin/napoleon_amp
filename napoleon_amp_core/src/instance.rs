@@ -10,7 +10,7 @@ pub struct NapoleonInstance {
 impl NapoleonInstance {
     pub fn new() -> Self {
         Self {
-            base_folder: Rc::new(Folder::new(PathNamed::new(folders_dir()).unwrap())),
+            base_folder: Rc::new(Folder::new(PathNamed::new(folders_dir()).unwrap(), None)),
         }
     }
 
