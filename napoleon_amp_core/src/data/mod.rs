@@ -6,6 +6,7 @@ pub mod folder;
 pub mod playlist;
 pub mod song;
 
+#[derive(Clone)]
 pub struct PathNamed {
     /// The absolute path to the target this is in the format:
     ///

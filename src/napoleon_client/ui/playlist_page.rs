@@ -38,13 +38,13 @@ impl PlaylistPanel {
 
             let current_playlist_rc = Rc::clone(current_playlist);
 
-            self.draw_modal(ui, &current_playlist_rc);
+            self.draw_modal(ui);
 
             self.draw_songs(ui, &current_playlist_rc);
         }
     }
 
-    fn draw_modal(&mut self, ui: &mut Ui, current_playlist: &Playlist) {
+    fn draw_modal(&mut self, ui: &mut Ui) {
         if self.songs_imported.is_none() {
             return;
         }
@@ -153,7 +153,7 @@ impl PlaylistPanel {
             ui.style_mut().wrap_mode = Some(TextWrapMode::Truncate);
 
             if ui.label(song.name()).clicked() {
-                current_playlist.set_playing_song(song_index);
+                current_playlist.play_song(song_index);
             }
         }
     }
