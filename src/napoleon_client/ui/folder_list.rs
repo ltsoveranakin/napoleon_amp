@@ -1,5 +1,5 @@
 use crate::napoleon_client::{CreateFolderContentDialog, CreateFolderContentDialogVariant};
-use eframe::egui::{Id, Modal, Ui};
+use eframe::egui::{CursorIcon, Id, Modal, ScrollArea, Ui};
 use napoleon_amp_core::data::folder::content::FolderContentVariant;
 use napoleon_amp_core::data::folder::Folder;
 use napoleon_amp_core::data::playlist::Playlist;
@@ -91,6 +91,7 @@ impl FolderList {
                     variant: CreateFolderContentDialogVariant::SubFolder,
                 });
             }
+
             if ui.button("New PlayList").clicked() {
                 self.dialog = Some(CreateFolderContentDialog {
                     name: String::new(),
@@ -108,31 +109,43 @@ impl FolderList {
     }
 
     fn render_folder_content(&mut self, ui: &mut Ui, current_playlist: &mut Option<Rc<Playlist>>) {
-        let mut next_folder_folder = None;
-        let mut next_playlist_content = None;
+        ScrollArea::vertical().show(ui, |ui| {
+            let mut next_folder_folder = None;
+            let mut next_playlist_content = None;
 
-        for folder_content in Folder::get_or_load_content(&self.current_folder).iter() {
-            match &folder_content.variant {
-                FolderContentVariant::Playlist(playlist) => {
-                    if ui.button(playlist.name()).clicked() {
-                        next_playlist_content = Some(Rc::clone(playlist));
+            for folder_content in Folder::get_or_load_content(&self.current_folder).iter() {
+                ui.separator();
+
+                match &folder_content.variant {
+                    FolderContentVariant::Playlist(playlist) => {
+                        if ui
+                            .label(playlist.name())
+                            .on_hover_cursor(CursorIcon::PointingHand)
+                            .clicked()
+                        {
+                            next_playlist_content = Some(Rc::clone(playlist));
+                        }
                     }
-                }
 
-                FolderContentVariant::SubFolder(folder) => {
-                    if ui.button(folder.name()).clicked() {
-                        next_folder_folder = Some(Rc::clone(folder));
+                    FolderContentVariant::SubFolder(folder) => {
+                        if ui
+                            .label(folder.name())
+                            .on_hover_cursor(CursorIcon::PointingHand)
+                            .clicked()
+                        {
+                            next_folder_folder = Some(Rc::clone(folder));
+                        }
                     }
                 }
             }
-        }
 
-        if let Some(next_folder) = next_folder_folder {
-            self.current_folder = next_folder;
-        }
+            if let Some(next_folder) = next_folder_folder {
+                self.current_folder = next_folder;
+            }
 
-        if let Some(next_playlist_content) = next_playlist_content {
-            *current_playlist = Some(next_playlist_content);
-        }
+            if let Some(next_playlist_content) = next_playlist_content {
+                *current_playlist = Some(next_playlist_content);
+            }
+        });
     }
 }
