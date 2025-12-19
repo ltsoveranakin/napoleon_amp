@@ -2,18 +2,21 @@ use crate::data::song::Song;
 use crate::data::{NamedPathLike, PathNamed};
 use crate::paths::song_file;
 use crate::unwrap_lock;
-use rodio::{Decoder, OutputStream, OutputStreamBuilder, Sink};
+use rodio::{Decoder, OutputStreamBuilder, Sink};
 use serbytes::prelude::SerBytes;
 use std::cell::{Cell, OnceCell, RefCell};
 use std::fs::File;
 use std::io::{Read, Write};
-use std::ops::{Deref, DerefMut};
+use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
 use std::sync::{mpsc, Arc, Mutex, RwLock, RwLockReadGuard};
 use std::thread::JoinHandle;
 use std::time::Duration;
 use std::{fs, thread};
+
+const DEAD_MUSIC_THREAD_MESSAGE: &'static str =
+    "Music thread should be dead, and this should be cleaned up";
 
 #[derive(SerBytes)]
 struct PlaylistData {
@@ -32,11 +35,6 @@ impl PlaylistData {
     }
 }
 
-struct Playback {
-    stream_handle: OutputStream,
-    sink: Sink,
-}
-
 struct Queue {
     indexes: Vec<usize>,
     index: usize,
@@ -45,7 +43,9 @@ struct Queue {
 enum MusicCommand {
     Play,
     Pause,
-    Kill,
+    Stop,
+    Previous,
+    Next,
 }
 
 pub struct SongStatus {
@@ -54,7 +54,7 @@ pub struct SongStatus {
 
 struct MusicManager {
     playing_handle: OnceCell<JoinHandle<()>>,
-    music_command_tx: OnceCell<Sender<MusicCommand>>,
+    music_command_tx: Sender<MusicCommand>,
     song_status: Arc<Mutex<SongStatus>>,
 }
 
@@ -62,9 +62,9 @@ pub struct Playlist {
     path_named: PathNamed,
     songs: RwLock<Vec<Song>>,
     has_loaded_songs: Cell<bool>,
-    playback: RefCell<Option<Playback>>,
     queue: RefCell<Queue>,
     music_manager: RefCell<Option<MusicManager>>,
+    is_playing: Cell<bool>,
 }
 
 impl Playlist {
@@ -72,13 +72,13 @@ impl Playlist {
         Self {
             path_named,
             songs: RwLock::new(Vec::new()),
-            playback: RefCell::new(None),
             queue: RefCell::new(Queue {
                 indexes: Vec::new(),
                 index: 0,
             }),
             has_loaded_songs: Cell::new(false),
             music_manager: RefCell::new(None),
+            is_playing: Cell::new(false),
         }
     }
 
@@ -177,22 +177,22 @@ impl Playlist {
 
     pub fn play_song(&self, song_index: usize) {
         self.set_queue(song_index);
+        self.is_playing.set(true);
 
         let (music_command_tx, music_command_rx) = mpsc::channel();
 
-        if let Some(music_manager) = self.music_manager.borrow_mut().deref_mut() {
+        if let Some(mut music_manager) = self.music_manager.take() {
             let current_handle = music_manager
                 .playing_handle
                 .take()
                 .expect("Playing handle to exist; Only taken from here");
-            let old_music_command_tx = music_manager
-                .music_command_tx
-                .take()
-                .expect("Old command tx to exist; Only taken from here");
+
+            let old_music_command_tx = music_manager.music_command_tx;
 
             old_music_command_tx
-                .send(MusicCommand::Kill)
+                .send(MusicCommand::Stop)
                 .expect("Current playing thread to be alive");
+
             current_handle.join().expect("Unwrap for panic in thread");
         }
 
@@ -207,8 +207,14 @@ impl Playlist {
         let song_status = Arc::clone(&current_song_status);
 
         let handle = builder
+            .name("Music Manager".to_string())
             .spawn(move || {
                 let mut index = song_index;
+                let songs_len = songs.len() as i32;
+
+                let new_index = |index: usize, delta: i32| -> usize {
+                    ((index as i32) + delta).rem_euclid(songs_len) as usize
+                };
 
                 let stream_handle = OutputStreamBuilder::open_default_stream()
                     .expect("Unable to open audio stream to default audio device");
@@ -217,13 +223,27 @@ impl Playlist {
                 loop {
                     if let Ok(music_command) = music_command_rx.try_recv() {
                         match music_command {
-                            MusicCommand::Kill => {
+                            MusicCommand::Stop => {
                                 sink.stop();
                                 break;
                             }
 
-                            _ => {
-                                unimplemented!()
+                            MusicCommand::Pause => {
+                                sink.pause();
+                            }
+
+                            MusicCommand::Play => {
+                                sink.play();
+                            }
+
+                            MusicCommand::Previous => {
+                                sink.clear();
+                                index = new_index(index, -1);
+                            }
+
+                            MusicCommand::Next => {
+                                sink.clear();
+                                index = new_index(index, 1);
                             }
                         }
                     }
@@ -234,6 +254,7 @@ impl Playlist {
                         let file = File::open(song.path())
                             .expect(&format!("Unable to open song file for: {:?}", song.path()));
 
+                        // TODO: handle this:
                         let source =
                             Decoder::try_from(file).expect("Unable to create decoder from file");
 
@@ -241,7 +262,9 @@ impl Playlist {
 
                         unwrap_lock(&current_song_status).song = song.clone();
 
-                        index = (index + 1) % songs.len();
+                        sink.play();
+
+                        index = new_index(index, 1);
                     }
 
                     thread::sleep(Duration::from_millis(16))
@@ -250,25 +273,77 @@ impl Playlist {
             .expect("Unable to spawn thread at OS level");
 
         let playing_handle = OnceCell::new();
-        let music_command_tx_cell = OnceCell::new();
-
         playing_handle.set(handle).expect("Value is uninitialized");
-        music_command_tx_cell
-            .set(music_command_tx)
-            .expect("Value is uninitialized");
 
         let music_manager = MusicManager {
             playing_handle,
-            music_command_tx: music_command_tx_cell,
+            music_command_tx,
             song_status,
         };
 
         self.music_manager.replace(Some(music_manager));
+    }
 
-        // handle.thread(
-        // self.append_song_to_sink(song_index)
-        //     .expect("Unable to append initial song");
-        // self.append_song_to_sink(song_index + 1).ok();
+    pub fn play(&self) {
+        if self.try_send_command(MusicCommand::Play) {
+            self.is_playing.set(true);
+        }
+    }
+
+    pub fn pause(&self) {
+        if self.try_send_command(MusicCommand::Pause) {
+            self.is_playing.set(false);
+        }
+    }
+
+    pub fn previous(&self) {
+        if self.try_send_command(MusicCommand::Previous) {
+            self.is_playing.set(true);
+        }
+    }
+
+    pub fn next(&self) {
+        if self.try_send_command(MusicCommand::Next) {
+            self.is_playing.set(true);
+        }
+    }
+
+    pub fn toggle_playback(&self) {
+        if self.is_playing() {
+            self.pause();
+        } else {
+            self.play()
+        }
+    }
+
+    pub fn stop(&self) {
+        if self.try_send_command(MusicCommand::Stop) {
+            self.is_playing.set(false);
+            self.music_manager.replace(None);
+        }
+    }
+
+    pub fn is_playing(&self) -> bool {
+        self.is_playing.get()
+    }
+
+    /// Attempts to send a MusicCommand. Returns true if it was able to send a command, false otherwise.
+    ///
+    /// It will succeed so long as there is music currently active (returns true)
+
+    fn try_send_command(&self, music_command: MusicCommand) -> bool {
+        let music_manager_ref = self.music_manager.borrow();
+
+        if let Some(music_manager) = music_manager_ref.deref().as_ref() {
+            music_manager
+                .music_command_tx
+                .send(music_command)
+                .expect(DEAD_MUSIC_THREAD_MESSAGE);
+
+            true
+        } else {
+            false
+        }
     }
 
     fn set_queue(&self, start_index: usize) {

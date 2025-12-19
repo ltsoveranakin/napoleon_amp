@@ -134,10 +134,10 @@ impl PlaylistPanel {
                 }
 
                 if ui.button("Cancel").clicked() {
-                    return true;
+                    true
+                } else {
+                    false
                 }
-
-                return false;
             });
 
             return r.inner;
@@ -182,8 +182,30 @@ impl PlaylistPanel {
         if let Some(current_song_status) = self.current_playlist.current_song_status() {
             let song_status = unwrap_lock(&*current_song_status);
 
-            ui.centered_and_justified(|ui| {
-                ui.heading(song_status.song.name());
+            ui.heading(song_status.song.name());
+
+            ui.horizontal(|ui| {
+                if ui.button("Prev").clicked() {
+                    self.current_playlist.previous();
+                }
+
+                let toggle_playback_text = if self.current_playlist.is_playing() {
+                    "Pause"
+                } else {
+                    "Play"
+                };
+
+                if ui.button(toggle_playback_text).clicked() {
+                    self.current_playlist.toggle_playback();
+                }
+
+                if ui.button("Next").clicked() {
+                    self.current_playlist.next();
+                }
+
+                if ui.button("Stop").clicked() {
+                    self.current_playlist.stop();
+                }
             });
         }
     }
