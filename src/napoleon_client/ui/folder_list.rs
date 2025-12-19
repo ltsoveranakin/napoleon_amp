@@ -6,8 +6,6 @@ use napoleon_amp_core::data::playlist::Playlist;
 use napoleon_amp_core::data::NamedPathLike;
 use std::rc::Rc;
 
-enum CurrentFolder {}
-
 pub(crate) struct FolderList {
     pub(crate) current_folder: Rc<Folder>,
     dialog: Option<CreateFolderContentDialog>,
@@ -26,7 +24,9 @@ impl FolderList {
 
         self.render_header_buttons(ui);
 
-        self.render_folder_content(ui, current_playlist);
+        let current_folder = Rc::clone(&self.current_folder);
+
+        self.render_folder_content(ui, &current_folder, current_playlist);
     }
 
     fn render_modal(&mut self, ui: &mut Ui) {
@@ -108,12 +108,17 @@ impl FolderList {
         }
     }
 
-    fn render_folder_content(&mut self, ui: &mut Ui, current_playlist: &mut Option<Rc<Playlist>>) {
+    fn render_folder_content(
+        &mut self,
+        ui: &mut Ui,
+        folder: &Rc<Folder>,
+        current_playlist: &mut Option<Rc<Playlist>>,
+    ) {
         ScrollArea::vertical().show(ui, |ui| {
             let mut next_folder_folder = None;
             let mut next_playlist_content = None;
 
-            for folder_content in Folder::get_or_load_content(&self.current_folder).iter() {
+            for folder_content in Folder::get_or_load_content(folder).iter() {
                 ui.separator();
 
                 match &folder_content.variant {
@@ -128,13 +133,17 @@ impl FolderList {
                     }
 
                     FolderContentVariant::SubFolder(folder) => {
-                        if ui
-                            .label(folder.name())
-                            .on_hover_cursor(CursorIcon::PointingHand)
-                            .clicked()
-                        {
-                            next_folder_folder = Some(Rc::clone(folder));
-                        }
+                        ui.horizontal(|ui| {
+                            if ui
+                                .collapsing(folder.name(), |ui| {
+                                    self.render_folder_content(ui, folder, current_playlist);
+                                })
+                                .header_response
+                                .middle_clicked()
+                            {
+                                next_folder_folder = Some(Rc::clone(folder));
+                            }
+                        });
                     }
                 }
             }
