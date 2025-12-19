@@ -1,4 +1,4 @@
-use eframe::egui::{CursorIcon, Id, Modal, ScrollArea, TextWrapMode, Ui};
+use eframe::egui::{CursorIcon, Id, Modal, ScrollArea, Slider, TextWrapMode, Ui};
 use napoleon_amp_core::data::playlist::Playlist;
 use napoleon_amp_core::data::NamedPathLike;
 use napoleon_amp_core::unwrap_lock;
@@ -25,7 +25,7 @@ impl PlaylistPanel {
         }
     }
 
-    pub(crate) fn render(&mut self, ui: &mut Ui) {
+    pub(crate) fn render(&mut self, ui: &mut Ui, volume: &mut f32) {
         ui.heading(self.current_playlist.name());
         if ui.button("Add Songs").clicked() {
             if let Some(paths) = rfd::FileDialog::new().pick_files() {
@@ -42,7 +42,7 @@ impl PlaylistPanel {
 
         self.render_song_list(ui, &current_playlist_rc);
 
-        self.render_currently_playing(ui);
+        self.render_currently_playing(ui, volume);
     }
 
     fn render_modal(&mut self, ui: &mut Ui) {
@@ -178,7 +178,7 @@ impl PlaylistPanel {
             });
     }
 
-    fn render_currently_playing(&self, ui: &mut Ui) {
+    fn render_currently_playing(&self, ui: &mut Ui, volume: &mut f32) {
         if let Some(current_song_status) = self.current_playlist.current_song_status() {
             let song_status = unwrap_lock(&*current_song_status);
 
@@ -205,6 +205,10 @@ impl PlaylistPanel {
 
                 if ui.button("Stop").clicked() {
                     self.current_playlist.stop();
+                }
+
+                if ui.add(Slider::new(volume, 0f32..=1f32)).changed() {
+                    self.current_playlist.set_volume(*volume);
                 }
             });
         }

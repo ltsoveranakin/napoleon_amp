@@ -46,6 +46,7 @@ enum MusicCommand {
     Stop,
     Previous,
     Next,
+    SetVolume(f32),
 }
 
 pub struct SongStatus {
@@ -245,6 +246,10 @@ impl Playlist {
                                 sink.clear();
                                 index = new_index(index, 1);
                             }
+
+                            MusicCommand::SetVolume(volume) => {
+                                sink.set_volume(volume);
+                            }
                         }
                     }
 
@@ -254,15 +259,14 @@ impl Playlist {
                         let file = File::open(song.path())
                             .expect(&format!("Unable to open song file for: {:?}", song.path()));
 
-                        // TODO: handle this:
-                        let source =
-                            Decoder::try_from(file).expect("Unable to create decoder from file");
+                        // Skip if invalid file
+                        if let Ok(source) = Decoder::try_from(file) {
+                            sink.append(source);
 
-                        sink.append(source);
+                            unwrap_lock(&current_song_status).song = song.clone();
 
-                        unwrap_lock(&current_song_status).song = song.clone();
-
-                        sink.play();
+                            sink.play();
+                        }
 
                         index = new_index(index, 1);
                     }
@@ -325,6 +329,10 @@ impl Playlist {
 
     pub fn is_playing(&self) -> bool {
         self.is_playing.get()
+    }
+
+    pub fn set_volume(&self, volume: f32) {
+        self.try_send_command(MusicCommand::SetVolume(volume));
     }
 
     /// Attempts to send a MusicCommand. Returns true if it was able to send a command, false otherwise.
