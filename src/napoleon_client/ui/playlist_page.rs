@@ -1,4 +1,4 @@
-use eframe::egui::{Id, Modal, TextWrapMode, Ui};
+use eframe::egui::{CursorIcon, Id, Modal, ScrollArea, TextWrapMode, Ui};
 use napoleon_amp_core::data::playlist::Playlist;
 use napoleon_amp_core::data::NamedPathLike;
 use std::path::PathBuf;
@@ -149,13 +149,25 @@ impl PlaylistPanel {
     }
 
     fn draw_songs(&self, ui: &mut Ui, current_playlist: &Playlist) {
-        for (song_index, song) in current_playlist.get_or_load_songs().iter().enumerate() {
-            ui.style_mut().wrap_mode = Some(TextWrapMode::Truncate);
+        ScrollArea::vertical().show(ui, |ui| {
+            let songs = current_playlist.get_or_load_songs();
 
-            if ui.label(song.name()).clicked() {
-                current_playlist.play_song(song_index);
+            for (song_index, song) in songs.iter().enumerate() {
+                ui.style_mut().wrap_mode = Some(TextWrapMode::Truncate);
+
+                if ui
+                    .label(song.name())
+                    .on_hover_cursor(CursorIcon::PointingHand)
+                    .clicked()
+                {
+                    current_playlist.play_song(song_index);
+                }
+
+                if song_index != songs.len() - 1 {
+                    ui.separator();
+                }
             }
-        }
+        });
     }
 }
 
