@@ -25,7 +25,7 @@ enum Dialog {
 pub(super) struct NapoleonClientApp {
     core_instance: NapoleonInstance,
     folder_list: FolderList,
-    playlist_page: PlaylistPanel,
+    playlist_panel: Option<PlaylistPanel>,
 }
 
 impl NapoleonClientApp {
@@ -36,7 +36,7 @@ impl NapoleonClientApp {
         Self {
             core_instance,
             folder_list: FolderList::new(current_folder),
-            playlist_page: PlaylistPanel::new(),
+            playlist_panel: None,
         }
     }
 }
@@ -44,12 +44,13 @@ impl NapoleonClientApp {
 impl App for NapoleonClientApp {
     fn update(&mut self, ctx: &Context, frame: &mut Frame) {
         SidePanel::left("folder_list").show(ctx, |ui| {
-            self.folder_list
-                .draw(ui, &mut self.playlist_page.current_playlist);
+            self.folder_list.render(ui, &mut self.playlist_panel);
         });
 
         CentralPanel::default().show(ctx, |ui| {
-            self.playlist_page.draw(ui);
+            if let Some(playlist_panel) = &mut self.playlist_panel {
+                playlist_panel.render(ui);
+            }
         });
     }
 }

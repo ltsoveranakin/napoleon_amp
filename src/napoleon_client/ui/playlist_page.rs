@@ -1,6 +1,7 @@
 use eframe::egui::{CursorIcon, Id, Modal, ScrollArea, TextWrapMode, Ui};
 use napoleon_amp_core::data::playlist::Playlist;
 use napoleon_amp_core::data::NamedPathLike;
+use napoleon_amp_core::unwrap_lock;
 use std::path::PathBuf;
 use std::rc::Rc;
 
@@ -10,41 +11,41 @@ struct SongsImported {
 }
 
 pub(crate) struct PlaylistPanel {
-    pub(crate) current_playlist: Option<Rc<Playlist>>,
+    pub(crate) current_playlist: Rc<Playlist>,
     songs_imported: Option<SongsImported>,
     delete_original_files: bool,
 }
 
 impl PlaylistPanel {
-    pub(crate) fn new() -> Self {
+    pub(crate) fn new(current_playlist: Rc<Playlist>) -> Self {
         Self {
-            current_playlist: None,
+            current_playlist,
             songs_imported: None,
             delete_original_files: false,
         }
     }
 
-    pub(crate) fn draw(&mut self, ui: &mut Ui) {
-        if let Some(current_playlist) = &self.current_playlist {
-            ui.heading(current_playlist.name());
-            if ui.button("Add Songs").clicked() {
-                if let Some(paths) = rfd::FileDialog::new().pick_files() {
-                    self.songs_imported = Some(SongsImported {
-                        paths,
-                        failed_song_indexes: None,
-                    });
-                }
+    pub(crate) fn render(&mut self, ui: &mut Ui) {
+        ui.heading(self.current_playlist.name());
+        if ui.button("Add Songs").clicked() {
+            if let Some(paths) = rfd::FileDialog::new().pick_files() {
+                self.songs_imported = Some(SongsImported {
+                    paths,
+                    failed_song_indexes: None,
+                });
             }
-
-            let current_playlist_rc = Rc::clone(current_playlist);
-
-            self.draw_modal(ui);
-
-            self.draw_songs(ui, &current_playlist_rc);
         }
+
+        let current_playlist_rc = Rc::clone(&self.current_playlist);
+
+        self.render_modal(ui);
+
+        self.render_song_list(ui, &current_playlist_rc);
+
+        self.render_currently_playing(ui);
     }
 
-    fn draw_modal(&mut self, ui: &mut Ui) {
+    fn render_modal(&mut self, ui: &mut Ui) {
         if self.songs_imported.is_none() {
             return;
         }
@@ -122,7 +123,6 @@ impl PlaylistPanel {
                     return if let Err(failed_song_indexes) = self
                         .current_playlist
                         .as_ref()
-                        .expect("Draw only if Some")
                         .import_songs(songs_imported_paths, self.delete_original_files)
                     {
                         songs_imported.failed_song_indexes = Some(failed_song_indexes);
@@ -148,26 +148,44 @@ impl PlaylistPanel {
         }
     }
 
-    fn draw_songs(&self, ui: &mut Ui, current_playlist: &Playlist) {
-        ScrollArea::vertical().show(ui, |ui| {
-            let songs = current_playlist.get_or_load_songs();
+    fn render_song_list(&self, ui: &mut Ui, current_playlist: &Playlist) {
+        let max_height = if self.current_playlist.current_song_status().is_some() {
+            ui.available_height() - 80.
+        } else {
+            f32::INFINITY
+        };
 
-            for (song_index, song) in songs.iter().enumerate() {
-                ui.style_mut().wrap_mode = Some(TextWrapMode::Truncate);
+        ScrollArea::vertical()
+            .max_height(max_height)
+            .show(ui, |ui| {
+                let songs = current_playlist.get_or_load_songs();
 
-                if ui
-                    .label(song.name())
-                    .on_hover_cursor(CursorIcon::PointingHand)
-                    .clicked()
-                {
-                    current_playlist.play_song(song_index);
+                for (song_index, song) in songs.iter().enumerate() {
+                    ui.style_mut().wrap_mode = Some(TextWrapMode::Truncate);
+
+                    if ui
+                        .label(song.name())
+                        .on_hover_cursor(CursorIcon::PointingHand)
+                        .clicked()
+                    {
+                        current_playlist.play_song(song_index);
+                    }
+
+                    if song_index != songs.len() - 1 {
+                        ui.separator();
+                    }
                 }
+            });
+    }
 
-                if song_index != songs.len() - 1 {
-                    ui.separator();
-                }
-            }
-        });
+    fn render_currently_playing(&self, ui: &mut Ui) {
+        if let Some(current_song_status) = self.current_playlist.current_song_status() {
+            let song_status = unwrap_lock(&*current_song_status);
+
+            ui.centered_and_justified(|ui| {
+                ui.heading(song_status.song.name());
+            });
+        }
     }
 }
 

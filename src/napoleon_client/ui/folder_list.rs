@@ -1,8 +1,8 @@
+use crate::napoleon_client::ui::playlist_page::PlaylistPanel;
 use crate::napoleon_client::{CreateFolderContentDialog, CreateFolderContentDialogVariant};
 use eframe::egui::{CursorIcon, Id, Modal, ScrollArea, Ui};
 use napoleon_amp_core::data::folder::content::FolderContentVariant;
 use napoleon_amp_core::data::folder::Folder;
-use napoleon_amp_core::data::playlist::Playlist;
 use napoleon_amp_core::data::NamedPathLike;
 use std::rc::Rc;
 
@@ -19,14 +19,14 @@ impl FolderList {
         }
     }
 
-    pub(crate) fn draw(&mut self, ui: &mut Ui, current_playlist: &mut Option<Rc<Playlist>>) {
+    pub(crate) fn render(&mut self, ui: &mut Ui, playlist_panel: &mut Option<PlaylistPanel>) {
         self.render_modal(ui);
 
         self.render_header_buttons(ui);
 
         let current_folder = Rc::clone(&self.current_folder);
 
-        self.render_folder_content(ui, &current_folder, current_playlist);
+        self.render_folder_content(ui, &current_folder, playlist_panel);
     }
 
     fn render_modal(&mut self, ui: &mut Ui) {
@@ -112,11 +112,11 @@ impl FolderList {
         &mut self,
         ui: &mut Ui,
         folder: &Rc<Folder>,
-        current_playlist: &mut Option<Rc<Playlist>>,
+        playlist_panel: &mut Option<PlaylistPanel>,
     ) {
         ScrollArea::vertical().show(ui, |ui| {
             let mut next_folder_folder = None;
-            let mut next_playlist_content = None;
+            let mut next_playlist = None;
 
             for folder_content in Folder::get_or_load_content(folder).iter() {
                 ui.separator();
@@ -128,7 +128,7 @@ impl FolderList {
                             .on_hover_cursor(CursorIcon::PointingHand)
                             .clicked()
                         {
-                            next_playlist_content = Some(Rc::clone(playlist));
+                            next_playlist = Some(Rc::clone(playlist));
                         }
                     }
 
@@ -136,7 +136,7 @@ impl FolderList {
                         ui.horizontal(|ui| {
                             if ui
                                 .collapsing(folder.name(), |ui| {
-                                    self.render_folder_content(ui, folder, current_playlist);
+                                    self.render_folder_content(ui, folder, playlist_panel);
                                 })
                                 .header_response
                                 .middle_clicked()
@@ -152,8 +152,8 @@ impl FolderList {
                 self.current_folder = next_folder;
             }
 
-            if let Some(next_playlist_content) = next_playlist_content {
-                *current_playlist = Some(next_playlist_content);
+            if let Some(next_playlist_content) = next_playlist {
+                *playlist_panel = Some(PlaylistPanel::new(next_playlist_content));
             }
         });
     }

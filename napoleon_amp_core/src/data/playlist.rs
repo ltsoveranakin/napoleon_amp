@@ -1,14 +1,16 @@
 use crate::data::song::Song;
 use crate::data::{NamedPathLike, PathNamed};
 use crate::paths::song_file;
+use crate::unwrap_lock;
 use rodio::{Decoder, OutputStream, OutputStreamBuilder, Sink};
 use serbytes::prelude::SerBytes;
-use std::cell::{Cell, RefCell};
+use std::cell::{Cell, OnceCell, RefCell};
 use std::fs::File;
 use std::io::{Read, Write};
+use std::ops::{Deref, DerefMut};
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
-use std::sync::{mpsc, RwLock, RwLockReadGuard};
+use std::sync::{mpsc, Arc, Mutex, RwLock, RwLockReadGuard};
 use std::thread::JoinHandle;
 use std::time::Duration;
 use std::{fs, thread};
@@ -46,14 +48,23 @@ enum MusicCommand {
     Kill,
 }
 
+pub struct SongStatus {
+    pub song: Song,
+}
+
+struct MusicManager {
+    playing_handle: OnceCell<JoinHandle<()>>,
+    music_command_tx: OnceCell<Sender<MusicCommand>>,
+    song_status: Arc<Mutex<SongStatus>>,
+}
+
 pub struct Playlist {
     path_named: PathNamed,
     songs: RwLock<Vec<Song>>,
+    has_loaded_songs: Cell<bool>,
     playback: RefCell<Option<Playback>>,
     queue: RefCell<Queue>,
-    playing_handle: Cell<Option<JoinHandle<()>>>,
-    has_loaded_songs: Cell<bool>,
-    playing_handle_sender: Cell<Option<Sender<MusicCommand>>>,
+    music_manager: RefCell<Option<MusicManager>>,
 }
 
 impl Playlist {
@@ -66,9 +77,8 @@ impl Playlist {
                 indexes: Vec::new(),
                 index: 0,
             }),
-            playing_handle: Cell::new(None),
             has_loaded_songs: Cell::new(false),
-            playing_handle_sender: Cell::new(None),
+            music_manager: RefCell::new(None),
         }
     }
 
@@ -112,6 +122,12 @@ impl Playlist {
                 indexes.push(i);
             }
         }
+    }
+
+    pub fn current_song_status(&self) -> Option<Arc<Mutex<SongStatus>>> {
+        Some(Arc::clone(
+            &self.music_manager.borrow().deref().as_ref()?.song_status,
+        ))
     }
 
     pub fn import_songs(
@@ -162,17 +178,22 @@ impl Playlist {
     pub fn play_song(&self, song_index: usize) {
         self.set_queue(song_index);
 
-        let (tx, rx) = mpsc::channel();
+        let (music_command_tx, music_command_rx) = mpsc::channel();
 
-        if let Some(current_handle) = self.playing_handle.take() {
-            let old_tx = self
-                .playing_handle_sender
+        if let Some(music_manager) = self.music_manager.borrow_mut().deref_mut() {
+            let current_handle = music_manager
+                .playing_handle
                 .take()
-                .expect("Handle sender is Some if playing_handle is Some");
-            old_tx
+                .expect("Playing handle to exist; Only taken from here");
+            let old_music_command_tx = music_manager
+                .music_command_tx
+                .take()
+                .expect("Old command tx to exist; Only taken from here");
+
+            old_music_command_tx
                 .send(MusicCommand::Kill)
                 .expect("Current playing thread to be alive");
-            current_handle.join().expect("Unwrap for panic");
+            current_handle.join().expect("Unwrap for panic in thread");
         }
 
         let builder = thread::Builder::new();
@@ -180,6 +201,10 @@ impl Playlist {
         // TODO: make so no need to clone songs here
 
         let songs = self.get_or_load_songs().clone();
+
+        let song = songs[song_index].clone();
+        let current_song_status = Arc::new(Mutex::new(SongStatus { song }));
+        let song_status = Arc::clone(&current_song_status);
 
         let handle = builder
             .spawn(move || {
@@ -190,7 +215,7 @@ impl Playlist {
                 let sink = Sink::connect_new(&stream_handle.mixer());
 
                 loop {
-                    if let Ok(music_command) = rx.try_recv() {
+                    if let Ok(music_command) = music_command_rx.try_recv() {
                         match music_command {
                             MusicCommand::Kill => {
                                 sink.stop();
@@ -214,6 +239,8 @@ impl Playlist {
 
                         sink.append(source);
 
+                        unwrap_lock(&current_song_status).song = song.clone();
+
                         index = (index + 1) % songs.len();
                     }
 
@@ -222,8 +249,21 @@ impl Playlist {
             })
             .expect("Unable to spawn thread at OS level");
 
-        self.playing_handle.replace(Some(handle));
-        self.playing_handle_sender.replace(Some(tx));
+        let playing_handle = OnceCell::new();
+        let music_command_tx_cell = OnceCell::new();
+
+        playing_handle.set(handle).expect("Value is uninitialized");
+        music_command_tx_cell
+            .set(music_command_tx)
+            .expect("Value is uninitialized");
+
+        let music_manager = MusicManager {
+            playing_handle,
+            music_command_tx: music_command_tx_cell,
+            song_status,
+        };
+
+        self.music_manager.replace(Some(music_manager));
 
         // handle.thread(
         // self.append_song_to_sink(song_index)
@@ -236,44 +276,6 @@ impl Playlist {
 
         queue.index = start_index;
     }
-
-    // fn begin_play_get_handle(&self, song_index: usize) -> Result<(), ()> {
-    //     let playback = if self.playback.borrow().is_some() {
-    //         // let playback = unwrap_inner_ref_mut(self.playback.borrow_mut());
-    //
-    //         let playback_ref = unwrap_inner_ref(self.playback.borrow());
-    //
-    //         playback_ref.sink.stop();
-    //
-    //         playback_ref
-    //     } else {
-    //         let stream_handle = OutputStreamBuilder::open_default_stream()
-    //             .expect("Unable to open audio stream to default audio device");
-    //         let sink = Sink::connect_new(&stream_handle.mixer());
-    //
-    //         self.playback.replace(Some(Playback {
-    //             stream_handle,
-    //             sink,
-    //         }));
-    //
-    //         unwrap_inner_ref(self.playback.borrow())
-    //     };
-    //
-    //     let songs = self.get_or_load_songs();
-    //
-    //     let song = songs.get(song_index).ok_or_else(|| ())?;
-    //
-    //     let file = File::open(song.path())
-    //         .expect(&format!("Unable to open song file for: {:?}", song.path()));
-    //
-    //     let source = Decoder::try_from(file).expect("Unable to create decoder from file");
-    //
-    //     playback.sink.append(source);
-    //
-    //     playback.sink.sleep_until_end();
-    //
-    //     Ok(())
-    // }
 
     fn add_song(&self, song: Song) {
         if self.has_loaded_songs.get() {
