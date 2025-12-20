@@ -40,7 +40,7 @@ impl PlaylistPanel {
 
         self.render_modal(ui);
 
-        self.render_song_list(ui, &current_playlist_rc);
+        self.render_song_list(ui, &current_playlist_rc, *volume);
 
         self.render_currently_playing(ui, volume);
     }
@@ -148,7 +148,7 @@ impl PlaylistPanel {
         }
     }
 
-    fn render_song_list(&self, ui: &mut Ui, current_playlist: &Playlist) {
+    fn render_song_list(&self, ui: &mut Ui, current_playlist: &Playlist, volume: f32) {
         let max_height = if self.current_playlist.current_song_status().is_some() {
             ui.available_height() - 80.
         } else {
@@ -168,7 +168,7 @@ impl PlaylistPanel {
                         .on_hover_cursor(CursorIcon::PointingHand)
                         .clicked()
                     {
-                        current_playlist.play_song(song_index);
+                        current_playlist.play_song(song_index, volume);
                     }
 
                     if song_index != songs.len() - 1 {
@@ -184,34 +184,38 @@ impl PlaylistPanel {
 
             ui.heading(song_status.song.name());
 
-            ui.horizontal(|ui| {
-                if ui.button("Prev").clicked() {
-                    self.current_playlist.previous();
-                }
-
-                let toggle_playback_text = if self.current_playlist.is_playing() {
-                    "Pause"
-                } else {
-                    "Play"
-                };
-
-                if ui.button(toggle_playback_text).clicked() {
-                    self.current_playlist.toggle_playback();
-                }
-
-                if ui.button("Next").clicked() {
-                    self.current_playlist.next();
-                }
-
-                if ui.button("Stop").clicked() {
-                    self.current_playlist.stop();
-                }
-
-                if ui.add(Slider::new(volume, 0f32..=1f32)).changed() {
-                    self.current_playlist.set_volume(*volume);
-                }
-            });
+            self.render_currently_playing_song_controls(ui, volume)
         }
+    }
+
+    fn render_currently_playing_song_controls(&self, ui: &mut Ui, volume: &mut f32) {
+        ui.horizontal(|ui| {
+            if ui.add(Slider::new(volume, 0f32..=1f32)).changed() {
+                self.current_playlist.set_volume(*volume);
+            }
+
+            if ui.button("Prev").clicked() {
+                self.current_playlist.previous();
+            }
+
+            let toggle_playback_text = if self.current_playlist.is_playing() {
+                "Pause"
+            } else {
+                "Play"
+            };
+
+            if ui.button(toggle_playback_text).clicked() {
+                self.current_playlist.toggle_playback();
+            }
+
+            if ui.button("Next").clicked() {
+                self.current_playlist.next();
+            }
+
+            if ui.button("Stop").clicked() {
+                self.current_playlist.stop();
+            }
+        });
     }
 }
 

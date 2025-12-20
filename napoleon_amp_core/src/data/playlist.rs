@@ -176,7 +176,7 @@ impl Playlist {
         }
     }
 
-    pub fn play_song(&self, song_index: usize) {
+    pub fn play_song(&self, song_index: usize, volume: f32) {
         self.set_queue(song_index);
         self.is_playing.set(true);
 
@@ -220,6 +220,8 @@ impl Playlist {
                 let stream_handle = OutputStreamBuilder::open_default_stream()
                     .expect("Unable to open audio stream to default audio device");
                 let sink = Sink::connect_new(&stream_handle.mixer());
+
+                sink.set_volume(volume);
 
                 loop {
                     if let Ok(music_command) = music_command_rx.try_recv() {
@@ -266,6 +268,8 @@ impl Playlist {
                             unwrap_lock(&current_song_status).song = song.clone();
 
                             sink.play();
+                        } else {
+                            println!("Invalid or corrupted audio file detected, skipping")
                         }
 
                         index = new_index(index, 1);
