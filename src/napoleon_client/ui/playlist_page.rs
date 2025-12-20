@@ -1,7 +1,7 @@
 use eframe::egui::{CursorIcon, Id, Modal, ScrollArea, Slider, TextWrapMode, Ui};
 use napoleon_amp_core::data::playlist::Playlist;
 use napoleon_amp_core::data::NamedPathLike;
-use napoleon_amp_core::unwrap_lock;
+use napoleon_amp_core::read_rwlock;
 use std::path::PathBuf;
 use std::rc::Rc;
 
@@ -180,9 +180,9 @@ impl PlaylistPanel {
 
     fn render_currently_playing(&self, ui: &mut Ui, volume: &mut f32) {
         if let Some(current_song_status) = self.current_playlist.current_song_status() {
-            let song_status = unwrap_lock(&*current_song_status);
+            let song_status = read_rwlock(&*current_song_status);
 
-            ui.heading(song_status.song.name());
+            ui.heading(song_status.song().name());
 
             self.render_currently_playing_song_controls(ui, volume)
         }
@@ -190,6 +190,7 @@ impl PlaylistPanel {
 
     fn render_currently_playing_song_controls(&self, ui: &mut Ui, volume: &mut f32) {
         ui.horizontal(|ui| {
+            ui.label("Vol:");
             if ui.add(Slider::new(volume, 0f32..=1f32)).changed() {
                 self.current_playlist.set_volume(*volume);
             }
@@ -216,6 +217,21 @@ impl PlaylistPanel {
                 self.current_playlist.stop();
             }
         });
+
+        let pos = self.current_playlist.get_song_pos().expect("TODO: Temp");
+        if self.current_playlist.get_total_song_duration().is_none() {
+            return;
+        }
+        let total_duration = self
+            .current_playlist
+            .get_total_song_duration()
+            .expect("TODO: Temp");
+
+        let mut progress = pos.div_duration_f32(total_duration);
+
+        println!("pos: {:?}, total: {:?}", pos, total_duration);
+
+        if ui.add(Slider::new(&mut progress, 0f32..=1f32)).changed() {}
     }
 }
 

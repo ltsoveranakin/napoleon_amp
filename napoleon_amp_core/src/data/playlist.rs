@@ -1,8 +1,8 @@
 use crate::data::song::Song;
 use crate::data::{NamedPathLike, PathNamed};
 use crate::paths::song_file;
-use crate::unwrap_lock;
-use rodio::{Decoder, OutputStreamBuilder, Sink};
+use crate::{read_rwlock, write_rwlock};
+use rodio::{Decoder, OutputStream, OutputStreamBuilder, Sink, Source};
 use serbytes::prelude::SerBytes;
 use std::cell::{Cell, OnceCell, RefCell};
 use std::fs::File;
@@ -10,7 +10,7 @@ use std::io::{Read, Write};
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
-use std::sync::{mpsc, Arc, Mutex, RwLock, RwLockReadGuard};
+use std::sync::{mpsc, Arc, RwLock, RwLockReadGuard};
 use std::thread::JoinHandle;
 use std::time::Duration;
 use std::{fs, thread};
@@ -50,13 +50,27 @@ enum MusicCommand {
 }
 
 pub struct SongStatus {
-    pub song: Song,
+    song: Song,
+    total_duration: Option<Duration>,
 }
 
-struct MusicManager {
+impl SongStatus {
+    pub fn song(&self) -> &Song {
+        &self.song
+    }
+
+    pub fn total_duration(&self) -> Option<&Duration> {
+        self.total_duration.as_ref()
+    }
+}
+
+pub struct MusicManager {
     playing_handle: OnceCell<JoinHandle<()>>,
     music_command_tx: Sender<MusicCommand>,
-    song_status: Arc<Mutex<SongStatus>>,
+    song_status: Arc<RwLock<SongStatus>>,
+    sink: Arc<Sink>,
+    /// Not currently used, but must not be dropped in order to keep audio stream alive
+    _output_stream: OutputStream,
 }
 
 pub struct Playlist {
@@ -125,7 +139,7 @@ impl Playlist {
         }
     }
 
-    pub fn current_song_status(&self) -> Option<Arc<Mutex<SongStatus>>> {
+    pub fn current_song_status(&self) -> Option<Arc<RwLock<SongStatus>>> {
         Some(Arc::clone(
             &self.music_manager.borrow().deref().as_ref()?.song_status,
         ))
@@ -204,8 +218,16 @@ impl Playlist {
         let songs = self.get_or_load_songs().clone();
 
         let song = songs[song_index].clone();
-        let current_song_status = Arc::new(Mutex::new(SongStatus { song }));
+        let current_song_status = Arc::new(RwLock::new(SongStatus {
+            song,
+            total_duration: None,
+        }));
         let song_status = Arc::clone(&current_song_status);
+
+        let output_stream_handle = OutputStreamBuilder::open_default_stream()
+            .expect("Unable to open audio stream to default audio device");
+        let sink_arc = Arc::new(Sink::connect_new(&output_stream_handle.mixer()));
+        let sink = Arc::clone(&sink_arc);
 
         let handle = builder
             .name("Music Manager".to_string())
@@ -216,10 +238,6 @@ impl Playlist {
                 let new_index = |index: usize, delta: i32| -> usize {
                     ((index as i32) + delta).rem_euclid(songs_len) as usize
                 };
-
-                let stream_handle = OutputStreamBuilder::open_default_stream()
-                    .expect("Unable to open audio stream to default audio device");
-                let sink = Sink::connect_new(&stream_handle.mixer());
 
                 sink.set_volume(volume);
 
@@ -263,9 +281,17 @@ impl Playlist {
 
                         // Skip if invalid file
                         if let Ok(source) = Decoder::try_from(file) {
-                            sink.append(source);
+                            let mut new_song_status = write_rwlock(&current_song_status);
+                            new_song_status.song = song.clone();
 
-                            unwrap_lock(&current_song_status).song = song.clone();
+                            new_song_status.total_duration =
+                                if let Some(total_duration) = source.total_duration() {
+                                    Some(total_duration)
+                                } else {
+                                    None
+                                };
+
+                            sink.append(source);
 
                             sink.play();
                         } else {
@@ -287,6 +313,8 @@ impl Playlist {
             playing_handle,
             music_command_tx,
             song_status,
+            sink: sink_arc,
+            _output_stream: output_stream_handle,
         };
 
         self.music_manager.replace(Some(music_manager));
@@ -337,6 +365,18 @@ impl Playlist {
 
     pub fn set_volume(&self, volume: f32) {
         self.try_send_command(MusicCommand::SetVolume(volume));
+    }
+
+    /// Gets the current playhead position in the song.
+    ///
+    /// Returns None if there is no music active
+
+    pub fn get_song_pos(&self) -> Option<Duration> {
+        Some(self.music_manager.borrow().deref().as_ref()?.sink.get_pos())
+    }
+
+    pub fn get_total_song_duration(&self) -> Option<Duration> {
+        read_rwlock(&*self.music_manager.borrow().deref().as_ref()?.song_status).total_duration
     }
 
     /// Attempts to send a MusicCommand. Returns true if it was able to send a command, false otherwise.
