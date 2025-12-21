@@ -1,6 +1,6 @@
 use crate::napoleon_client::ui::playlist_page::PlaylistPanel;
 use crate::napoleon_client::{CreateFolderContentDialog, CreateFolderContentDialogVariant};
-use eframe::egui::{CursorIcon, Id, Modal, ScrollArea, Ui};
+use eframe::egui::{CursorIcon, Id, Modal, Popup, ScrollArea, Ui};
 use napoleon_amp_core::data::folder::content::FolderContentVariant;
 use napoleon_amp_core::data::folder::Folder;
 use napoleon_amp_core::data::NamedPathLike;
@@ -123,13 +123,28 @@ impl FolderList {
 
                 match &folder_content.variant {
                     FolderContentVariant::Playlist(playlist) => {
-                        if ui
+                        let playlist_label = ui
                             .label(playlist.name())
-                            .on_hover_cursor(CursorIcon::PointingHand)
-                            .clicked()
-                        {
+                            .on_hover_cursor(CursorIcon::PointingHand);
+
+                        if playlist_label.clicked() {
                             next_playlist = Some(Rc::clone(playlist));
                         }
+
+                        Popup::context_menu(&playlist_label).show(|ui| {
+                            if ui.button("Open file location").clicked() {
+                                if open::that_detached(
+                                    playlist
+                                        .path()
+                                        .parent()
+                                        .expect("File will always have parent directory"),
+                                )
+                                .is_err()
+                                {
+                                    unimplemented!()
+                                }
+                            }
+                        });
                     }
 
                     FolderContentVariant::SubFolder(folder) => {

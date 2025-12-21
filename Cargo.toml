@@ -8,3 +8,4 @@ eframe = "0.33.3"
 rfd = "0.16.0"
 napoleon_amp_core = { path = "napoleon_amp_core" }
 egui_extras = "0.33.3"
+open = "5.3.3"
