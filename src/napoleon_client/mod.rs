@@ -51,7 +51,7 @@ impl App for NapoleonClientApp {
 
         CentralPanel::default().show(ctx, |ui| {
             if let Some(playlist_panel) = &mut self.playlist_panel {
-                playlist_panel.render(ui, &mut self.volume);
+                playlist_panel.render(ctx, ui, &mut self.volume);
             }
         });
     }

@@ -1,9 +1,12 @@
-use eframe::egui::{CursorIcon, Id, Modal, ScrollArea, Slider, TextWrapMode, Ui};
+use eframe::egui::{Context, CursorIcon, Id, Modal, ScrollArea, Slider, TextWrapMode, Ui};
+use std::ops::Deref;
+
+use napoleon_amp_core::data::playlist::manager::{MusicManager, SongStatus};
 use napoleon_amp_core::data::playlist::Playlist;
 use napoleon_amp_core::data::NamedPathLike;
-use napoleon_amp_core::read_rwlock;
 use std::path::PathBuf;
 use std::rc::Rc;
+use std::time::Duration;
 
 struct SongsImported {
     paths: Vec<PathBuf>,
@@ -25,7 +28,7 @@ impl PlaylistPanel {
         }
     }
 
-    pub(crate) fn render(&mut self, ui: &mut Ui, volume: &mut f32) {
+    pub(crate) fn render(&mut self, ctx: &Context, ui: &mut Ui, volume: &mut f32) {
         ui.heading(self.current_playlist.name());
         if ui.button("Add Songs").clicked() {
             if let Some(paths) = rfd::FileDialog::new().pick_files() {
@@ -42,7 +45,7 @@ impl PlaylistPanel {
 
         self.render_song_list(ui, &current_playlist_rc, *volume);
 
-        self.render_currently_playing(ui, volume);
+        self.render_currently_playing(ctx, ui, volume);
     }
 
     fn render_modal(&mut self, ui: &mut Ui) {
@@ -149,7 +152,7 @@ impl PlaylistPanel {
     }
 
     fn render_song_list(&self, ui: &mut Ui, current_playlist: &Playlist, volume: f32) {
-        let max_height = if self.current_playlist.current_song_status().is_some() {
+        let max_height = if self.current_playlist.get_music_manager().is_some() {
             ui.available_height() - 80.
         } else {
             f32::INFINITY
@@ -178,60 +181,77 @@ impl PlaylistPanel {
             });
     }
 
-    fn render_currently_playing(&self, ui: &mut Ui, volume: &mut f32) {
-        if let Some(current_song_status) = self.current_playlist.current_song_status() {
-            let song_status = read_rwlock(&*current_song_status);
+    fn render_currently_playing(&self, ctx: &Context, ui: &mut Ui, volume: &mut f32) {
+        if let Some(music_manager) = self.current_playlist.get_music_manager().deref() {
+            let song_status = music_manager.get_song_status_ref();
 
             ui.heading(song_status.song().name());
 
-            self.render_currently_playing_song_controls(ui, volume)
+            self.render_currently_playing_song_controls(
+                ctx,
+                ui,
+                volume,
+                music_manager,
+                &song_status,
+            );
         }
     }
 
-    fn render_currently_playing_song_controls(&self, ui: &mut Ui, volume: &mut f32) {
+    fn render_currently_playing_song_controls(
+        &self,
+        ctx: &Context,
+        ui: &mut Ui,
+        volume: &mut f32,
+        music_manager: &MusicManager,
+        song_status: &SongStatus,
+    ) {
         ui.horizontal(|ui| {
             ui.label("Vol:");
             if ui.add(Slider::new(volume, 0f32..=1f32)).changed() {
-                self.current_playlist.set_volume(*volume);
+                music_manager.set_volume(*volume);
             }
 
             if ui.button("Prev").clicked() {
-                self.current_playlist.previous();
+                music_manager.previous();
             }
 
-            let toggle_playback_text = if self.current_playlist.is_playing() {
+            let toggle_playback_text = if music_manager.is_playing() {
                 "Pause"
             } else {
                 "Play"
             };
 
             if ui.button(toggle_playback_text).clicked() {
-                self.current_playlist.toggle_playback();
+                music_manager.toggle_playback();
             }
 
             if ui.button("Next").clicked() {
-                self.current_playlist.next();
+                music_manager.next();
             }
 
             if ui.button("Stop").clicked() {
-                self.current_playlist.stop();
+                self.current_playlist.stop_music();
             }
         });
 
-        let pos = self.current_playlist.get_song_pos().expect("TODO: Temp");
-        if self.current_playlist.get_total_song_duration().is_none() {
-            return;
+        if let Some(total_duration) = song_status.total_duration() {
+            let pos = music_manager.get_song_pos();
+            let mut progress = pos.as_secs_f32();
+
+            if ui
+                .add_sized(
+                    ui.available_size(),
+                    Slider::new(&mut progress, 0f32..=total_duration.as_secs_f32())
+                        .show_value(false),
+                )
+                .drag_stopped()
+            {
+                let seek_pos = Duration::from_secs_f32(progress);
+                music_manager.try_seek(seek_pos).ok();
+            }
+
+            ctx.request_repaint();
         }
-        let total_duration = self
-            .current_playlist
-            .get_total_song_duration()
-            .expect("TODO: Temp");
-
-        let mut progress = pos.div_duration_f32(total_duration);
-
-        println!("pos: {:?}, total: {:?}", pos, total_duration);
-
-        if ui.add(Slider::new(&mut progress, 0f32..=1f32)).changed() {}
     }
 }
 

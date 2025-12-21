@@ -2,7 +2,7 @@ mod master;
 
 use crate::data::{NamedPathLike, PathNamed};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Song {
     path_named: PathNamed,
 }

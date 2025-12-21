@@ -1,10 +1,12 @@
 pub mod content;
 
 use crate::data::folder::content::{FolderContent, FolderContentVariant};
+
 use crate::data::playlist::Playlist;
 use crate::data::{unwrap_inner_ref, NamedPathLike, PathNamed};
 use std::cell::{Ref, RefCell};
 use std::rc::{Rc, Weak};
+
 // TODO: fix cyclic rc memory leak
 pub struct Folder {
     path_named: PathNamed,
