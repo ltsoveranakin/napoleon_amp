@@ -182,18 +182,24 @@ impl PlaylistPanel {
     }
 
     fn render_currently_playing(&self, ctx: &Context, ui: &mut Ui, volume: &mut f32) {
+        let mut stop_music = false;
+
         if let Some(music_manager) = self.current_playlist.get_music_manager().deref() {
             let song_status = music_manager.get_song_status_ref();
 
             ui.heading(song_status.song().name());
 
-            self.render_currently_playing_song_controls(
+            stop_music = self.render_currently_playing_song_controls(
                 ctx,
                 ui,
                 volume,
                 music_manager,
                 &song_status,
             );
+        }
+
+        if stop_music {
+            self.current_playlist.stop_music();
         }
     }
 
@@ -204,35 +210,39 @@ impl PlaylistPanel {
         volume: &mut f32,
         music_manager: &MusicManager,
         song_status: &SongStatus,
-    ) {
-        ui.horizontal(|ui| {
-            ui.label("Vol:");
-            if ui.add(Slider::new(volume, 0f32..=1f32)).changed() {
-                music_manager.set_volume(*volume);
-            }
+    ) -> bool {
+        let should_stop = ui
+            .horizontal(|ui| {
+                ui.label("Vol:");
+                if ui.add(Slider::new(volume, 0f32..=1f32)).changed() {
+                    music_manager.set_volume(*volume);
+                }
 
-            if ui.button("Prev").clicked() {
-                music_manager.previous();
-            }
+                if ui.button("Prev").clicked() {
+                    music_manager.previous();
+                }
 
-            let toggle_playback_text = if music_manager.is_playing() {
-                "Pause"
-            } else {
-                "Play"
-            };
+                let toggle_playback_text = if music_manager.is_playing() {
+                    "Pause"
+                } else {
+                    "Play"
+                };
 
-            if ui.button(toggle_playback_text).clicked() {
-                music_manager.toggle_playback();
-            }
+                if ui.button(toggle_playback_text).clicked() {
+                    music_manager.toggle_playback();
+                }
 
-            if ui.button("Next").clicked() {
-                music_manager.next();
-            }
+                if ui.button("Next").clicked() {
+                    music_manager.next();
+                }
 
-            if ui.button("Stop").clicked() {
-                self.current_playlist.stop_music();
-            }
-        });
+                if ui.button("Stop").clicked() {
+                    true
+                } else {
+                    false
+                }
+            })
+            .inner;
 
         if let Some(total_duration) = song_status.total_duration() {
             let pos = music_manager.get_song_pos();
@@ -252,6 +262,8 @@ impl PlaylistPanel {
 
             ctx.request_repaint();
         }
+
+        should_stop
     }
 }
 
