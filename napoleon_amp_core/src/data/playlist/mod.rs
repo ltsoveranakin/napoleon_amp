@@ -53,7 +53,7 @@ impl Queue {
     }
 
     fn previous(&mut self) -> usize {
-        self.index -= 1;
+        self.index -= 2;
         self.index
     }
 
