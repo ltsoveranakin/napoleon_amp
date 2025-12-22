@@ -17,6 +17,7 @@ pub(crate) struct PlaylistPanel {
     pub(crate) current_playlist: Rc<Playlist>,
     songs_imported: Option<SongsImported>,
     delete_original_files: bool,
+    filter_search_content: String,
 }
 
 impl PlaylistPanel {
@@ -25,6 +26,7 @@ impl PlaylistPanel {
             current_playlist,
             songs_imported: None,
             delete_original_files: false,
+            filter_search_content: String::new(),
         }
     }
 
@@ -39,6 +41,21 @@ impl PlaylistPanel {
                         failed_song_indexes: None,
                     });
                 }
+            }
+
+            if ui
+                .text_edit_singleline(&mut self.filter_search_content)
+                .changed()
+            {
+                let search_text = &self.filter_search_content;
+
+                let search_query = if search_text.chars().count() > 0 {
+                    Some(&*self.filter_search_content)
+                } else {
+                    None
+                };
+
+                self.current_playlist.set_search_query(search_query);
             }
         } else {
             ui.heading("All Songs");

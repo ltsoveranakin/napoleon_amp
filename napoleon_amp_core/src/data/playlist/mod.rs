@@ -2,7 +2,7 @@ pub mod manager;
 
 use crate::data::playlist::manager::{MusicCommand, MusicManager};
 use crate::data::song::Song;
-use crate::data::{NamedPathLike, PathNamed};
+use crate::data::{unwrap_inner_ref, NamedPathLike, PathNamed};
 use crate::paths::{song_file, songs_dir};
 use crate::{read_rwlock, write_rwlock, ReadWrapper};
 use rodio::Source;
@@ -67,6 +67,22 @@ pub enum PlaylistVariant {
     PlaylistFile,
 }
 
+pub enum SongList<'a> {
+    Filtered(Ref<'a, Vec<Song>>),
+    Unfiltered(ReadWrapper<'a, Vec<Song>>),
+}
+
+impl<'a> Deref for SongList<'a> {
+    type Target = Vec<Song>;
+
+    fn deref(&self) -> &Self::Target {
+        match self {
+            Self::Filtered(ref_songs) => ref_songs.deref(),
+            Self::Unfiltered(rw_songs) => rw_songs.deref(),
+        }
+    }
+}
+
 pub struct Playlist {
     path_named: PathNamed,
     songs: Arc<RwLock<Vec<Song>>>,
@@ -74,6 +90,7 @@ pub struct Playlist {
     queue: RefCell<Queue>,
     music_manager: RefCell<Option<MusicManager>>,
     pub variant: PlaylistVariant,
+    songs_filtered: RefCell<Option<Vec<Song>>>,
 }
 
 impl Playlist {
@@ -88,6 +105,7 @@ impl Playlist {
             has_loaded_songs: Cell::new(false),
             music_manager: RefCell::new(None),
             variant,
+            songs_filtered: RefCell::new(None),
         }
     }
 
@@ -103,7 +121,17 @@ impl Playlist {
         Self::new_folder(PathNamed::new(songs_dir()))
     }
 
-    pub fn get_or_load_songs(&self) -> ReadWrapper<Vec<Song>> {
+    pub fn get_or_load_songs(&self) -> SongList {
+        let songs_filtered = self.songs_filtered.borrow();
+
+        if songs_filtered.is_some() {
+            return SongList::Filtered(unwrap_inner_ref(songs_filtered));
+        }
+
+        SongList::Unfiltered(self.get_or_load_songs_unfiltered())
+    }
+
+    pub fn get_or_load_songs_unfiltered(&self) -> ReadWrapper<Vec<Song>> {
         if self.has_loaded_songs.get() {
             self.songs.read().unwrap().into()
         } else {
@@ -157,6 +185,24 @@ impl Playlist {
             self.has_loaded_songs.set(true);
 
             read_rwlock(&self.songs)
+        }
+    }
+
+    pub fn set_search_query(&self, search_query: Option<&str>) {
+        if let Some(search_str) = search_query {
+            let search_str_lower = search_str.to_lowercase();
+
+            let mut songs_filtered_ll = LinkedList::new();
+
+            for song in self.get_or_load_songs().iter() {
+                if song.name().to_lowercase().contains(&search_str_lower) {
+                    songs_filtered_ll.push_back(song.clone());
+                }
+            }
+
+            *self.songs_filtered.borrow_mut() = Some(songs_filtered_ll.into_iter().collect());
+        } else {
+            *self.songs_filtered.borrow_mut() = None;
         }
     }
 
