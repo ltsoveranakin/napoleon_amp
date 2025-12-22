@@ -12,6 +12,10 @@ pub(super) fn folders_dir() -> PathBuf {
     nap_amp_dir().join("folders/")
 }
 
+pub(super) fn songs_dir() -> PathBuf {
+    nap_amp_dir().join("songs/")
+}
+
 pub(super) fn song_file<P: AsRef<Path>>(song_name: P) -> PathBuf {
-    nap_amp_dir().join("songs").join(song_name)
+    songs_dir().join(song_name)
 }

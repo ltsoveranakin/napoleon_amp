@@ -43,8 +43,7 @@ impl Folder {
 
                 let content = if let Ok(file_type) = dir.file_type() {
                     if file_type.is_dir() {
-                        let path_named =
-                            PathNamed::new(dir.path()).expect("Unable to create PathNamed");
+                        let path_named = PathNamed::new(dir.path());
                         let sub_folder = Folder::new(path_named, Some(Rc::downgrade(this)));
 
                         Some(FolderContent::new(FolderContentVariant::SubFolder(
@@ -52,9 +51,8 @@ impl Folder {
                         )))
                         // can be symlink, check if file to be safe
                     } else if file_type.is_file() {
-                        let path_named =
-                            PathNamed::new(dir.path()).expect("Unable to create PathNamed");
-                        let playlist = Playlist::new(path_named);
+                        let path_named = PathNamed::new(dir.path());
+                        let playlist = Playlist::new_file(path_named);
 
                         Some(FolderContent::new(FolderContentVariant::Playlist(Rc::new(
                             playlist,
@@ -93,18 +91,17 @@ impl Folder {
     }
 
     pub fn add_folder(this: &Rc<Self>, folder_name: String) {
-        if let Some(path_named) = this.path_named.extend(format!("{}/", folder_name)) {
-            let folder = Folder::new(path_named, Some(Rc::downgrade(this)));
-            Self::add_content(this, FolderContentVariant::SubFolder(Rc::new(folder)));
-        }
+        let path_named = this.path_named.extend(format!("{}/", folder_name));
+        let folder = Folder::new(path_named, Some(Rc::downgrade(this)));
+
+        Self::add_content(this, FolderContentVariant::SubFolder(Rc::new(folder)));
     }
 
     pub fn add_playlist(this: &Rc<Self>, playlist_name: String) {
-        if let Some(path_named) = this.path_named.extend(format!("{}.pnap", playlist_name)) {
-            let playlist = Playlist::new(path_named);
+        let path_named = this.path_named.extend(format!("{}.pnap", playlist_name));
+        let playlist = Playlist::new_file(path_named);
 
-            Self::add_content(this, FolderContentVariant::Playlist(Rc::new(playlist)));
-        }
+        Self::add_content(this, FolderContentVariant::Playlist(Rc::new(playlist)));
     }
 }
 

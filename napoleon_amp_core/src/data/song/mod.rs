@@ -8,7 +8,7 @@ pub struct Song {
 }
 
 impl Song {
-    pub(super) fn new(path_named: PathNamed) -> Self {
+    pub(crate) fn new(path_named: PathNamed) -> Self {
         Self { path_named }
     }
 }

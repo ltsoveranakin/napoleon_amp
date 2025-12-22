@@ -16,13 +16,10 @@ pub struct PathNamed {
 }
 
 impl PathNamed {
-    /// Returns None if call to Path::file_name is None (path terminates in ..)
-    ///
-    ///
     /// Panics if conversion from OsStr to str fails (invalid utf8)
     ///
     /// Panics if unable to create directories
-    pub(super) fn new(path: PathBuf) -> Option<Self> {
+    pub(super) fn new(path: PathBuf) -> Self {
         if !path.try_exists().expect("TODO: HANDLE ME") {
             println!("create directories: {:?}", path);
             if path
@@ -41,15 +38,16 @@ impl PathNamed {
         ext_free_path.set_extension("");
 
         let name = ext_free_path
-            .file_name()?
+            .file_name()
+            .expect("Path to not terminate in '..'")
             .to_str()
             .expect("Unable to convert path to valid utf8 string")
             .to_string();
 
-        Some(Self { path, name })
+        Self { path, name }
     }
 
-    fn extend<P: AsRef<Path>>(&self, ext: P) -> Option<Self> {
+    fn extend<P: AsRef<Path>>(&self, ext: P) -> Self {
         Self::new(self.path.join(ext))
     }
 }
@@ -69,6 +67,15 @@ pub trait NamedPathLike {
         self.path()
             .to_str()
             .expect("Unable to convert path to str")
+            .to_string()
+    }
+
+    fn file_name(&self) -> String {
+        self.path()
+            .file_name()
+            .expect("Should have valid filename")
+            .to_str()
+            .unwrap()
             .to_string()
     }
 }

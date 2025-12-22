@@ -3,11 +3,12 @@ pub mod manager;
 use crate::data::playlist::manager::{MusicCommand, MusicManager};
 use crate::data::song::Song;
 use crate::data::{NamedPathLike, PathNamed};
-use crate::paths::song_file;
+use crate::paths::{song_file, songs_dir};
 use crate::{read_rwlock, write_rwlock, ReadWrapper};
 use rodio::Source;
 use serbytes::prelude::SerBytes;
 use std::cell::{Cell, Ref, RefCell};
+use std::collections::LinkedList;
 use std::fs;
 use std::fs::File;
 use std::io::{Read, Write};
@@ -20,7 +21,7 @@ const DEAD_MUSIC_THREAD_MESSAGE: &'static str =
 
 #[derive(SerBytes)]
 struct PlaylistData {
-    songs: Vec<String>,
+    songs_file_names: Vec<String>,
 }
 
 impl PlaylistData {
@@ -30,7 +31,7 @@ impl PlaylistData {
 
     fn new_capacity(cap: usize) -> Self {
         Self {
-            songs: Vec::with_capacity(cap),
+            songs_file_names: Vec::with_capacity(cap),
         }
     }
 }
@@ -61,16 +62,22 @@ impl Queue {
     }
 }
 
+pub enum PlaylistVariant {
+    SongFolder,
+    PlaylistFile,
+}
+
 pub struct Playlist {
     path_named: PathNamed,
     songs: Arc<RwLock<Vec<Song>>>,
     has_loaded_songs: Cell<bool>,
     queue: RefCell<Queue>,
     music_manager: RefCell<Option<MusicManager>>,
+    pub variant: PlaylistVariant,
 }
 
 impl Playlist {
-    pub(super) fn new(path_named: PathNamed) -> Self {
+    fn new(path_named: PathNamed, variant: PlaylistVariant) -> Self {
         Self {
             path_named,
             songs: Arc::new(RwLock::new(Vec::new())),
@@ -80,29 +87,68 @@ impl Playlist {
             }),
             has_loaded_songs: Cell::new(false),
             music_manager: RefCell::new(None),
+            variant,
         }
+    }
+
+    pub(super) fn new_file(path_named: PathNamed) -> Self {
+        Self::new(path_named, PlaylistVariant::PlaylistFile)
+    }
+
+    fn new_folder(path_named: PathNamed) -> Self {
+        Self::new(path_named, PlaylistVariant::SongFolder)
+    }
+
+    pub fn all_songs() -> Self {
+        Self::new_folder(PathNamed::new(songs_dir()))
     }
 
     pub fn get_or_load_songs(&self) -> ReadWrapper<Vec<Song>> {
         if self.has_loaded_songs.get() {
             self.songs.read().unwrap().into()
         } else {
-            let playlist_data = if let Ok(file_buf_str) = fs::read_to_string(&self.path_named.path)
-            {
-                PlaylistData::from_bytes(file_buf_str.as_bytes())
-                    .unwrap_or(PlaylistData::new_empty())
-            } else {
-                PlaylistData::new_empty()
+            let loaded_song_file_names = match self.variant {
+                PlaylistVariant::PlaylistFile => {
+                    let playlist_data =
+                        if let Ok(file_buf_str) = fs::read_to_string(&self.path_named.path) {
+                            PlaylistData::from_bytes(file_buf_str.as_bytes())
+                                .unwrap_or(PlaylistData::new_empty())
+                        } else {
+                            PlaylistData::new_empty()
+                        };
+
+                    playlist_data.songs_file_names
+                }
+
+                PlaylistVariant::SongFolder => {
+                    let mut song_file_names = LinkedList::new();
+                    for song_dir in fs::read_dir(songs_dir()).expect("Song directory to exist") {
+                        if let Ok(song_dir) = song_dir {
+                            song_file_names.push_back(
+                                song_dir
+                                    .path()
+                                    .file_name()
+                                    .unwrap()
+                                    .to_str()
+                                    .unwrap()
+                                    .to_string(),
+                            );
+                        }
+                    }
+
+                    song_file_names.into_iter().collect()
+                }
             };
 
             let mut songs = write_rwlock(&self.songs);
 
-            songs.reserve_exact(playlist_data.songs.len());
+            songs.reserve_exact(loaded_song_file_names.len());
 
-            for song_name in playlist_data.songs {
-                songs.push(Song::new(
-                    PathNamed::new(song_file(song_name)).expect("Unhandled TODO:"),
-                ));
+            for song_name in loaded_song_file_names {
+                let song_path = song_file(&song_name);
+                // println!("song_name {:?} sp {:?}", song_name, song_path);
+
+                songs.push(Song::new(PathNamed::new(song_path)));
             }
 
             self.update_queue_indexes(songs.len());
@@ -136,7 +182,7 @@ impl Playlist {
         for (i, original_song_path) in song_paths.iter().enumerate() {
             let file_name = original_song_path
                 .file_name()
-                .expect("Path terminates in ..");
+                .expect("Path does not terminate in ..");
             let new_song_path = song_file(file_name);
 
             if fs::exists(&new_song_path).expect(&format!(
@@ -157,7 +203,7 @@ impl Playlist {
                 fs::remove_file(original_song_path).expect("Failed to remove original file");
             }
 
-            self.add_song(Song::new(PathNamed::new(new_song_path).expect("song_path")));
+            self.add_song(Song::new(PathNamed::new(new_song_path)));
         }
 
         let songs = self.get_or_load_songs();
@@ -225,7 +271,7 @@ impl Playlist {
         let mut playlist_data = PlaylistData::new_capacity(songs.len());
 
         for song in songs.iter() {
-            playlist_data.songs.push(song.path_string())
+            playlist_data.songs_file_names.push(song.file_name())
         }
 
         file.write_all(playlist_data.to_bb().buf())

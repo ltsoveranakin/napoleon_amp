@@ -2,7 +2,7 @@ use eframe::egui::{Context, CursorIcon, Id, Modal, ScrollArea, Slider, TextWrapM
 use std::ops::Deref;
 
 use napoleon_amp_core::data::playlist::manager::{MusicManager, SongStatus};
-use napoleon_amp_core::data::playlist::Playlist;
+use napoleon_amp_core::data::playlist::{Playlist, PlaylistVariant};
 use napoleon_amp_core::data::NamedPathLike;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -29,14 +29,19 @@ impl PlaylistPanel {
     }
 
     pub(crate) fn render(&mut self, ctx: &Context, ui: &mut Ui, volume: &mut f32) {
-        ui.heading(self.current_playlist.name());
-        if ui.button("Add Songs").clicked() {
-            if let Some(paths) = rfd::FileDialog::new().pick_files() {
-                self.songs_imported = Some(SongsImported {
-                    paths,
-                    failed_song_indexes: None,
-                });
+        if matches!(self.current_playlist.variant, PlaylistVariant::PlaylistFile) {
+            ui.heading(self.current_playlist.name());
+
+            if ui.button("Add Songs").clicked() {
+                if let Some(paths) = rfd::FileDialog::new().pick_files() {
+                    self.songs_imported = Some(SongsImported {
+                        paths,
+                        failed_song_indexes: None,
+                    });
+                }
             }
+        } else {
+            ui.heading("All Songs");
         }
 
         let current_playlist_rc = Rc::clone(&self.current_playlist);
@@ -182,14 +187,14 @@ impl PlaylistPanel {
     }
 
     fn render_currently_playing(&self, ctx: &Context, ui: &mut Ui, volume: &mut f32) {
-        let mut stop_music = false;
+        let mut should_stop_music = false;
 
         if let Some(music_manager) = self.current_playlist.get_music_manager().deref() {
             let song_status = music_manager.get_song_status_ref();
 
             ui.heading(song_status.song().name());
 
-            stop_music = self.render_currently_playing_song_controls(
+            should_stop_music = self.render_currently_playing_song_controls(
                 ctx,
                 ui,
                 volume,
@@ -198,7 +203,7 @@ impl PlaylistPanel {
             );
         }
 
-        if stop_music {
+        if should_stop_music {
             self.current_playlist.stop_music();
         }
     }

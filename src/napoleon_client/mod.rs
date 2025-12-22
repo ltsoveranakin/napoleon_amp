@@ -46,7 +46,8 @@ impl NapoleonClientApp {
 impl App for NapoleonClientApp {
     fn update(&mut self, ctx: &Context, frame: &mut Frame) {
         SidePanel::left("folder_list").show(ctx, |ui| {
-            self.folder_list.render(ui, &mut self.playlist_panel);
+            self.folder_list
+                .render(ui, &mut self.playlist_panel, &mut self.core_instance);
         });
 
         CentralPanel::default().show(ctx, |ui| {
