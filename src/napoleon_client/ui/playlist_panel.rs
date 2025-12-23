@@ -184,10 +184,10 @@ impl PlaylistPanel {
             f32::INFINITY
         };
 
-        let select_all_keystroke =
+        let select_all_keystroke_pressed =
             ui.input(|state| state.key_pressed(egui::Key::A) && state.modifiers.command);
 
-        if select_all_keystroke {
+        if select_all_keystroke_pressed {
             current_playlist.select_all();
         }
 
@@ -292,16 +292,17 @@ impl PlaylistPanel {
             let pos = music_manager.get_song_pos();
             let mut progress = pos.as_secs_f32();
 
+            ui.spacing_mut().slider_width = ui.available_width();
+
             if ui
-                .add_sized(
-                    ui.available_size(),
+                .add(
                     Slider::new(&mut progress, 0f32..=total_duration.as_secs_f32())
                         .show_value(false),
                 )
                 .drag_stopped()
             {
                 let seek_pos = Duration::from_secs_f32(progress);
-                music_manager.try_seek(seek_pos).ok();
+                let _ = music_manager.try_seek(seek_pos);
             }
 
             ctx.request_repaint();
