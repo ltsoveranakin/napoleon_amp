@@ -34,7 +34,7 @@ impl PlaylistPanel {
         }
     }
 
-    pub(crate) fn render(&mut self, ctx: &Context, ui: &mut Ui, volume: &mut f32) {
+    pub(crate) fn render(&mut self, ctx: &Context, ui: &mut Ui, volume: &mut i32) {
         if matches!(self.current_playlist.variant, PlaylistVariant::PlaylistFile) {
             ui.heading(self.current_playlist.name());
 
@@ -177,7 +177,7 @@ impl PlaylistPanel {
         }
     }
 
-    fn render_song_list(&self, ui: &mut Ui, current_playlist: &Playlist, volume: f32) {
+    fn render_song_list(&self, ui: &mut Ui, current_playlist: &Playlist, volume: i32) {
         let max_height = if self.current_playlist.get_music_manager().is_some() {
             ui.available_height() - 80.
         } else {
@@ -213,7 +213,7 @@ impl PlaylistPanel {
                         .clicked()
                     {
                         if current_song_selected_as_single {
-                            current_playlist.start_play_song(song_index, volume);
+                            current_playlist.start_play_song(song_index, volume as f32 / 100.);
                         }
                         self.current_playlist.select_single(song_index);
                     }
@@ -225,7 +225,7 @@ impl PlaylistPanel {
             });
     }
 
-    fn render_currently_playing(&self, ctx: &Context, ui: &mut Ui, volume: &mut f32) {
+    fn render_currently_playing(&self, ctx: &Context, ui: &mut Ui, volume: &mut i32) {
         let mut should_stop_music = false;
 
         if let Some(music_manager) = self.current_playlist.get_music_manager().deref() {
@@ -251,15 +251,15 @@ impl PlaylistPanel {
         &self,
         ctx: &Context,
         ui: &mut Ui,
-        volume: &mut f32,
+        volume: &mut i32,
         music_manager: &MusicManager,
         song_status: &SongStatus,
     ) -> bool {
         let should_stop = ui
             .horizontal(|ui| {
                 ui.label("Vol:");
-                if ui.add(Slider::new(volume, 0f32..=1f32)).changed() {
-                    music_manager.set_volume(*volume);
+                if ui.add(Slider::new(volume, 0..=100)).changed() {
+                    music_manager.set_volume(*volume as f32 / 100.);
                 }
 
                 if ui.button("Prev").clicked() {

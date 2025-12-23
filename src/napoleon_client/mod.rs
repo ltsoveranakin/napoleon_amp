@@ -26,7 +26,7 @@ pub(super) struct NapoleonClientApp {
     core_instance: NapoleonInstance,
     folder_list: FolderList,
     playlist_panel: Option<PlaylistPanel>,
-    volume: f32,
+    volume: i32,
 }
 
 impl NapoleonClientApp {
@@ -38,7 +38,7 @@ impl NapoleonClientApp {
             core_instance,
             folder_list: FolderList::new(current_folder),
             playlist_panel: None,
-            volume: 1.,
+            volume: 100,
         }
     }
 }
