@@ -12,7 +12,7 @@ use std::collections::LinkedList;
 use std::fs;
 use std::fs::File;
 use std::io::{Read, Write};
-use std::ops::Deref;
+use std::ops::{Deref, RangeInclusive};
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
@@ -83,6 +83,28 @@ impl<'a> Deref for SongList<'a> {
     }
 }
 
+#[derive(Clone)]
+pub enum SelectedSongs {
+    None,
+    Range(RangeInclusive<usize>),
+    Single(usize),
+    All,
+}
+
+impl SelectedSongs {
+    pub fn is_selected(&self, index: usize) -> bool {
+        match self {
+            SelectedSongs::All => true,
+
+            SelectedSongs::Range(selected_range) => selected_range.contains(&index),
+
+            SelectedSongs::Single(selected_index) => index == *selected_index,
+
+            SelectedSongs::None => false,
+        }
+    }
+}
+
 pub struct Playlist {
     path_named: PathNamed,
     songs: Arc<RwLock<Vec<Song>>>,
@@ -91,6 +113,7 @@ pub struct Playlist {
     music_manager: RefCell<Option<MusicManager>>,
     pub variant: PlaylistVariant,
     songs_filtered: RefCell<Option<Vec<Song>>>,
+    selected_songs: RefCell<SelectedSongs>,
 }
 
 impl Playlist {
@@ -106,6 +129,7 @@ impl Playlist {
             music_manager: RefCell::new(None),
             variant,
             songs_filtered: RefCell::new(None),
+            selected_songs: RefCell::new(SelectedSongs::None),
         }
     }
 
@@ -206,6 +230,46 @@ impl Playlist {
         } else {
             *self.songs_filtered.borrow_mut() = None;
         }
+    }
+
+    /// Sets the selected range of the playlist
+    /// Errors under 3 conditions.
+    ///
+    /// If end is less than start.
+    /// If start is greater than or equal to (potentially filtered songs) length.
+    /// If end is greater than or equal to (potentially filtered songs) length.
+
+    pub fn select_range(&self, range: RangeInclusive<usize>) -> Result<(), ()> {
+        let songs = &*self.get_or_load_songs();
+
+        let start = *range.start();
+        let end = *range.end();
+        let song_len = songs.len();
+
+        if end < start || start >= song_len || end >= song_len {
+            Err(())
+        } else {
+            self.set_selected_songs(SelectedSongs::Range(range));
+            Ok(())
+        }
+    }
+
+    pub fn select_single(&self, index: usize) {
+        if index < self.get_or_load_songs().len() {
+            self.set_selected_songs(SelectedSongs::Single(index));
+        }
+    }
+
+    pub fn select_all(&self) {
+        self.set_selected_songs(SelectedSongs::All);
+    }
+
+    pub fn get_selected_songs(&self) -> SelectedSongs {
+        self.selected_songs.borrow().clone()
+    }
+
+    fn set_selected_songs(&self, selected_songs: SelectedSongs) {
+        *self.selected_songs.borrow_mut() = selected_songs;
     }
 
     fn update_queue_indexes(&self, song_count: usize) {

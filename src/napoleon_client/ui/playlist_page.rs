@@ -1,8 +1,9 @@
-use eframe::egui::{Context, CursorIcon, Id, Modal, ScrollArea, Slider, TextWrapMode, Ui};
+use eframe::egui::{Context, Id, Modal, ScrollArea, Slider, TextWrapMode, Ui};
 use std::ops::Deref;
 
+use eframe::egui;
 use napoleon_amp_core::data::playlist::manager::{MusicManager, SongStatus};
-use napoleon_amp_core::data::playlist::{Playlist, PlaylistVariant};
+use napoleon_amp_core::data::playlist::{Playlist, PlaylistVariant, SelectedSongs};
 use napoleon_amp_core::data::NamedPathLike;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -180,20 +181,37 @@ impl PlaylistPanel {
             f32::INFINITY
         };
 
+        let select_all_keystroke =
+            ui.input(|state| state.key_pressed(egui::Key::A) && state.modifiers.command);
+
+        if select_all_keystroke {
+            current_playlist.select_all();
+        }
+
         ScrollArea::vertical()
             .max_height(max_height)
             .show(ui, |ui| {
                 let songs = current_playlist.get_or_load_songs();
+                let selected_songs = current_playlist.get_selected_songs();
+
+                ui.style_mut().wrap_mode = Some(TextWrapMode::Truncate);
 
                 for (song_index, song) in songs.iter().enumerate() {
-                    ui.style_mut().wrap_mode = Some(TextWrapMode::Truncate);
+                    let current_song_selected_as_single =
+                        if let SelectedSongs::Single(index) = selected_songs {
+                            song_index == index
+                        } else {
+                            false
+                        };
 
                     if ui
-                        .label(song.name())
-                        .on_hover_cursor(CursorIcon::PointingHand)
+                        .selectable_label(selected_songs.is_selected(song_index), song.name())
                         .clicked()
                     {
-                        current_playlist.play_song(song_index, volume);
+                        if current_song_selected_as_single {
+                            current_playlist.play_song(song_index, volume);
+                        }
+                        self.current_playlist.select_single(song_index);
                     }
 
                     if song_index != songs.len() - 1 {
