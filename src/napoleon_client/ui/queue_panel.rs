@@ -24,7 +24,7 @@ impl QueuePanel {
         let queue = music_manager.queue();
         let queue_indexes = queue.indexes();
 
-        default_scroll_area().show(ui, |ui| {
+        default_scroll_area(ui, |ui| {
             ui.style_mut().wrap_mode = Some(TextWrapMode::Truncate);
 
             for queue_index in queue.index()..queue_indexes.len() {

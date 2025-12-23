@@ -123,7 +123,7 @@ impl FolderList {
         playlist_panel: &mut Option<PlaylistPanel>,
         is_sub: bool,
     ) {
-        default_scroll_area().show(ui, |ui| {
+        default_scroll_area(ui, |ui| {
             ui.style_mut().wrap_mode = Some(TextWrapMode::Truncate);
 
             let mut next_folder_folder = None;

@@ -1,7 +1,7 @@
-use eframe::egui::{Context, Id, Modal, Slider, TextWrapMode, Ui};
+use eframe::egui::{Context, Id, Modal, ScrollArea, Slider, TextWrapMode, Ui};
 use std::ops::Deref;
 
-use crate::napoleon_client::ui::helpers::default_scroll_area;
+use crate::napoleon_client::ui::helpers::scroll_area_styled;
 use crate::napoleon_client::ui::queue_panel::QueuePanel;
 use eframe::egui;
 use napoleon_amp_core::data::playlist::manager::{MusicManager, SongStatus};
@@ -192,10 +192,12 @@ impl PlaylistPanel {
             current_playlist.select_all();
         }
 
-        default_scroll_area()
-            .max_height(max_height)
-            .id_salt(current_playlist.name())
-            .show(ui, |ui| {
+        scroll_area_styled(
+            ui,
+            ScrollArea::vertical()
+                .max_height(max_height)
+                .id_salt(current_playlist.name()),
+            |ui| {
                 ui.style_mut().wrap_mode = Some(TextWrapMode::Truncate);
 
                 let songs = current_playlist.get_or_load_songs();
@@ -223,7 +225,8 @@ impl PlaylistPanel {
                         ui.separator();
                     }
                 }
-            });
+            },
+        );
     }
 
     fn render_currently_playing(&self, ctx: &Context, ui: &mut Ui, volume: &mut i32) {
