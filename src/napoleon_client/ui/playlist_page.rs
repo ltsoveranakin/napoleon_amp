@@ -42,23 +42,23 @@ impl PlaylistPanel {
                     });
                 }
             }
-
-            if ui
-                .text_edit_singleline(&mut self.filter_search_content)
-                .changed()
-            {
-                let search_text = &self.filter_search_content;
-
-                let search_query = if search_text.chars().count() > 0 {
-                    Some(&*self.filter_search_content)
-                } else {
-                    None
-                };
-
-                self.current_playlist.set_search_query(search_query);
-            }
         } else {
             ui.heading("All Songs");
+        }
+
+        if ui
+            .text_edit_singleline(&mut self.filter_search_content)
+            .changed()
+        {
+            let search_text = &self.filter_search_content;
+
+            let search_query = if search_text.chars().count() > 0 {
+                Some(&*self.filter_search_content)
+            } else {
+                None
+            };
+
+            self.current_playlist.set_search_query(search_query);
         }
 
         let current_playlist_rc = Rc::clone(&self.current_playlist);

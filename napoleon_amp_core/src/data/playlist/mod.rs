@@ -121,14 +121,16 @@ impl Playlist {
         Self::new_folder(PathNamed::new(songs_dir()))
     }
 
+    /// Gets the songs in the current playlist, with the filter if one is enabled
+
     pub fn get_or_load_songs(&self) -> SongList {
         let songs_filtered = self.songs_filtered.borrow();
 
         if songs_filtered.is_some() {
-            return SongList::Filtered(unwrap_inner_ref(songs_filtered));
+            SongList::Filtered(unwrap_inner_ref(songs_filtered))
+        } else {
+            SongList::Unfiltered(self.get_or_load_songs_unfiltered())
         }
-
-        SongList::Unfiltered(self.get_or_load_songs_unfiltered())
     }
 
     pub fn get_or_load_songs_unfiltered(&self) -> ReadWrapper<Vec<Song>> {
