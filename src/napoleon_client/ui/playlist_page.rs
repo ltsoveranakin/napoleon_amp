@@ -190,6 +190,7 @@ impl PlaylistPanel {
 
         ScrollArea::vertical()
             .max_height(max_height)
+            .id_salt(format!("Song List {}", current_playlist.name()))
             .show(ui, |ui| {
                 let songs = current_playlist.get_or_load_songs();
                 let selected_songs = current_playlist.get_selected_songs();
