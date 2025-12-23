@@ -1,6 +1,7 @@
 use eframe::egui::{Context, Id, Modal, ScrollArea, Slider, TextWrapMode, Ui};
 use std::ops::Deref;
 
+use crate::napoleon_client::ui::queue_panel::QueuePanel;
 use eframe::egui;
 use napoleon_amp_core::data::playlist::manager::{MusicManager, SongStatus};
 use napoleon_amp_core::data::playlist::{Playlist, PlaylistVariant, SelectedSongs};
@@ -19,6 +20,7 @@ pub(crate) struct PlaylistPanel {
     songs_imported: Option<SongsImported>,
     delete_original_files: bool,
     filter_search_content: String,
+    pub(crate) queue_panel: QueuePanel,
 }
 
 impl PlaylistPanel {
@@ -28,6 +30,7 @@ impl PlaylistPanel {
             songs_imported: None,
             delete_original_files: false,
             filter_search_content: String::new(),
+            queue_panel: QueuePanel::new(),
         }
     }
 
@@ -190,7 +193,7 @@ impl PlaylistPanel {
 
         ScrollArea::vertical()
             .max_height(max_height)
-            .id_salt(format!("Song List {}", current_playlist.name()))
+            .id_salt(current_playlist.name())
             .show(ui, |ui| {
                 let songs = current_playlist.get_or_load_songs();
                 let selected_songs = current_playlist.get_selected_songs();
@@ -210,7 +213,7 @@ impl PlaylistPanel {
                         .clicked()
                     {
                         if current_song_selected_as_single {
-                            current_playlist.play_song(song_index, volume);
+                            current_playlist.start_play_song(song_index, volume);
                         }
                         self.current_playlist.select_single(song_index);
                     }

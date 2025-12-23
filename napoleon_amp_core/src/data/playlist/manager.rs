@@ -4,6 +4,7 @@ use crate::data::NamedPathLike;
 use crate::{read_rwlock, write_rwlock, ReadWrapper};
 use rodio::source::SeekError;
 use rodio::{Decoder, OutputStream, OutputStreamBuilder, Sink, Source};
+use std::fmt::Debug;
 use std::fs::File;
 use std::sync::mpsc::Sender;
 use std::sync::{mpsc, Arc, RwLock};
@@ -11,12 +12,17 @@ use std::thread;
 use std::thread::JoinHandle;
 use std::time::Duration;
 
+enum SwitchSongMusicCommand {
+    Previous,
+    Next,
+    SkipToQueueIndex(usize),
+}
+
 pub(super) enum MusicCommand {
     Play,
     Pause,
     Stop,
-    Previous,
-    Next,
+    SwitchSong(SwitchSongMusicCommand),
     SetVolume(f32),
 }
 
@@ -48,18 +54,22 @@ pub struct MusicManager {
 
 impl MusicManager {
     pub(super) fn try_create(
-        songs: Arc<RwLock<Vec<Song>>>,
-        queue: Queue,
+        songs_arc: Arc<RwLock<Vec<Song>>>,
+        start_index: usize,
         volume: f32,
     ) -> Option<Self> {
-        if queue.indexes.is_empty() {
+        let songs = read_rwlock(&songs_arc);
+
+        if songs.is_empty() {
             return None;
         }
+
+        let queue = Queue::new(start_index, &songs);
 
         let (music_command_tx, music_command_rx) = mpsc::channel();
 
         let song_status = Arc::new(RwLock::new(SongStatus {
-            song: read_rwlock(&songs)[queue.indexes[0]].clone(),
+            song: songs[queue.indexes[0]].clone(),
             total_duration: None,
         }));
         let song_status_thread = Arc::clone(&song_status);
@@ -70,10 +80,10 @@ impl MusicManager {
         let sink = Arc::new(Sink::connect_new(&output_stream.mixer()));
         let sink_thread = Arc::clone(&sink);
 
-        let songs_len = queue.indexes.len() as i32;
-
         let queue = Arc::new(RwLock::new(queue));
         let queue_thread = Arc::clone(&queue);
+
+        let songs_thread = Arc::clone(&songs_arc);
 
         let playing_handle = thread::Builder::new()
             .name("Music Manager".to_string())
@@ -81,10 +91,7 @@ impl MusicManager {
                 let sink = sink_thread;
                 let queue = queue_thread;
                 let song_status = song_status_thread;
-
-                let new_index = |index: usize, delta: i32| -> usize {
-                    ((index as i32) + delta).rem_euclid(songs_len) as usize
-                };
+                let songs = songs_thread;
 
                 sink.set_volume(volume);
 
@@ -103,15 +110,24 @@ impl MusicManager {
                             MusicCommand::Play => {
                                 sink.play();
                             }
-
-                            MusicCommand::Previous => {
+                            MusicCommand::SwitchSong(switch_song_command) => {
                                 sink.clear();
-                                write_rwlock(&queue).previous();
-                            }
 
-                            MusicCommand::Next => {
-                                sink.clear();
-                                write_rwlock(&queue).next();
+                                let mut queue = write_rwlock(&queue);
+
+                                match switch_song_command {
+                                    SwitchSongMusicCommand::Previous => {
+                                        queue.previous();
+                                    }
+
+                                    SwitchSongMusicCommand::Next => {
+                                        queue.next();
+                                    }
+
+                                    SwitchSongMusicCommand::SkipToQueueIndex(index) => {
+                                        queue.set_index(index);
+                                    }
+                                }
                             }
 
                             MusicCommand::SetVolume(volume) => {
@@ -169,6 +185,10 @@ impl MusicManager {
         })
     }
 
+    pub fn queue(&self) -> ReadWrapper<Queue> {
+        read_rwlock(&self.queue)
+    }
+
     pub fn set_volume(&self, volume: f32) {
         self.send_command(MusicCommand::SetVolume(volume));
     }
@@ -203,24 +223,28 @@ impl MusicManager {
         if self.is_playing() {
             self.pause();
         } else {
-            self.play()
+            self.play();
         }
     }
 
     pub fn play(&self) {
-        self.send_command(MusicCommand::Play)
+        self.send_command(MusicCommand::Play);
     }
 
     pub fn pause(&self) {
-        self.send_command(MusicCommand::Pause)
+        self.send_command(MusicCommand::Pause);
     }
 
     pub fn previous(&self) {
-        self.send_command(MusicCommand::Previous)
+        self.switch_song_command(SwitchSongMusicCommand::Previous);
     }
 
     pub fn next(&self) {
-        self.send_command(MusicCommand::Next)
+        self.switch_song_command(SwitchSongMusicCommand::Next);
+    }
+
+    pub fn set_queue_index(&self, index: usize) {
+        self.switch_song_command(SwitchSongMusicCommand::SkipToQueueIndex(index));
     }
 
     pub(super) fn send_stop_command(&self) {
@@ -235,5 +259,9 @@ impl MusicManager {
         self.music_command_tx
             .send(music_command)
             .expect(DEAD_MUSIC_THREAD_MESSAGE);
+    }
+
+    fn switch_song_command(&self, switch_song_music_command: SwitchSongMusicCommand) {
+        self.send_command(MusicCommand::SwitchSong(switch_song_music_command));
     }
 }

@@ -1,4 +1,4 @@
-use crate::napoleon_client::ui::playlist_page::PlaylistPanel;
+use crate::napoleon_client::ui::playlist_panel::PlaylistPanel;
 use crate::napoleon_client::{CreateFolderContentDialog, CreateFolderContentDialogVariant};
 use eframe::egui::{CursorIcon, Id, Modal, Popup, Response, ScrollArea, Ui};
 use napoleon_amp_core::data::folder::content::FolderContentVariant;

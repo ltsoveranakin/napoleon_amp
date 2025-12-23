@@ -37,14 +37,23 @@ impl PlaylistData {
 }
 
 #[derive(Clone, Debug)]
-struct Queue {
+pub struct Queue {
     indexes: Vec<usize>,
     index: usize,
 }
 
 impl Queue {
-    fn set_starting_index(&mut self, index: usize) {
-        self.index = index;
+    fn new(start_index: usize, songs: &[Song]) -> Self {
+        let mut indexes = Vec::with_capacity(songs.len());
+
+        for index in 0..songs.len() {
+            indexes.push(index);
+        }
+
+        Self {
+            indexes,
+            index: start_index,
+        }
     }
 
     fn next(&mut self) -> usize {
@@ -60,6 +69,18 @@ impl Queue {
     fn get_current(&self) -> usize {
         self.index
     }
+
+    fn set_index(&mut self, index: usize) {
+        self.index = index;
+    }
+
+    pub fn indexes(&self) -> &[usize] {
+        &self.indexes
+    }
+
+    pub fn index(&self) -> usize {
+        self.index
+    }
 }
 
 pub enum PlaylistVariant {
@@ -73,12 +94,12 @@ pub enum SongList<'a> {
 }
 
 impl<'a> Deref for SongList<'a> {
-    type Target = Vec<Song>;
+    type Target = [Song];
 
     fn deref(&self) -> &Self::Target {
         match self {
-            Self::Filtered(ref_songs) => ref_songs.deref(),
-            Self::Unfiltered(rw_songs) => rw_songs.deref(),
+            Self::Filtered(ref_songs) => &***ref_songs,
+            Self::Unfiltered(rw_songs) => &***rw_songs,
         }
     }
 }
@@ -109,7 +130,7 @@ pub struct Playlist {
     path_named: PathNamed,
     songs: Arc<RwLock<Vec<Song>>>,
     has_loaded_songs: Cell<bool>,
-    queue: RefCell<Queue>,
+
     music_manager: RefCell<Option<MusicManager>>,
     pub variant: PlaylistVariant,
     songs_filtered: RefCell<Option<Vec<Song>>>,
@@ -121,10 +142,6 @@ impl Playlist {
         Self {
             path_named,
             songs: Arc::new(RwLock::new(Vec::new())),
-            queue: RefCell::new(Queue {
-                indexes: Vec::new(),
-                index: 0,
-            }),
             has_loaded_songs: Cell::new(false),
             music_manager: RefCell::new(None),
             variant,
@@ -205,7 +222,6 @@ impl Playlist {
                 songs.push(Song::new(PathNamed::new(song_path)));
             }
 
-            self.update_queue_indexes(songs.len());
             drop(songs);
 
             self.has_loaded_songs.set(true);
@@ -272,19 +288,6 @@ impl Playlist {
         *self.selected_songs.borrow_mut() = selected_songs;
     }
 
-    fn update_queue_indexes(&self, song_count: usize) {
-        let mut queue = self.queue.borrow_mut();
-
-        if queue.indexes.is_empty() {
-            let indexes = &mut queue.indexes;
-            indexes.clear();
-
-            for i in 0..song_count {
-                indexes.push(i);
-            }
-        }
-    }
-
     pub fn import_songs(
         &self,
         song_paths: &[PathBuf],
@@ -318,9 +321,6 @@ impl Playlist {
             self.add_song(Song::new(PathNamed::new(new_song_path)));
         }
 
-        let songs = self.get_or_load_songs();
-
-        self.update_queue_indexes(songs.len());
         self.save_contents();
 
         if !failed_import.is_empty() {
@@ -330,7 +330,7 @@ impl Playlist {
         }
     }
 
-    pub fn play_song(&self, song_index: usize, volume: f32) {
+    pub fn start_play_song(&self, song_index: usize, volume: f32) {
         if let Some(music_manager) = self.music_manager.take() {
             let current_handle = music_manager.playing_handle;
 
@@ -343,12 +343,9 @@ impl Playlist {
             current_handle.join().expect("Unwrap for panic in thread");
         }
 
-        let mut queue = self.queue.borrow_mut();
+        // write_rwlock(&self.queue).set_starting_index(song_index);
 
-        queue.set_starting_index(song_index);
-
-        let music_manager =
-            MusicManager::try_create(Arc::clone(&self.songs), queue.clone(), volume);
+        let music_manager = MusicManager::try_create(Arc::clone(&self.songs), song_index, volume);
 
         self.music_manager.replace(music_manager);
     }

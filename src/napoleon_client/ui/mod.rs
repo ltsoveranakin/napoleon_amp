@@ -1,2 +1,3 @@
 pub(super) mod folder_list;
-pub(super) mod playlist_page;
+pub(super) mod playlist_panel;
+mod queue_panel;
