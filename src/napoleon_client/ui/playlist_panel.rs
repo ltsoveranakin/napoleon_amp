@@ -202,7 +202,9 @@ impl PlaylistPanel {
                 .id_salt(current_playlist.name()),
             songs,
             |song_index, _| selected_songs.is_selected(song_index),
-            |_| {},
+            |song_index| {
+                current_playlist.select_single(song_index);
+            },
             |song_index| {
                 current_playlist.start_play_song(song_index, volume as f32 / 100.);
             },
