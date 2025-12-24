@@ -74,8 +74,8 @@ impl Queue {
         self.index = index;
     }
 
-    pub fn indexes(&self) -> &[usize] {
-        &self.indexes
+    pub fn current_queue(&self) -> &[usize] {
+        &self.indexes[self.index..]
     }
 
     pub fn index(&self) -> usize {

@@ -1,11 +1,11 @@
-use eframe::egui::{Context, Id, Modal, ScrollArea, Slider, TextWrapMode, Ui};
+use eframe::egui::{Context, Id, Modal, ScrollArea, Slider, Ui};
 use std::ops::Deref;
 
-use crate::napoleon_client::ui::helpers::scroll_area_styled;
+use crate::napoleon_client::ui::helpers::scroll_area_named_list;
 use crate::napoleon_client::ui::queue_panel::QueuePanel;
 use eframe::egui;
 use napoleon_amp_core::data::playlist::manager::{MusicManager, SongStatus};
-use napoleon_amp_core::data::playlist::{Playlist, PlaylistVariant, SelectedSongs};
+use napoleon_amp_core::data::playlist::{Playlist, PlaylistVariant};
 use napoleon_amp_core::data::NamedPathLike;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -192,41 +192,49 @@ impl PlaylistPanel {
             current_playlist.select_all();
         }
 
-        scroll_area_styled(
+        let songs = &*current_playlist.get_or_load_songs();
+        let selected_songs = current_playlist.get_selected_songs();
+
+        scroll_area_named_list(
             ui,
             ScrollArea::vertical()
                 .max_height(max_height)
                 .id_salt(current_playlist.name()),
-            |ui| {
-                ui.style_mut().wrap_mode = Some(TextWrapMode::Truncate);
-
-                let songs = current_playlist.get_or_load_songs();
-                let selected_songs = current_playlist.get_selected_songs();
-
-                for (song_index, song) in songs.iter().enumerate() {
-                    let current_song_selected_as_single =
-                        if let SelectedSongs::Single(index) = selected_songs {
-                            song_index == index
-                        } else {
-                            false
-                        };
-
-                    if ui
-                        .selectable_label(selected_songs.is_selected(song_index), song.name())
-                        .clicked()
-                    {
-                        if current_song_selected_as_single {
-                            current_playlist.start_play_song(song_index, volume as f32 / 100.);
-                        }
-                        self.current_playlist.select_single(song_index);
-                    }
-
-                    if song_index != songs.len() - 1 {
-                        ui.separator();
-                    }
-                }
+            songs,
+            |song_index, _| selected_songs.is_selected(song_index),
+            |_| {},
+            |song_index| {
+                current_playlist.start_play_song(song_index, volume as f32 / 100.);
             },
         );
+
+        // scroll_area_styled(ui, ScrollArea::vertical(), |ui| {
+        //     let songs = current_playlist.get_or_load_songs();
+        //     let selected_songs = current_playlist.get_selected_songs();
+        //
+        //     for (song_index, song) in songs.iter().enumerate() {
+        //         let current_song_selected_as_single =
+        //             if let SelectedSongs::Single(index) = selected_songs {
+        //                 song_index == index
+        //             } else {
+        //                 false
+        //             };
+        //
+        //         if ui
+        //             .selectable_label(selected_songs.is_selected(song_index), song.name())
+        //             .clicked()
+        //         {
+        //             if current_song_selected_as_single {
+        //                 current_playlist.start_play_song(song_index, volume as f32 / 100.);
+        //             }
+        //             self.current_playlist.select_single(song_index);
+        //         }
+        //
+        //         if song_index != songs.len() - 1 {
+        //             ui.separator();
+        //         }
+        //     }
+        // });
     }
 
     fn render_currently_playing(&self, ctx: &Context, ui: &mut Ui, volume: &mut i32) {

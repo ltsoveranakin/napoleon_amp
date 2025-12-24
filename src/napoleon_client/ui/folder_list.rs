@@ -1,7 +1,7 @@
-use crate::napoleon_client::ui::helpers::default_scroll_area;
+use crate::napoleon_client::ui::helpers::scroll_area_styled;
 use crate::napoleon_client::ui::playlist_panel::PlaylistPanel;
 use crate::napoleon_client::{CreateFolderContentDialog, CreateFolderContentDialogVariant};
-use eframe::egui::{CursorIcon, Id, Modal, Popup, Response, TextWrapMode, Ui};
+use eframe::egui::{CursorIcon, Id, Modal, Popup, Response, ScrollArea, Ui};
 use napoleon_amp_core::data::folder::content::FolderContentVariant;
 use napoleon_amp_core::data::folder::Folder;
 use napoleon_amp_core::data::playlist::Playlist;
@@ -123,9 +123,7 @@ impl FolderList {
         playlist_panel: &mut Option<PlaylistPanel>,
         is_sub: bool,
     ) {
-        default_scroll_area(ui, |ui| {
-            ui.style_mut().wrap_mode = Some(TextWrapMode::Truncate);
-
+        scroll_area_styled(ui, ScrollArea::vertical(), |ui| {
             let mut next_folder_folder = None;
             let mut next_playlist = None;
 
