@@ -1,4 +1,4 @@
-use crate::data::playlist::{Queue, DEAD_MUSIC_THREAD_MESSAGE};
+use crate::data::playlist::queue::Queue;
 use crate::data::song::Song;
 use crate::data::NamedPathLike;
 use crate::{read_rwlock, write_rwlock, ReadWrapper};
@@ -11,6 +11,9 @@ use std::sync::{mpsc, Arc, RwLock};
 use std::thread;
 use std::thread::JoinHandle;
 use std::time::Duration;
+
+static DEAD_MUSIC_THREAD_MESSAGE: &'static str =
+    "Music thread should be dead, and this should be cleaned up";
 
 enum SwitchSongMusicCommand {
     Previous,
@@ -46,7 +49,7 @@ pub struct MusicManager {
     pub(super) playing_handle: JoinHandle<()>,
     pub(super) music_command_tx: Sender<MusicCommand>,
     pub(super) sink: Arc<Sink>,
-    queue: Arc<RwLock<Queue>>,
+    pub(super) queue: Arc<RwLock<Queue>>,
     song_status: Arc<RwLock<SongStatus>>,
     /// Not currently used, but must not be dropped in order to keep audio stream alive
     pub(super) _output_stream: OutputStream,

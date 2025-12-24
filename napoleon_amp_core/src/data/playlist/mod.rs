@@ -1,4 +1,5 @@
 pub mod manager;
+mod queue;
 
 use crate::data::playlist::manager::{MusicCommand, MusicManager};
 use crate::data::song::Song;
@@ -16,9 +17,6 @@ use std::ops::{Deref, RangeInclusive};
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
-const DEAD_MUSIC_THREAD_MESSAGE: &'static str =
-    "Music thread should be dead, and this should be cleaned up";
-
 #[derive(SerBytes)]
 struct PlaylistData {
     songs_file_names: Vec<String>,
@@ -33,53 +31,6 @@ impl PlaylistData {
         Self {
             songs_file_names: Vec::with_capacity(cap),
         }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct Queue {
-    indexes: Vec<usize>,
-    index: usize,
-}
-
-impl Queue {
-    fn new(start_index: usize, songs: &[Song]) -> Self {
-        let mut indexes = Vec::with_capacity(songs.len());
-
-        for index in 0..songs.len() {
-            indexes.push(index);
-        }
-
-        Self {
-            indexes,
-            index: start_index,
-        }
-    }
-
-    fn next(&mut self) -> usize {
-        self.index += 1;
-        self.index
-    }
-
-    fn previous(&mut self) -> usize {
-        self.index -= 2;
-        self.index
-    }
-
-    fn get_current(&self) -> usize {
-        self.index
-    }
-
-    fn set_index(&mut self, index: usize) {
-        self.index = index;
-    }
-
-    pub fn current_queue(&self) -> &[usize] {
-        &self.indexes[self.index..]
-    }
-
-    pub fn index(&self) -> usize {
-        self.index
     }
 }
 
@@ -130,7 +81,6 @@ pub struct Playlist {
     path_named: PathNamed,
     songs: Arc<RwLock<Vec<Song>>>,
     has_loaded_songs: Cell<bool>,
-
     music_manager: RefCell<Option<MusicManager>>,
     pub variant: PlaylistVariant,
     songs_filtered: RefCell<Option<Vec<Song>>>,
