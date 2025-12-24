@@ -7,7 +7,7 @@ use crate::data::{unwrap_inner_ref, NamedPathLike, PathNamed};
 use std::cell::{Ref, RefCell};
 use std::rc::{Rc, Weak};
 
-// TODO: fix cyclic rc memory leak
+#[derive(Debug)]
 pub struct Folder {
     path_named: PathNamed,
     contents: RefCell<Option<Vec<Rc<FolderContent>>>>,

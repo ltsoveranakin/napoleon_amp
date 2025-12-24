@@ -34,17 +34,22 @@ impl PlaylistData {
     }
 }
 
+/// The type of playlist this will attempt to load songs from
+
+#[derive(Debug)]
 pub enum PlaylistVariant {
+    /// Will attempt to load all songs in the current folder
     SongFolder,
+    /// Will attempt to load all songs in the supplied file
     PlaylistFile,
 }
 
-pub enum SongList<'a> {
-    Filtered(Ref<'a, Vec<Song>>),
-    Unfiltered(ReadWrapper<'a, Vec<Song>>),
+pub enum SongList<'s> {
+    Filtered(Ref<'s, Vec<Song>>),
+    Unfiltered(ReadWrapper<'s, Vec<Song>>),
 }
 
-impl<'a> Deref for SongList<'a> {
+impl<'s> Deref for SongList<'s> {
     type Target = [Song];
 
     fn deref(&self) -> &Self::Target {
@@ -55,28 +60,47 @@ impl<'a> Deref for SongList<'a> {
     }
 }
 
-#[derive(Clone)]
-pub enum SelectedSongs {
+#[derive(Clone, Debug)]
+pub enum SelectedSongsVariant {
     None,
     Range(RangeInclusive<usize>),
     Single(usize),
     All,
 }
 
-impl SelectedSongs {
+impl SelectedSongsVariant {
     pub fn is_selected(&self, index: usize) -> bool {
         match self {
-            SelectedSongs::All => true,
+            SelectedSongsVariant::All => true,
 
-            SelectedSongs::Range(selected_range) => selected_range.contains(&index),
+            SelectedSongsVariant::Range(selected_range) => selected_range.contains(&index),
 
-            SelectedSongs::Single(selected_index) => index == *selected_index,
+            SelectedSongsVariant::Single(selected_index) => index == *selected_index,
 
-            SelectedSongs::None => false,
+            SelectedSongsVariant::None => false,
+        }
+    }
+
+    pub fn get_selected_songs<'s>(&self, songs: &'s [Song]) -> &'s [Song] {
+        match self {
+            SelectedSongsVariant::All => songs,
+
+            SelectedSongsVariant::Range(selected_range) => {
+                let selected_range = selected_range.clone();
+                &songs[selected_range]
+            }
+
+            SelectedSongsVariant::Single(selected_index) => {
+                let selected_index = *selected_index;
+                &songs[selected_index..=selected_index]
+            }
+
+            SelectedSongsVariant::None => &[],
         }
     }
 }
 
+#[derive(Debug)]
 pub struct Playlist {
     path_named: PathNamed,
     songs: Arc<RwLock<Vec<Song>>>,
@@ -84,7 +108,7 @@ pub struct Playlist {
     music_manager: RefCell<Option<MusicManager>>,
     pub variant: PlaylistVariant,
     songs_filtered: RefCell<Option<Vec<Song>>>,
-    selected_songs: RefCell<SelectedSongs>,
+    selected_songs: RefCell<SelectedSongsVariant>,
 }
 
 impl Playlist {
@@ -96,7 +120,7 @@ impl Playlist {
             music_manager: RefCell::new(None),
             variant,
             songs_filtered: RefCell::new(None),
-            selected_songs: RefCell::new(SelectedSongs::None),
+            selected_songs: RefCell::new(SelectedSongsVariant::None),
         }
     }
 
@@ -126,7 +150,7 @@ impl Playlist {
 
     pub fn get_or_load_songs_unfiltered(&self) -> ReadWrapper<Vec<Song>> {
         if self.has_loaded_songs.get() {
-            self.songs.read().unwrap().into()
+            read_rwlock(&self.songs)
         } else {
             let loaded_song_file_names = match self.variant {
                 PlaylistVariant::PlaylistFile => {
@@ -161,18 +185,18 @@ impl Playlist {
                 }
             };
 
-            let mut songs = write_rwlock(&self.songs);
+            {
+                let mut songs = write_rwlock(&self.songs);
 
-            songs.reserve_exact(loaded_song_file_names.len());
+                songs.reserve_exact(loaded_song_file_names.len());
 
-            for song_name in loaded_song_file_names {
-                let song_path = song_file(&song_name);
-                // println!("song_name {:?} sp {:?}", song_name, song_path);
+                for song_name in loaded_song_file_names {
+                    let song_path = song_file(&song_name);
+                    // println!("song_name {:?} sp {:?}", song_name, song_path);
 
-                songs.push(Song::new(PathNamed::new(song_path)));
+                    songs.push(Song::new(PathNamed::new(song_path)));
+                }
             }
-
-            drop(songs);
 
             self.has_loaded_songs.set(true);
 
@@ -215,26 +239,26 @@ impl Playlist {
         if end < start || start >= song_len || end >= song_len {
             Err(())
         } else {
-            self.set_selected_songs(SelectedSongs::Range(range));
+            self.set_selected_songs(SelectedSongsVariant::Range(range));
             Ok(())
         }
     }
 
     pub fn select_single(&self, index: usize) {
         if index < self.get_or_load_songs().len() {
-            self.set_selected_songs(SelectedSongs::Single(index));
+            self.set_selected_songs(SelectedSongsVariant::Single(index));
         }
     }
 
     pub fn select_all(&self) {
-        self.set_selected_songs(SelectedSongs::All);
+        self.set_selected_songs(SelectedSongsVariant::All);
     }
 
-    pub fn get_selected_songs(&self) -> SelectedSongs {
+    pub fn get_selected_songs_variant(&self) -> SelectedSongsVariant {
         self.selected_songs.borrow().clone()
     }
 
-    fn set_selected_songs(&self, selected_songs: SelectedSongs) {
+    fn set_selected_songs(&self, selected_songs: SelectedSongsVariant) {
         *self.selected_songs.borrow_mut() = selected_songs;
     }
 
@@ -243,7 +267,11 @@ impl Playlist {
         song_paths: &[PathBuf],
         delete_original: bool,
     ) -> Result<(), Vec<usize>> {
+        let mut songs = write_rwlock(&self.songs);
         let mut failed_import = Vec::new();
+
+        songs.reserve_exact(song_paths.len());
+
         for (i, original_song_path) in song_paths.iter().enumerate() {
             let file_name = original_song_path
                 .file_name()
@@ -268,7 +296,7 @@ impl Playlist {
                 fs::remove_file(original_song_path).expect("Failed to remove original file");
             }
 
-            self.add_song(Song::new(PathNamed::new(new_song_path)));
+            songs.push(Song::new(PathNamed::new(new_song_path)));
         }
 
         self.save_contents();
@@ -310,16 +338,27 @@ impl Playlist {
         }
     }
 
-    fn add_song(&self, song: Song) {
-        if self.has_loaded_songs.get() {
-            let songs = self.get_or_load_songs();
-            drop(songs);
+    pub(crate) fn import_existing_songs(&self, new_songs: &[Song]) {
+        {
+            let mut playlist_songs = write_rwlock(&self.songs);
+            playlist_songs.reserve_exact(new_songs.len());
+
+            for new_song in new_songs {
+                playlist_songs.push(new_song.clone());
+            }
         }
 
-        self.songs.write().expect("Lock poisoned").push(song);
+        self.save_contents();
     }
 
+    /// Saves the list of songs to the file at `self.path_named`
+    /// This does nothing if `self.variant` is [`PlaylistVariant::SongFolder`]
+
     fn save_contents(&self) {
+        if matches!(self.variant, PlaylistVariant::SongFolder) {
+            return;
+        }
+
         let mut file = File::options()
             .write(true)
             .open(&self.path_named)

@@ -1,4 +1,4 @@
-use eframe::egui::{Context, Id, Modal, ScrollArea, Slider, Ui};
+use eframe::egui::{Context, Event, Id, Modal, ScrollArea, Slider, Ui};
 use std::ops::Deref;
 
 use crate::napoleon_client::ui::helpers::scroll_area_named_list;
@@ -7,6 +7,7 @@ use eframe::egui;
 use napoleon_amp_core::data::playlist::manager::{MusicManager, SongStatus};
 use napoleon_amp_core::data::playlist::{Playlist, PlaylistVariant};
 use napoleon_amp_core::data::NamedPathLike;
+use napoleon_amp_core::instance::NapoleonInstance;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::time::Duration;
@@ -35,7 +36,13 @@ impl PlaylistPanel {
         }
     }
 
-    pub(crate) fn render(&mut self, ctx: &Context, ui: &mut Ui, volume: &mut i32) {
+    pub(crate) fn render(
+        &mut self,
+        ctx: &Context,
+        ui: &mut Ui,
+        volume: &mut i32,
+        napoleon_instance: &mut NapoleonInstance,
+    ) {
         if matches!(self.current_playlist.variant, PlaylistVariant::PlaylistFile) {
             ui.heading(self.current_playlist.name());
 
@@ -64,6 +71,46 @@ impl PlaylistPanel {
             };
 
             self.current_playlist.set_search_query(search_query);
+        }
+
+        let mut copy_keystroke_pressed = false;
+        let mut paste_keystroke_pressed = false;
+
+        ctx.input(|i| {
+            for ev in &i.events {
+                match ev {
+                    Event::Copy => {
+                        copy_keystroke_pressed = true;
+                    }
+
+                    Event::Paste(_) => {
+                        paste_keystroke_pressed = true;
+                    }
+
+                    _ => {}
+                }
+            }
+        });
+
+        let select_all_keystroke_pressed =
+            ctx.input(|state| state.key_pressed(egui::Key::A) && state.modifiers.command);
+
+        // let copy_keystroke_pressed =
+        //     ctx.input(|state| state.key_pressed(egui::Key::C) && state.modifiers.command);
+        //
+        // let paste_keystroke_pressed =
+        //     ctx.input(|state| state.key_pressed(egui::Key::V) && state.modifiers.command);
+
+        if select_all_keystroke_pressed {
+            self.current_playlist.select_all();
+        }
+
+        if copy_keystroke_pressed {
+            napoleon_instance.copy_selected_songs(&*self.current_playlist);
+        }
+
+        if paste_keystroke_pressed {
+            napoleon_instance.paste_copied_songs(&*self.current_playlist);
         }
 
         let current_playlist_rc = Rc::clone(&self.current_playlist);
@@ -185,15 +232,8 @@ impl PlaylistPanel {
             f32::INFINITY
         };
 
-        let select_all_keystroke_pressed =
-            ui.input(|state| state.key_pressed(egui::Key::A) && state.modifiers.command);
-
-        if select_all_keystroke_pressed {
-            current_playlist.select_all();
-        }
-
         let songs = &*current_playlist.get_or_load_songs();
-        let selected_songs = current_playlist.get_selected_songs();
+        let selected_songs = current_playlist.get_selected_songs_variant();
 
         scroll_area_named_list(
             ui,

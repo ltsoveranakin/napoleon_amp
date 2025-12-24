@@ -4,8 +4,10 @@ use crate::data::NamedPathLike;
 use crate::{read_rwlock, write_rwlock, ReadWrapper};
 use rodio::source::SeekError;
 use rodio::{Decoder, OutputStream, OutputStreamBuilder, Sink, Source};
-use std::fmt::Debug;
+use std::any::Any;
+use std::fmt::{Debug, Formatter};
 use std::fs::File;
+use std::ops::{Deref, DerefMut};
 use std::sync::mpsc::Sender;
 use std::sync::{mpsc, Arc, RwLock};
 use std::thread;
@@ -15,7 +17,7 @@ use std::time::Duration;
 static DEAD_MUSIC_THREAD_MESSAGE: &'static str =
     "Music thread should be dead, and this should be cleaned up";
 
-enum SwitchSongMusicCommand {
+pub(super) enum SwitchSongMusicCommand {
     Previous,
     Next,
     SkipToQueueIndex(usize),
@@ -45,14 +47,40 @@ impl SongStatus {
     }
 }
 
+pub(super) struct DebugWrapper<T>(T);
+
+impl<T: 'static> Debug for DebugWrapper<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&format!(
+            "No debug information for type: {:?}",
+            self.type_id()
+        ))
+    }
+}
+
+impl<T> Deref for DebugWrapper<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<T> DerefMut for DebugWrapper<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+#[derive(Debug)]
 pub struct MusicManager {
     pub(super) playing_handle: JoinHandle<()>,
     pub(super) music_command_tx: Sender<MusicCommand>,
-    pub(super) sink: Arc<Sink>,
+    pub(super) sink: DebugWrapper<Arc<Sink>>,
     pub(super) queue: Arc<RwLock<Queue>>,
     song_status: Arc<RwLock<SongStatus>>,
     /// Not currently used, but must not be dropped in order to keep audio stream alive
-    pub(super) _output_stream: OutputStream,
+    pub(super) _output_stream: DebugWrapper<OutputStream>,
 }
 
 impl MusicManager {
@@ -181,10 +209,10 @@ impl MusicManager {
         Some(Self {
             playing_handle,
             music_command_tx,
-            sink,
+            sink: DebugWrapper(sink),
             queue,
             song_status,
-            _output_stream: output_stream,
+            _output_stream: DebugWrapper(output_stream),
         })
     }
 

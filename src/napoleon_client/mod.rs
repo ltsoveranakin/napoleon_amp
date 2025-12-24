@@ -62,7 +62,7 @@ impl App for NapoleonClientApp {
             }
 
             CentralPanel::default().show(ctx, |ui| {
-                playlist_panel.render(ctx, ui, &mut self.volume);
+                playlist_panel.render(ctx, ui, &mut self.volume, &mut self.core_instance);
             });
         }
     }
