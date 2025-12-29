@@ -3,9 +3,9 @@ name = "napoleon_amp"
 version = "0.1.0"
 edition = "2024"
 
+[workspace]
+members = ["napoleon_amp_android", "napoleon_amp_client_ui", "napoleon_amp_core"]
+
 [dependencies]
-eframe = "0.33.3"
-rfd = "0.16.0"
-napoleon_amp_core = { path = "napoleon_amp_core" }
-egui_extras = "0.33.3"
-open = "5.3.3"
+eframe = { version = "0.33.3" }
+napoleon_amp_client_ui = { path = "napoleon_amp_client_ui" }

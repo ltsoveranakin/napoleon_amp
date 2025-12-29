@@ -23,7 +23,7 @@ impl Folder {
         }
     }
 
-    pub fn get_or_load_content(this: &Rc<Self>) -> Ref<Vec<Rc<FolderContent>>> {
+    pub fn get_or_load_content(this: &Rc<Self>) -> Ref<'_, Vec<Rc<FolderContent>>> {
         let contents = if this.contents.borrow().is_some() {
             unwrap_inner_ref(this.contents.borrow())
         } else {
