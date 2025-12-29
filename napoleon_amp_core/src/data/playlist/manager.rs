@@ -1,6 +1,7 @@
 use crate::data::playlist::queue::Queue;
 use crate::data::song::Song;
 use crate::data::NamedPathLike;
+use crate::song_player_provider::SongPlayerProvider;
 use crate::{read_rwlock, write_rwlock, ReadWrapper};
 use rodio::source::SeekError;
 use rodio::{Decoder, OutputStream, OutputStreamBuilder, Sink, Source};
@@ -73,17 +74,18 @@ impl<T> DerefMut for DebugWrapper<T> {
 }
 
 #[derive(Debug)]
-pub struct MusicManager {
+pub struct MusicManager<S: SongPlayerProvider> {
     pub(super) playing_handle: JoinHandle<()>,
     pub(super) music_command_tx: Sender<MusicCommand>,
     pub(super) sink: DebugWrapper<Arc<Sink>>,
     pub(super) queue: Arc<RwLock<Queue>>,
     song_status: Arc<RwLock<SongStatus>>,
+    player_provider: S,
     /// Not currently used, but must not be dropped in order to keep audio stream alive
     pub(super) _output_stream: DebugWrapper<OutputStream>,
 }
 
-impl MusicManager {
+impl<S: SongPlayerProvider> MusicManager<S> {
     pub(super) fn try_create(
         songs_arc: Arc<RwLock<Vec<Song>>>,
         start_index: usize,
@@ -212,6 +214,7 @@ impl MusicManager {
             sink: DebugWrapper(sink),
             queue,
             song_status,
+            player_provider: S::default(),
             _output_stream: DebugWrapper(output_stream),
         })
     }

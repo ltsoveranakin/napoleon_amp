@@ -4,17 +4,18 @@ use crate::data::folder::content::{FolderContent, FolderContentVariant};
 
 use crate::data::playlist::Playlist;
 use crate::data::{unwrap_inner_ref, NamedPathLike, PathNamed};
+use crate::song_player_provider::SongPlayerProvider;
 use std::cell::{Ref, RefCell};
 use std::rc::{Rc, Weak};
 
 #[derive(Debug)]
-pub struct Folder {
+pub struct Folder<S: SongPlayerProvider> {
     path_named: PathNamed,
-    contents: RefCell<Option<Vec<Rc<FolderContent>>>>,
+    contents: RefCell<Option<Vec<Rc<FolderContent<S>>>>>,
     pub parent: Option<Weak<Self>>,
 }
 
-impl Folder {
+impl<S: SongPlayerProvider> Folder<S> {
     pub(crate) fn new(path_named: PathNamed, parent: Option<Weak<Self>>) -> Self {
         Self {
             path_named,
@@ -23,7 +24,7 @@ impl Folder {
         }
     }
 
-    pub fn get_or_load_content(this: &Rc<Self>) -> Ref<'_, Vec<Rc<FolderContent>>> {
+    pub fn get_or_load_content(this: &Rc<Self>) -> Ref<'_, Vec<Rc<FolderContent<S>>>> {
         let contents = if this.contents.borrow().is_some() {
             unwrap_inner_ref(this.contents.borrow())
         } else {
@@ -77,7 +78,7 @@ impl Folder {
         contents
     }
 
-    fn add_content(this: &Rc<Self>, folder_content_variant: FolderContentVariant) {
+    fn add_content(this: &Rc<Self>, folder_content_variant: FolderContentVariant<S>) {
         if this.contents.borrow().is_none() {
             Self::get_or_load_content(this);
         }
@@ -105,7 +106,7 @@ impl Folder {
     }
 }
 
-impl NamedPathLike for Folder {
+impl<S: SongPlayerProvider> NamedPathLike for Folder<S> {
     fn get_path_named(&self) -> &PathNamed {
         &self.path_named
     }

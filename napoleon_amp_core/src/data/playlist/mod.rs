@@ -5,6 +5,7 @@ use crate::data::playlist::manager::{MusicCommand, MusicManager};
 use crate::data::song::Song;
 use crate::data::{unwrap_inner_ref, NamedPathLike, PathNamed};
 use crate::paths::{song_file, songs_dir};
+use crate::song_player_provider::SongPlayerProvider;
 use crate::{read_rwlock, write_rwlock, ReadWrapper};
 use rodio::Source;
 use serbytes::prelude::SerBytes;
@@ -101,17 +102,17 @@ impl SelectedSongsVariant {
 }
 
 #[derive(Debug)]
-pub struct Playlist {
+pub struct Playlist<S: SongPlayerProvider> {
     path_named: PathNamed,
     songs: Arc<RwLock<Vec<Song>>>,
     has_loaded_songs: Cell<bool>,
-    music_manager: RefCell<Option<MusicManager>>,
+    music_manager: RefCell<Option<MusicManager<S>>>,
     pub variant: PlaylistVariant,
     songs_filtered: RefCell<Option<Vec<Song>>>,
     selected_songs: RefCell<SelectedSongsVariant>,
 }
 
-impl Playlist {
+impl<S: SongPlayerProvider> Playlist<S> {
     fn new(path_named: PathNamed, variant: PlaylistVariant) -> Self {
         Self {
             path_named,
@@ -323,12 +324,13 @@ impl Playlist {
 
         // write_rwlock(&self.queue).set_starting_index(song_index);
 
-        let music_manager = MusicManager::try_create(Arc::clone(&self.songs), song_index, volume);
+        let music_manager =
+            MusicManager::<S>::try_create(Arc::clone(&self.songs), song_index, volume);
 
         self.music_manager.replace(music_manager);
     }
 
-    pub fn get_music_manager(&self) -> Ref<'_, Option<MusicManager>> {
+    pub fn get_music_manager(&self) -> Ref<'_, Option<MusicManager<S>>> {
         self.music_manager.borrow()
     }
 
@@ -377,7 +379,7 @@ impl Playlist {
     }
 }
 
-impl NamedPathLike for Playlist {
+impl<S: SongPlayerProvider> NamedPathLike for Playlist<S> {
     fn get_path_named(&self) -> &PathNamed {
         &self.path_named
     }
