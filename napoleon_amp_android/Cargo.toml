@@ -1,0 +1,44 @@
+[package]
+name = "napoleon_amp_android"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "napoleon_amp_android"
+crate-type = ["cdylib"]
+path = "src/lib.rs"
+
+
+[dependencies]
+eframe = { version = "0.33", default-features = false, features = [
+    "wgpu",
+    "android-native-activity",
+    "default_fonts",
+] }
+android_logger = { version = "0.15", default-features = false }
+log = "0.4"
+
+[target.'cfg(target_os = "android")'.dependencies.wgpu]
+version = "27"
+default-features = false
+features = [
+    "gles",
+]
+
+# Used to get same winit used by eframe.
+[target.'cfg(target_os = "android")'.dependencies.egui-winit]
+version = "0.33"
+default-features = false
+features = [
+    "clipboard",
+    "links",
+]
+
+#[package.metadata.android]
+#package = "com.github.ltsoveranakin"
+#build_targets = ["aarch64-linux-android"]
+#apk_name = "napoleon_amp"
+#
+#[package.metadata.android.sdk]
+#min_sdk_version = 26
+#target_sdk_version = 30
