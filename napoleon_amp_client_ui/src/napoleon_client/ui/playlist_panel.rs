@@ -46,6 +46,7 @@ impl PlaylistPanel {
         if matches!(self.current_playlist.variant, PlaylistVariant::PlaylistFile) {
             ui.heading(self.current_playlist.name());
 
+            #[cfg(not(target_os = "android"))]
             if ui.button("Add Songs").clicked() {
                 if let Some(paths) = rfd::FileDialog::new().pick_files() {
                     self.songs_imported = Some(SongsImported {

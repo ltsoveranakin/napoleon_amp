@@ -147,6 +147,7 @@ impl FolderList {
                         }
 
                         Popup::context_menu(&playlist_label).show(|ui| {
+                            #[cfg(not(target_os = "android"))]
                             if ui.button("Open file location").clicked() {
                                 if open::that_detached(
                                     playlist

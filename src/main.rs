@@ -1,9 +1,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
-mod napoleon_client;
 
-use crate::napoleon_client::NapoleonClientApp;
 use eframe::egui::ViewportBuilder;
 use eframe::NativeOptions;
+use napoleon_amp_client_ui::NapoleonClientApp;
 
 fn main() {
     let options = NativeOptions {
@@ -18,3 +17,6 @@ fn main() {
         Box::new(|cc| Ok(Box::new(NapoleonClientApp::new()))),
     );
 }
+
+// #[cfg(target_os = "android")]
+// ndk_glue::main!(main);

@@ -1,0 +1,17 @@
+[package]
+name = "napoleon_amp_android"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "napoleon_amp_android"
+crate-type = ["cdylib"]
+path = "src/lib.rs"
+
+
+[dependencies]
+eframe = { version = "0.33", default-features = false, features = ["wgpu", "android-native-activity", "default_fonts", ] }
+egui-winit = { version = "0.33", default-features = false, features = ["clipboard", "links"] }
+napoleon_amp_client_ui = { path = "../napoleon_amp_client_ui" }
+android-activity = { version = "0.6", features = ["native-activity"] }
+

@@ -8,7 +8,7 @@ mod paths;
 
 static POISONED_LOCK_MESSAGE: &str = "Poisoned lock";
 
-pub fn unlock_mutex<T>(mutex: &Mutex<T>) -> MutexGuard<T> {
+pub fn unlock_mutex<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
     mutex.lock().expect(POISONED_LOCK_MESSAGE)
 }
 
@@ -90,7 +90,7 @@ pub fn write_rwlock<T: Debug>(rw_lock: &RwLock<T>) -> WriteWrapper<T> {
     WriteWrapper::new(l)
 }
 
-pub fn read_rwlock<T>(rw_lock: &RwLock<T>) -> ReadWrapper<T> {
+pub fn read_rwlock<T>(rw_lock: &RwLock<T>) -> ReadWrapper<'_, T> {
     // println!("try read");
     let r = rw_lock.read().expect(POISONED_LOCK_MESSAGE);
     // println!("obtained read");

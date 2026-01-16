@@ -1,0 +1,12 @@
+[package]
+name = "napoleon_amp_client_ui"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+eframe = { version = "0.33.3", default-features = false }
+napoleon_amp_core = { path = "../napoleon_amp_core" }
+
+[target.'cfg(not(target_os = "android"))'.dependencies]
+rfd = "0.16.0"
+open = "5.3.3"

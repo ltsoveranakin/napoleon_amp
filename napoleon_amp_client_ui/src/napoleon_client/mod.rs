@@ -22,7 +22,7 @@ enum Dialog {
     CreateFolderContent(CreateFolderContentDialog),
 }
 
-pub(super) struct NapoleonClientApp {
+pub struct NapoleonClientApp {
     core_instance: NapoleonInstance,
     folder_list: FolderList,
     playlist_panel: Option<PlaylistPanel>,
@@ -30,7 +30,7 @@ pub(super) struct NapoleonClientApp {
 }
 
 impl NapoleonClientApp {
-    pub(super) fn new() -> Self {
+    pub fn new() -> Self {
         let core_instance = NapoleonInstance::new();
         let current_folder = core_instance.get_base_folder();
 

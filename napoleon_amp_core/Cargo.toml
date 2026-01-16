@@ -6,4 +6,4 @@ edition = "2024"
 [dependencies]
 dirs-next = "2.0.0"
 serbytes = { path = "../../serdata" }
-rodio = "0.21.1"
+rodio = { version = "0.21.1", default-features = false, features = ["symphonia-all", "playback"] }
