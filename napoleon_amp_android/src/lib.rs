@@ -12,7 +12,7 @@ fn android_main(app: egui_winit::winit::platform::android::activity::AndroidApp)
     eframe::run_native(
         "Napoleon App",
         options,
-        Box::new(|cc| Ok(Box::new(NapoleonClientApp::new()))),
+        Box::new(|_cc| Ok(Box::new(NapoleonClientApp::new()))),
     )
     .unwrap();
 }

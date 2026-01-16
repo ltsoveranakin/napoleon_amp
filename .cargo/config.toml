@@ -1,0 +1,9 @@
+#[target.aarch64-linux-android]
+#linker = "C:/Users/ferri/AppData/Local/Android/Sdk/ndk/29.0.14206865/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android26-clang.cmd"
+#ar = "C:/Users/ferri/AppData/Local/Android/Sdk/ndk/29.0.14206865/toolchains/llvm/prebuilt/windows-x86_64/bin/llvm-ar.cmd"
+#rustflags = [
+#    "-C", "link-args=-landroid -laudio -llog -ldl -lm -lc"
+#]
+
+[target.aarch64-linux-android]
+runner = "cargo ndk-runner"

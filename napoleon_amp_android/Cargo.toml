@@ -13,3 +13,5 @@ path = "src/lib.rs"
 eframe = { version = "0.33", default-features = false, features = ["wgpu", "android-native-activity", "default_fonts", ] }
 egui-winit = { version = "0.33", default-features = false, features = ["clipboard", "links"] }
 napoleon_amp_client_ui = { path = "../napoleon_amp_client_ui" }
+android-activity = { version = "0.6", features = ["native-activity"] }
+
