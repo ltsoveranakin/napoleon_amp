@@ -7,7 +7,6 @@ use napoleon_amp_client_ui::NapoleonClientApp;
 fn main() {
     let options = NativeOptions {
         viewport: ViewportBuilder::default().with_inner_size([1280.0, 720.0]),
-
         ..Default::default()
     };
 

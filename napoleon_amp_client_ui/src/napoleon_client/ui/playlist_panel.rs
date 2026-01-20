@@ -1,9 +1,10 @@
-use eframe::egui::{Context, Event, Id, Modal, ScrollArea, Slider, Ui};
+use eframe::egui::{Context, Event, Id, Modal, ScrollArea, Slider, TextWrapMode, Ui};
 use std::ops::Deref;
 
-use crate::napoleon_client::ui::helpers::scroll_area_named_list;
+use crate::napoleon_client::ui::helpers::scroll_area_styled;
 use crate::napoleon_client::ui::queue_panel::QueuePanel;
 use eframe::egui;
+use egui_extras::{Column, TableBuilder};
 use napoleon_amp_core::data::playlist::manager::{MusicManager, SongStatus};
 use napoleon_amp_core::data::playlist::{Playlist, PlaylistVariant};
 use napoleon_amp_core::data::NamedPathLike;
@@ -147,7 +148,7 @@ impl PlaylistPanel {
             .as_ref()
             .expect("Songs imported checked None");
         let modal = Modal::new(Id::new("Failed Import Songs Modal")).show(ui.ctx(), |ui| {
-            ui.set_width(250.);
+            // ui.set_width(250.0);
 
             let failed_song_indexes = songs_imported
                 .failed_song_indexes
@@ -162,11 +163,34 @@ impl PlaylistPanel {
                 songs_plural(failed_count)
             ));
 
-            for failed_song_index in failed_song_indexes {
-                let failed_song_path = &songs_imported.paths[*failed_song_index];
+            // println!(failed_song_indexes.len());
+            //
+            // ScrollArea::vertical().show_rows(
+            //     ui,
+            //     20.0,
+            //     failed_song_indexes.len(),
+            //     |ui, row_range| {
+            //         for row in row_range {
+            //             let failed_song_path = &songs_imported.paths[row];
+            //
+            //             ui.label(failed_song_path.to_str().expect("Valid utf8 path"));
+            //         }
+            //     },
+            // );
 
-                ui.label(failed_song_path.to_str().expect("Valid utf8 path"));
-            }
+            scroll_area_styled(ui, ScrollArea::vertical().max_height(250.0), |ui| {
+                for failed_song_index in failed_song_indexes {
+                    let failed_song_path = &songs_imported.paths[*failed_song_index];
+                    ui.label(failed_song_path.to_str().expect("Valid utf8 path"));
+                }
+            });
+
+            // ScrollArea::vertical().show(ui, |ui| {
+            //     for failed_song_index in failed_song_indexes {
+            //         let failed_song_path = &songs_imported.paths[*failed_song_index];
+            //         ui.label(failed_song_path.to_str().expect("Valid utf8 path"));
+            //     }
+            // });
 
             if ui.button("Ok").clicked() {
                 true
@@ -236,20 +260,62 @@ impl PlaylistPanel {
         let songs = &*current_playlist.get_or_load_songs();
         let selected_songs = current_playlist.get_selected_songs_variant();
 
-        scroll_area_named_list(
-            ui,
-            ScrollArea::vertical()
-                .max_height(max_height)
-                .id_salt(current_playlist.name()),
-            songs,
-            |song_index, _| selected_songs.is_selected(song_index),
-            |song_index| {
-                current_playlist.select_single(song_index);
-            },
-            |song_index| {
-                current_playlist.start_play_song(song_index, volume as f32 / 100.);
-            },
-        );
+        ui.scope(|ui| {
+            ui.style_mut().wrap_mode = Some(TextWrapMode::Truncate);
+
+            TableBuilder::new(ui)
+                .column(Column::remainder())
+                .column(Column::remainder())
+                .column(Column::remainder())
+                .header(20.0, |mut header| {
+                    header.col(|ui| {
+                        ui.heading("Name");
+                    });
+
+                    header.col(|ui| {
+                        ui.heading("Artist");
+                    });
+
+                    header.col(|ui| {
+                        ui.heading("Album");
+                    });
+                })
+                .body(|body| {
+                    body.rows(20.0, songs.len(), |mut row| {
+                        let row_index = row.index();
+                        let song = &songs[row_index];
+
+                        row.col(|ui| {
+                            if ui.label(&song.get_or_load_song_data().title).clicked() {
+                                current_playlist.start_play_song(row_index, volume as f32 / 100.);
+                            }
+                        });
+
+                        row.col(|ui| {
+                            ui.label(&song.get_or_load_song_data().artist);
+                        });
+
+                        row.col(|ui| {
+                            ui.label(&song.get_or_load_song_data().album);
+                        });
+                    });
+                });
+        });
+
+        // scroll_area_named_list(
+        //     ui,
+        //     ScrollArea::vertical()
+        //         .max_height(max_height)
+        //         .id_salt(current_playlist.name()),
+        //     songs,
+        //     |song_index, _| selected_songs.is_selected(song_index),
+        //     |song_index| {
+        //         current_playlist.select_single(song_index);
+        //     },
+        //     |song_index| {
+        //         current_playlist.start_play_song(song_index, volume as f32 / 100.);
+        //     },
+        // );
 
         // scroll_area_styled(ui, ScrollArea::vertical(), |ui| {
         //     let songs = current_playlist.get_or_load_songs();

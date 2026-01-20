@@ -16,6 +16,11 @@ use std::io::{Read, Write};
 use std::ops::{Deref, RangeInclusive};
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
+use symphonia::core::formats::FormatOptions;
+use symphonia::core::io::{MediaSourceStream, MediaSourceStreamOptions};
+use symphonia::core::meta::{MetadataOptions, StandardTagKey, Value};
+use symphonia::core::probe::Hint;
+use symphonia::default::get_probe;
 
 #[derive(SerBytes)]
 struct PlaylistData {
@@ -138,7 +143,7 @@ impl Playlist {
 
     /// Gets the songs in the current playlist, with the filter if one is enabled
 
-    pub fn get_or_load_songs(&self) -> SongList {
+    pub fn get_or_load_songs(&self) -> SongList<'_> {
         let songs_filtered = self.songs_filtered.borrow();
 
         if songs_filtered.is_some() {
@@ -148,19 +153,17 @@ impl Playlist {
         }
     }
 
-    pub fn get_or_load_songs_unfiltered(&self) -> ReadWrapper<Vec<Song>> {
+    pub fn get_or_load_songs_unfiltered(&self) -> ReadWrapper<'_, Vec<Song>> {
         if self.has_loaded_songs.get() {
             read_rwlock(&self.songs)
         } else {
             let loaded_song_file_names = match self.variant {
                 PlaylistVariant::PlaylistFile => {
-                    let playlist_data =
-                        if let Ok(file_buf_str) = fs::read_to_string(&self.path_named.path) {
-                            PlaylistData::from_bytes(file_buf_str.as_bytes())
-                                .unwrap_or(PlaylistData::new_empty())
-                        } else {
-                            PlaylistData::new_empty()
-                        };
+                    let playlist_data = if let Ok(file_buf) = fs::read(&self.path_named.path) {
+                        PlaylistData::from_vec(file_buf).unwrap_or(PlaylistData::new_empty())
+                    } else {
+                        PlaylistData::new_empty()
+                    };
 
                     playlist_data.songs_file_names
                 }
@@ -267,43 +270,139 @@ impl Playlist {
         song_paths: &[PathBuf],
         delete_original: bool,
     ) -> Result<(), Vec<usize>> {
-        let mut songs = write_rwlock(&self.songs);
         let mut failed_import = Vec::new();
+        {
+            let mut songs = write_rwlock(&self.songs);
 
-        songs.reserve_exact(song_paths.len());
+            songs.reserve_exact(song_paths.len());
 
-        for (i, original_song_path) in song_paths.iter().enumerate() {
-            let file_name = original_song_path
-                .file_name()
-                .expect("Path does not terminate in ..");
-            let new_song_path = song_file(file_name);
+            for (i, original_song_path) in song_paths.iter().enumerate() {
+                let file_name = original_song_path
+                    .file_name()
+                    .expect("Path does not terminate in ..");
 
-            if fs::exists(&new_song_path).expect(&format!(
-                "Unable to verify new song path does not exist at path: {:?}",
-                new_song_path
-            )) {
-                failed_import.push(i);
+                let songs_dir = songs_dir();
+
+                if !fs::exists(&songs_dir).expect("Verified existence of song directory") {
+                    fs::create_dir_all(songs_dir).expect("Directories created");
+                }
+
+                let new_song_path = song_file(file_name);
+
+                // TODO: handle if new song location already exists, also just handling all the errors here properly. esp invalid format
+
+                if fs::exists(&new_song_path).expect(&format!(
+                    "Unable to verify new song path does not exist at path: {:?}",
+                    new_song_path
+                )) {
+                    failed_import.push(i);
+                }
+
+                File::create(&new_song_path).expect(&format!(
+                    "Unable to create new song file to copy to; path: {:?}",
+                    new_song_path
+                ));
+
+                fs::copy(original_song_path, &new_song_path).expect("Failed copy song to dest");
+
+                let song_file = File::open(&new_song_path).expect("Open new song file");
+
+                if delete_original {
+                    fs::remove_file(original_song_path).expect("Failed to remove original file");
+                }
+
+                let ext = new_song_path
+                    .extension()
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .to_string();
+
+                let song = Song::new(PathNamed::new(new_song_path));
+
+                let mss_options = MediaSourceStreamOptions::default();
+
+                let mss = MediaSourceStream::new(Box::new(song_file), mss_options);
+
+                {
+                    let mut song_data = write_rwlock(&song.song_data);
+
+                    match get_probe().format(
+                        Hint::new().with_extension(&ext),
+                        mss,
+                        &FormatOptions::default(),
+                        &MetadataOptions::default(),
+                    ) {
+                        Ok(mut probe_result) => {
+                            if let Some(meta) = probe_result.metadata.get() {
+                                if let Some(meta_revision) = meta.current() {
+                                    for tag in meta_revision.tags() {
+                                        if let Some(std_key) = tag.std_key {
+                                            match std_key {
+                                                StandardTagKey::Artist => match tag.value {
+                                                    Value::String(ref artist) => {
+                                                        song_data.artist = artist.clone();
+                                                    }
+
+                                                    _ => {
+                                                        unreachable!()
+                                                    }
+                                                },
+
+                                                StandardTagKey::Album => match tag.value {
+                                                    Value::String(ref album) => {
+                                                        song_data.album = album.clone();
+                                                    }
+
+                                                    _ => {
+                                                        unreachable!()
+                                                    }
+                                                },
+
+                                                StandardTagKey::TrackTitle => match tag.value {
+                                                    Value::String(ref title) => {
+                                                        song_data.title = title.clone();
+                                                    }
+
+                                                    _ => {
+                                                        unreachable!()
+                                                    }
+                                                },
+
+                                                _ => {}
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        Err(error) => {
+                            println!(
+                                "failed getting format for {:?}; error: {}",
+                                song.path(),
+                                error
+                            );
+                        }
+                    }
+
+                    fs::write(&song.song_data_path, song_data.to_bb().buf())
+                        .expect("Clean write to song data file");
+                }
+
+                **write_rwlock(&song.has_loaded_song_data) = true;
+
+                songs.push(song);
             }
-
-            File::create(&new_song_path).expect(&format!(
-                "Unable to create new song file to copy to; path: {:?}",
-                new_song_path
-            ));
-
-            fs::copy(original_song_path, &new_song_path).expect("Failed copy song to dest");
-
-            if delete_original {
-                fs::remove_file(original_song_path).expect("Failed to remove original file");
-            }
-
-            songs.push(Song::new(PathNamed::new(new_song_path)));
         }
 
         self.save_contents();
 
         if !failed_import.is_empty() {
+            println!("Imported songs and saved successfully, but some failed to import");
             Err(failed_import)
         } else {
+            println!("Imported songs and saved successfully");
             Ok(())
         }
     }
@@ -337,6 +436,8 @@ impl Playlist {
             music_manager.send_stop_command();
         }
     }
+
+    pub fn delete() {}
 
     pub(crate) fn import_existing_songs(&self, new_songs: &[Song]) {
         {

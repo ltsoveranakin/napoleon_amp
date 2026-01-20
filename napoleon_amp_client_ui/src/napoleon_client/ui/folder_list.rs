@@ -135,7 +135,9 @@ impl FolderList {
                 }
             }
 
-            for folder_content in Folder::get_or_load_content(folder).iter() {
+            let mut delete_index = None;
+
+            for (i, folder_content) in Folder::get_or_load_content(folder).iter().enumerate() {
                 ui.separator();
 
                 match &folder_content.variant {
@@ -147,8 +149,12 @@ impl FolderList {
                         }
 
                         Popup::context_menu(&playlist_label).show(|ui| {
+                            if ui.button("Delete Playlist").clicked() {
+                                delete_index = Some(i);
+                            }
+
                             #[cfg(not(target_os = "android"))]
-                            if ui.button("Open file location").clicked() {
+                            if ui.button("Open File Location").clicked() {
                                 if open::that_detached(
                                     playlist
                                         .path()
@@ -157,7 +163,7 @@ impl FolderList {
                                 )
                                 .is_err()
                                 {
-                                    unimplemented!()
+                                    todo!()
                                 }
                             }
                         });
@@ -177,6 +183,10 @@ impl FolderList {
                         });
                     }
                 }
+            }
+
+            if let Some(index) = delete_index {
+                folder.delete_content(index);
             }
 
             if let Some(next_folder) = next_folder_folder {

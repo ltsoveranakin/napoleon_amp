@@ -2,9 +2,10 @@ pub mod content;
 
 use crate::data::folder::content::{FolderContent, FolderContentVariant};
 
-use crate::data::playlist::Playlist;
+use crate::data::playlist::{Playlist, PlaylistVariant};
 use crate::data::{unwrap_inner_ref, NamedPathLike, PathNamed};
 use std::cell::{Ref, RefCell};
+use std::fs;
 use std::rc::{Rc, Weak};
 
 #[derive(Debug)]
@@ -102,6 +103,36 @@ impl Folder {
         let playlist = Playlist::new_file(path_named);
 
         Self::add_content(this, FolderContentVariant::Playlist(Rc::new(playlist)));
+    }
+
+    pub fn delete_content(&self, content_index: usize) {
+        if let Some(contents) = &mut *self.contents.borrow_mut() {
+            if (0..contents.len()).contains(&content_index) {
+                let content = contents.remove(content_index);
+
+                match &content.variant {
+                    FolderContentVariant::Playlist(playlist) => {
+                        match playlist.variant {
+                            PlaylistVariant::PlaylistFile => {
+                                fs::remove_file(playlist.path()).expect("Delete file successfully");
+                            }
+
+                            PlaylistVariant::SongFolder => {
+                                todo!(
+                                    "Need to check if current playlist is all songs, dont try and delete an invalid file in that case"
+                                )
+                            }
+                        }
+
+                        // playlist.path()
+                    }
+
+                    FolderContentVariant::SubFolder(folder) => {
+                        todo!()
+                    }
+                }
+            }
+        }
     }
 }
 

@@ -4,6 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-dirs-next = "2.0.0"
+dirs-next = "2.0"
 serbytes = { path = "../../serdata" }
-rodio = { version = "0.21.1", default-features = false, features = ["symphonia-all", "playback"] }
+rodio = { version = "0.21", default-features = false, features = ["symphonia-all", "playback"] }
+symphonia = { version = "0.5.4", features = ["mp3", "symphonia-bundle-mp3"] }
+log = "0.4.29"
