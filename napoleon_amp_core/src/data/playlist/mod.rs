@@ -207,19 +207,35 @@ impl Playlist {
         }
     }
 
-    pub fn set_search_query(&self, search_query: Option<&str>) {
-        if let Some(search_str) = search_query {
-            let search_str_lower = search_str.to_lowercase();
+    pub fn set_search_query_filter(&self, search_str: &str) {
+        if !search_str.is_empty() {
+            let filtered = if let Some(parsed_search) = ParsedSearch::parse_search_str(search_str) {
+                println!("parsed search: {:?}", parsed_search);
+                // TODO: use vec here instead maybe? Can you pre-alloc and shrink after?
 
-            let mut songs_filtered_ll = LinkedList::new();
+                let mut songs_filtered_ll = LinkedList::new();
 
-            for song in self.get_or_load_songs().iter() {
-                if song.name().to_lowercase().contains(&search_str_lower) {
-                    songs_filtered_ll.push_back(song.clone());
+                for song in self.get_or_load_songs_unfiltered().iter() {
+                    let song_data = song.get_or_load_song_data();
+                    let str_search_to = match parsed_search.search_type {
+                        ParsedSearchType::Title => &song_data.title,
+
+                        ParsedSearchType::Album => &song_data.album,
+
+                        ParsedSearchType::Artist => &song_data.artist,
+                    };
+
+                    if str_search_to.to_lowercase().contains(&parsed_search.value) {
+                        songs_filtered_ll.push_back(song.clone());
+                    }
                 }
-            }
 
-            *self.songs_filtered.borrow_mut() = Some(songs_filtered_ll.into_iter().collect());
+                songs_filtered_ll.into_iter().collect()
+            } else {
+                Vec::new()
+            };
+
+            *self.songs_filtered.borrow_mut() = Some(filtered);
         } else {
             *self.songs_filtered.borrow_mut() = None;
         }
@@ -437,8 +453,6 @@ impl Playlist {
         }
     }
 
-    pub fn delete() {}
-
     pub(crate) fn import_existing_songs(&self, new_songs: &[Song]) {
         {
             let mut playlist_songs = write_rwlock(&self.songs);
@@ -475,6 +489,53 @@ impl Playlist {
 
         file.write_all(playlist_data.to_bb().buf())
             .expect("Unable to write playlist to file");
+    }
+}
+
+#[derive(Debug)]
+struct ParsedSearch {
+    value: String,
+    search_type: ParsedSearchType,
+}
+
+#[derive(Debug)]
+enum ParsedSearchType {
+    Title,
+    Artist,
+    Album,
+}
+
+impl ParsedSearch {
+    fn parse_search_str(search_str: &str) -> Option<Self> {
+        let search_res = if !search_str.starts_with("$") {
+            Some((ParsedSearchType::Title, search_str.to_lowercase()))
+        } else if let Some((search_type, search_value)) = Self::try_get_terms(search_str) {
+            match &*search_type {
+                "title" => Some((ParsedSearchType::Title, search_value)),
+
+                "artist" => Some((ParsedSearchType::Artist, search_value)),
+
+                "album" => Some((ParsedSearchType::Album, search_value)),
+
+                _ => None,
+            }
+        } else {
+            None
+        };
+
+        search_res.map(|(search_type, search_value)| ParsedSearch {
+            value: search_value,
+            search_type,
+        })
+    }
+
+    fn try_get_terms(search_str: &str) -> Option<(String, String)> {
+        let search_spl = &mut search_str[1..].split(":");
+
+        let search_type = search_spl.next()?.to_lowercase();
+        let search_value = search_spl.next()?.to_lowercase();
+
+        Some((search_type, search_value))
     }
 }
 

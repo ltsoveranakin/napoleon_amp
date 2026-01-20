@@ -66,13 +66,7 @@ impl PlaylistPanel {
         {
             let search_text = &self.filter_search_content;
 
-            let search_query = if search_text.chars().count() > 0 {
-                Some(&*self.filter_search_content)
-            } else {
-                None
-            };
-
-            self.current_playlist.set_search_query(search_query);
+            self.current_playlist.set_search_query_filter(search_text);
         }
 
         let mut copy_keystroke_pressed = false;
@@ -269,7 +263,7 @@ impl PlaylistPanel {
                 .column(Column::remainder())
                 .header(20.0, |mut header| {
                     header.col(|ui| {
-                        ui.heading("Name");
+                        ui.heading("Title");
                     });
 
                     header.col(|ui| {
