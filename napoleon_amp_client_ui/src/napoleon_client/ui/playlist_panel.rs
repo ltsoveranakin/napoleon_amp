@@ -1,4 +1,4 @@
-use eframe::egui::{Context, Event, Id, Modal, ScrollArea, Slider, TextWrapMode, Ui};
+use eframe::egui::{Button, Context, Event, Id, Modal, ScrollArea, Slider, TextWrapMode, Ui};
 use std::ops::Deref;
 
 use crate::napoleon_client::ui::helpers::scroll_area_styled;
@@ -256,6 +256,7 @@ impl PlaylistPanel {
 
         ui.scope(|ui| {
             ui.style_mut().wrap_mode = Some(TextWrapMode::Truncate);
+            ui.set_max_height(max_height);
 
             TableBuilder::new(ui)
                 .column(Column::remainder())
@@ -276,12 +277,23 @@ impl PlaylistPanel {
                 })
                 .body(|body| {
                     body.rows(20.0, songs.len(), |mut row| {
-                        let row_index = row.index();
-                        let song = &songs[row_index];
+                        let song_index = row.index();
+                        let song = &songs[song_index];
 
                         row.col(|ui| {
-                            if ui.label(&song.get_or_load_song_data().title).clicked() {
-                                current_playlist.start_play_song(row_index, volume as f32 / 100.);
+                            let button = Button::new(&song.get_or_load_song_data().title)
+                                .selected(selected_songs.is_selected(song_index))
+                                .frame(true)
+                                .frame_when_inactive(false);
+
+                            let button_response = ui.add(button);
+
+                            if button_response.clicked() {
+                                current_playlist.select_single(song_index);
+                            }
+
+                            if button_response.double_clicked() {
+                                current_playlist.start_play_song(song_index, volume as f32 / 100.);
                             }
                         });
 
@@ -295,49 +307,6 @@ impl PlaylistPanel {
                     });
                 });
         });
-
-        // scroll_area_named_list(
-        //     ui,
-        //     ScrollArea::vertical()
-        //         .max_height(max_height)
-        //         .id_salt(current_playlist.name()),
-        //     songs,
-        //     |song_index, _| selected_songs.is_selected(song_index),
-        //     |song_index| {
-        //         current_playlist.select_single(song_index);
-        //     },
-        //     |song_index| {
-        //         current_playlist.start_play_song(song_index, volume as f32 / 100.);
-        //     },
-        // );
-
-        // scroll_area_styled(ui, ScrollArea::vertical(), |ui| {
-        //     let songs = current_playlist.get_or_load_songs();
-        //     let selected_songs = current_playlist.get_selected_songs();
-        //
-        //     for (song_index, song) in songs.iter().enumerate() {
-        //         let current_song_selected_as_single =
-        //             if let SelectedSongs::Single(index) = selected_songs {
-        //                 song_index == index
-        //             } else {
-        //                 false
-        //             };
-        //
-        //         if ui
-        //             .selectable_label(selected_songs.is_selected(song_index), song.name())
-        //             .clicked()
-        //         {
-        //             if current_song_selected_as_single {
-        //                 current_playlist.start_play_song(song_index, volume as f32 / 100.);
-        //             }
-        //             self.current_playlist.select_single(song_index);
-        //         }
-        //
-        //         if song_index != songs.len() - 1 {
-        //             ui.separator();
-        //         }
-        //     }
-        // });
     }
 
     fn render_currently_playing(&self, ctx: &Context, ui: &mut Ui, volume: &mut i32) {
