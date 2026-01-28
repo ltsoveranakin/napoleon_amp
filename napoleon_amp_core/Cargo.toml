@@ -5,7 +5,7 @@ edition = "2024"
 
 [dependencies]
 dirs-next = "2.0"
-serbytes = { path = "../../serdata" }
+serbytes = { git = "https://github.com/ltsoveranakin/serbytes.git" }
 rodio = { version = "0.21", default-features = false, features = ["symphonia-all", "playback"] }
 symphonia = { version = "0.5.4", features = ["mp3", "symphonia-bundle-mp3"] }
 log = "0.4.29"
