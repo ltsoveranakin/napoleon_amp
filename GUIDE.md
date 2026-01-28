@@ -30,12 +30,12 @@ When songs have been imported, you can filter through the songs.
 #### Song Search Filters:
 
 Typing in the search bar at the top left will by default search through all the songs in the current playlist which have
-a title attribute that matches the query.
+any attribute that matches the query.
 
 In order to search by other attributes a custom search syntax can be used.
 
 To use the custom syntax, prefix the search with "$" and then the attribute name (available attributes are "title", "
-artist", and "album").
+artist", "album", and "any").
 Followed by a colon and the filter term.
 
 To filter all tracks by "Michael Jackson" the following query can be used:

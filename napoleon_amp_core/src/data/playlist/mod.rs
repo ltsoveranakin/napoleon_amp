@@ -217,15 +217,26 @@ impl Playlist {
 
                 for song in self.get_or_load_songs_unfiltered().iter() {
                     let song_data = song.get_or_load_song_data();
-                    let str_search_to = match parsed_search.search_type {
-                        ParsedSearchType::Title => &song_data.title,
+                    let strings_to_search: &[String] = match parsed_search.search_type {
+                        ParsedSearchType::Title => &[song_data.title],
 
-                        ParsedSearchType::Album => &song_data.album,
+                        ParsedSearchType::Album => &[song_data.album],
 
-                        ParsedSearchType::Artist => &song_data.artist,
+                        ParsedSearchType::Artist => &[song_data.artist],
+
+                        ParsedSearchType::Any => &[song_data.title, song_data.album, song_data.artist]
                     };
 
-                    if str_search_to.to_lowercase().contains(&parsed_search.value) {
+                    let mut valid_search = true;
+
+                    for str_search_to in strings_to_search {
+                        if !str_search_to.to_lowercase().contains(&parsed_search.value) {
+                            valid_search = false;
+                            break;
+                        }
+                    }
+
+                    if valid_search {
                         songs_filtered_ll.push_back(song.clone());
                     }
                 }
@@ -503,12 +514,13 @@ enum ParsedSearchType {
     Title,
     Artist,
     Album,
+    Any
 }
 
 impl ParsedSearch {
     fn parse_search_str(search_str: &str) -> Option<Self> {
         let search_res = if !search_str.starts_with("$") {
-            Some((ParsedSearchType::Title, search_str.to_lowercase()))
+            Some((ParsedSearchType::Any, search_str.to_lowercase()))
         } else if let Some((search_type, search_value)) = Self::try_get_terms(search_str) {
             match &*search_type {
                 "title" => Some((ParsedSearchType::Title, search_value)),
@@ -516,6 +528,8 @@ impl ParsedSearch {
                 "artist" => Some((ParsedSearchType::Artist, search_value)),
 
                 "album" => Some((ParsedSearchType::Album, search_value)),
+
+                "any" => Some((ParsedSearchType::Any, search_value)),
 
                 _ => None,
             }
