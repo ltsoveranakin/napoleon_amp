@@ -12,8 +12,10 @@ pub fn unlock_mutex<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
     mutex.lock().expect(POISONED_LOCK_MESSAGE)
 }
 
+#[derive(Debug)]
 pub struct WriteWrapper<'a, T>(RwLockWriteGuard<'a, T>);
 
+#[derive(Debug)]
 pub struct ReadWrapper<'a, T>(RwLockReadGuard<'a, T>);
 
 impl<'a, T> WriteWrapper<'a, T> {

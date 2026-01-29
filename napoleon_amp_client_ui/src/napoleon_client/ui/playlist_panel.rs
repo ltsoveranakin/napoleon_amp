@@ -245,67 +245,70 @@ impl PlaylistPanel {
     }
 
     fn render_song_list(&self, ui: &mut Ui, current_playlist: &Playlist, volume: i32) {
-        let max_height = if self.current_playlist.get_music_manager().is_some() {
-            ui.available_height() - 80.
-        } else {
-            f32::INFINITY
-        };
+        ScrollArea::vertical().show(ui, |ui| {
+            let max_height = if self.current_playlist.get_music_manager().is_some() {
+                ui.available_height() - 80.
+            } else {
+                f32::INFINITY
+            };
 
-        let songs = &*current_playlist.get_or_load_songs();
-        let selected_songs = current_playlist.get_selected_songs_variant();
+            let songs = &*current_playlist.get_or_load_songs();
+            let selected_songs = current_playlist.get_selected_songs_variant();
 
-        ui.scope(|ui| {
-            ui.style_mut().wrap_mode = Some(TextWrapMode::Truncate);
-            ui.set_max_height(max_height);
+            ui.scope(|ui| {
+                ui.style_mut().wrap_mode = Some(TextWrapMode::Truncate);
+                ui.set_max_height(max_height);
 
-            TableBuilder::new(ui)
-                .column(Column::remainder())
-                .column(Column::remainder())
-                .column(Column::remainder())
-                .header(20.0, |mut header| {
-                    header.col(|ui| {
-                        ui.heading("Title");
-                    });
-
-                    header.col(|ui| {
-                        ui.heading("Artist");
-                    });
-
-                    header.col(|ui| {
-                        ui.heading("Album");
-                    });
-                })
-                .body(|body| {
-                    body.rows(20.0, songs.len(), |mut row| {
-                        let song_index = row.index();
-                        let song = &songs[song_index];
-
-                        row.col(|ui| {
-                            let button = Button::new(&song.get_or_load_song_data().title)
-                                .selected(selected_songs.is_selected(song_index))
-                                .frame(true)
-                                .frame_when_inactive(false);
-
-                            let button_response = ui.add(button);
-
-                            if button_response.clicked() {
-                                current_playlist.select_single(song_index);
-                            }
-
-                            if button_response.double_clicked() {
-                                current_playlist.start_play_song(song_index, volume as f32 / 100.);
-                            }
+                TableBuilder::new(ui)
+                    .column(Column::remainder())
+                    .column(Column::remainder())
+                    .column(Column::remainder())
+                    .header(20.0, |mut header| {
+                        header.col(|ui| {
+                            ui.heading("Title");
                         });
 
-                        row.col(|ui| {
-                            ui.label(&song.get_or_load_song_data().artist);
+                        header.col(|ui| {
+                            ui.heading("Artist");
                         });
 
-                        row.col(|ui| {
-                            ui.label(&song.get_or_load_song_data().album);
+                        header.col(|ui| {
+                            ui.heading("Album");
+                        });
+                    })
+                    .body(|body| {
+                        body.rows(20.0, songs.len(), |mut row| {
+                            let song_index = row.index();
+                            let song = &songs[song_index];
+
+                            row.col(|ui| {
+                                let button = Button::new(&song.get_or_load_song_data().title)
+                                    .selected(selected_songs.is_selected(song_index))
+                                    .frame(true)
+                                    .frame_when_inactive(false);
+
+                                let button_response = ui.add(button);
+
+                                if button_response.clicked() {
+                                    current_playlist.select_single(song_index);
+                                }
+
+                                if button_response.double_clicked() {
+                                    current_playlist
+                                        .start_play_song(song_index, volume as f32 / 100.);
+                                }
+                            });
+
+                            row.col(|ui| {
+                                ui.label(&song.get_or_load_song_data().artist);
+                            });
+
+                            row.col(|ui| {
+                                ui.label(&song.get_or_load_song_data().album);
+                            });
                         });
                     });
-                });
+            });
         });
     }
 

@@ -1,5 +1,7 @@
 mod master;
+pub(crate) mod song_data;
 
+use crate::data::song::song_data::get_song_data_from_song_file;
 use crate::data::{NamedPathLike, PathNamed};
 use crate::{read_rwlock, write_rwlock, ReadWrapper};
 use serbytes::prelude::SerBytes;
@@ -19,12 +21,23 @@ enum TagType {
     Dynamic(String),
 }
 
-#[derive(SerBytes, Clone, Debug, Default)]
+#[derive(SerBytes, Clone, Debug)]
 pub struct SongData {
     pub artist: String,
     pub album: String,
     pub title: String,
     custom_song_tags: HashMap<TagType, SongTagValue>,
+}
+
+impl Default for SongData {
+    fn default() -> Self {
+        Self {
+            artist: "Unknown Artist".to_string(),
+            album: "Unknown Album".to_string(),
+            title: String::new(),
+            custom_song_tags: HashMap::new(),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -56,11 +69,16 @@ impl Song {
         if **read_rwlock(&self.has_loaded_song_data) {
             read_rwlock(&self.song_data)
         } else {
-            let song_data_loaded =
+            let song_data =
                 SongData::from_vec(fs::read(&self.song_data_path).expect("Read song data file"))
-                    .unwrap_or(SongData::default());
+                    .unwrap_or_else(|_| {
+                        let mut sd = SongData::default();
+                        get_song_data_from_song_file(self, &mut sd);
 
-            **write_rwlock(&self.song_data) = song_data_loaded;
+                        sd
+                    });
+
+            **write_rwlock(&self.song_data) = song_data;
 
             **write_rwlock(&self.has_loaded_song_data) = true;
 

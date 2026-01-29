@@ -2,6 +2,7 @@ pub mod manager;
 mod queue;
 
 use crate::data::playlist::manager::{MusicCommand, MusicManager};
+use crate::data::song::song_data::get_song_data_from_song_file;
 use crate::data::song::Song;
 use crate::data::{unwrap_inner_ref, NamedPathLike, PathNamed};
 use crate::paths::{song_file, songs_dir};
@@ -16,11 +17,6 @@ use std::io::{Read, Write};
 use std::ops::{Deref, RangeInclusive};
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
-use symphonia::core::formats::FormatOptions;
-use symphonia::core::io::{MediaSourceStream, MediaSourceStreamOptions};
-use symphonia::core::meta::{MetadataOptions, StandardTagKey, Value};
-use symphonia::core::probe::Hint;
-use symphonia::default::get_probe;
 
 #[derive(SerBytes)]
 struct PlaylistData {
@@ -217,21 +213,24 @@ impl Playlist {
 
                 for song in self.get_or_load_songs_unfiltered().iter() {
                     let song_data = song.get_or_load_song_data();
-                    let strings_to_search: &[String] = match parsed_search.search_type {
-                        ParsedSearchType::Title => &[song_data.title],
+                    let strings_to_search: &[&String] = match parsed_search.search_type {
+                        ParsedSearchType::Title => &[&song_data.title],
 
-                        ParsedSearchType::Album => &[song_data.album],
+                        ParsedSearchType::Album => &[&song_data.album],
 
-                        ParsedSearchType::Artist => &[song_data.artist],
+                        ParsedSearchType::Artist => &[&song_data.artist],
 
-                        ParsedSearchType::Any => &[song_data.title, song_data.album, song_data.artist]
+                        ParsedSearchType::Any => {
+                            &[&song_data.title, &song_data.album, &song_data.artist]
+                        }
                     };
 
-                    let mut valid_search = true;
+                    let mut valid_search = false;
 
                     for str_search_to in strings_to_search {
-                        if !str_search_to.to_lowercase().contains(&parsed_search.value) {
-                            valid_search = false;
+                        let search_to_lower = str_search_to.to_lowercase();
+                        if search_to_lower.contains(&parsed_search.value_lower) {
+                            valid_search = true;
                             break;
                         }
                     }
@@ -347,74 +346,10 @@ impl Playlist {
 
                 let song = Song::new(PathNamed::new(new_song_path));
 
-                let mss_options = MediaSourceStreamOptions::default();
-
-                let mss = MediaSourceStream::new(Box::new(song_file), mss_options);
-
                 {
                     let mut song_data = write_rwlock(&song.song_data);
 
-                    match get_probe().format(
-                        Hint::new().with_extension(&ext),
-                        mss,
-                        &FormatOptions::default(),
-                        &MetadataOptions::default(),
-                    ) {
-                        Ok(mut probe_result) => {
-                            if let Some(meta) = probe_result.metadata.get() {
-                                if let Some(meta_revision) = meta.current() {
-                                    for tag in meta_revision.tags() {
-                                        if let Some(std_key) = tag.std_key {
-                                            match std_key {
-                                                StandardTagKey::Artist => match tag.value {
-                                                    Value::String(ref artist) => {
-                                                        song_data.artist = artist.clone();
-                                                    }
-
-                                                    _ => {
-                                                        unreachable!()
-                                                    }
-                                                },
-
-                                                StandardTagKey::Album => match tag.value {
-                                                    Value::String(ref album) => {
-                                                        song_data.album = album.clone();
-                                                    }
-
-                                                    _ => {
-                                                        unreachable!()
-                                                    }
-                                                },
-
-                                                StandardTagKey::TrackTitle => match tag.value {
-                                                    Value::String(ref title) => {
-                                                        song_data.title = title.clone();
-                                                    }
-
-                                                    _ => {
-                                                        unreachable!()
-                                                    }
-                                                },
-
-                                                _ => {}
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        Err(error) => {
-                            println!(
-                                "failed getting format for {:?}; error: {}",
-                                song.path(),
-                                error
-                            );
-                        }
-                    }
-
-                    fs::write(&song.song_data_path, song_data.to_bb().buf())
-                        .expect("Clean write to song data file");
+                    get_song_data_from_song_file(&song, &mut song_data);
                 }
 
                 **write_rwlock(&song.has_loaded_song_data) = true;
@@ -505,7 +440,7 @@ impl Playlist {
 
 #[derive(Debug)]
 struct ParsedSearch {
-    value: String,
+    value_lower: String,
     search_type: ParsedSearchType,
 }
 
@@ -514,7 +449,7 @@ enum ParsedSearchType {
     Title,
     Artist,
     Album,
-    Any
+    Any,
 }
 
 impl ParsedSearch {
@@ -537,8 +472,8 @@ impl ParsedSearch {
             None
         };
 
-        search_res.map(|(search_type, search_value)| ParsedSearch {
-            value: search_value,
+        search_res.map(|(search_type, value_lower)| ParsedSearch {
+            value_lower,
             search_type,
         })
     }
