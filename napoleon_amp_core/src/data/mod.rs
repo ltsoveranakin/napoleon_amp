@@ -1,6 +1,8 @@
 use std::cell::{Ref, RefMut};
 use std::fs::{create_dir_all, File};
+use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
+use std::{fs, io};
 
 pub mod folder;
 pub mod playlist;
@@ -18,7 +20,7 @@ pub struct PathNamed {
 impl PathNamed {
     /// Panics if conversion from OsStr to str fails (invalid utf8)
     ///
-    /// Panics if unable to create directories
+    /// Panics if unable to create directories at the system level
     pub(super) fn new(path: PathBuf) -> Self {
         if !path.try_exists().expect("TODO: HANDLE ME") {
             println!("create directories: {:?}", path);
@@ -49,6 +51,29 @@ impl PathNamed {
 
     fn extend<P: AsRef<Path>>(&self, ext: P) -> Self {
         Self::new(self.path.join(ext))
+    }
+
+    /// Renames both the name and the path
+    ///
+    /// Returns Err if a path with that name already exists
+
+    pub(crate) fn rename(&mut self, new_name: String) -> io::Result<()> {
+        let path_str = self
+            .path
+            .to_str()
+            .expect("Unable to convert path to valid utf8 string");
+        let new_path = PathBuf::new().join(path_str.replace(&self.name, &new_name));
+
+        if fs::exists(&new_path)? {
+            return Err(ErrorKind::InvalidInput.into());
+        }
+
+        fs::rename(&self.path, &new_path)?;
+
+        self.name = new_name;
+        self.path = new_path;
+
+        Ok(())
     }
 }
 

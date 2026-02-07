@@ -8,20 +8,6 @@ use crate::napoleon_client::ui::playlist_panel::PlaylistPanel;
 
 use napoleon_amp_core::instance::NapoleonInstance;
 
-enum CreateFolderContentDialogVariant {
-    SubFolder,
-    Playlist,
-}
-
-struct CreateFolderContentDialog {
-    variant: CreateFolderContentDialogVariant,
-    name: String,
-}
-
-enum Dialog {
-    CreateFolderContent(CreateFolderContentDialog),
-}
-
 pub struct NapoleonClientApp {
     core_instance: NapoleonInstance,
     folder_list: FolderList,
@@ -44,10 +30,9 @@ impl NapoleonClientApp {
 }
 
 impl App for NapoleonClientApp {
-    fn update(&mut self, ctx: &Context, frame: &mut Frame) {
+    fn update(&mut self, ctx: &Context, _: &mut Frame) {
         SidePanel::left("folder_list").show(ctx, |ui| {
-            self.folder_list
-                .render(ui, &mut self.playlist_panel, &mut self.core_instance);
+            self.folder_list.render(ui, &mut self.playlist_panel);
         });
 
         if let Some(ref mut playlist_panel) = self.playlist_panel {

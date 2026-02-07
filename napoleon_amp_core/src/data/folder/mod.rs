@@ -114,7 +114,8 @@ impl Folder {
                     FolderContentVariant::Playlist(playlist) => {
                         match playlist.variant {
                             PlaylistVariant::PlaylistFile => {
-                                fs::remove_file(playlist.path()).expect("Delete file successfully");
+                                fs::remove_file(&*playlist.get_path_name_ref())
+                                    .expect("Delete file successfully");
                             }
 
                             PlaylistVariant::SongFolder => {

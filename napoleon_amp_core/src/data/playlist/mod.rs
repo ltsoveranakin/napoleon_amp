@@ -11,12 +11,12 @@ use rodio::Source;
 use serbytes::prelude::SerBytes;
 use std::cell::{Cell, Ref, RefCell};
 use std::collections::LinkedList;
-use std::fs;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::ops::{Deref, RangeInclusive};
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
+use std::{fs, io};
 
 #[derive(SerBytes)]
 struct PlaylistData {
@@ -103,7 +103,7 @@ impl SelectedSongsVariant {
 
 #[derive(Debug)]
 pub struct Playlist {
-    path_named: PathNamed,
+    path_named: RefCell<PathNamed>,
     songs: Arc<RwLock<Vec<Song>>>,
     has_loaded_songs: Cell<bool>,
     music_manager: RefCell<Option<MusicManager>>,
@@ -115,7 +115,7 @@ pub struct Playlist {
 impl Playlist {
     fn new(path_named: PathNamed, variant: PlaylistVariant) -> Self {
         Self {
-            path_named,
+            path_named: RefCell::new(path_named),
             songs: Arc::new(RwLock::new(Vec::new())),
             has_loaded_songs: Cell::new(false),
             music_manager: RefCell::new(None),
@@ -155,11 +155,12 @@ impl Playlist {
         } else {
             let loaded_song_file_names = match self.variant {
                 PlaylistVariant::PlaylistFile => {
-                    let playlist_data = if let Ok(file_buf) = fs::read(&self.path_named.path) {
-                        PlaylistData::from_vec(file_buf).unwrap_or(PlaylistData::new_empty())
-                    } else {
-                        PlaylistData::new_empty()
-                    };
+                    let playlist_data =
+                        if let Ok(file_buf) = fs::read(&self.path_named.borrow().path) {
+                            PlaylistData::from_vec(file_buf).unwrap_or(PlaylistData::new_empty())
+                        } else {
+                            PlaylistData::new_empty()
+                        };
 
                     playlist_data.songs_file_names
                 }
@@ -397,7 +398,13 @@ impl Playlist {
         }
     }
 
-    pub fn rename(&self) {}
+    pub fn get_path_name_ref(&self) -> Ref<'_, PathNamed> {
+        self.path_named.borrow()
+    }
+
+    pub fn rename(&self, new_name: String) -> io::Result<()> {
+        self.path_named.borrow_mut().rename(new_name)
+    }
 
     pub(crate) fn import_existing_songs(&self, new_songs: &[Song]) {
         {
@@ -422,7 +429,7 @@ impl Playlist {
 
         let mut file = File::options()
             .write(true)
-            .open(&self.path_named)
+            .open(&*self.path_named.borrow())
             .expect("Failed to open file in write mode");
 
         let songs = self.get_or_load_songs();
@@ -516,8 +523,8 @@ impl ParsedSearch {
     }
 }
 
-impl NamedPathLike for Playlist {
-    fn get_path_named(&self) -> &PathNamed {
-        &self.path_named
-    }
-}
+// impl NamedPathLike for Playlist {
+//     fn get_path_named(&self) -> &PathNamed {
+//         &self.path_named
+//     }
+// }
