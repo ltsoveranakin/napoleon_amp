@@ -230,6 +230,9 @@ impl Playlist {
                     for str_search_to in strings_to_search {
                         let search_to_lower = str_search_to.to_lowercase();
                         if search_to_lower.contains(&parsed_search.value_lower) {
+                            valid_search = !parsed_search.not;
+                            break;
+                        } else if parsed_search.not {
                             valid_search = true;
                             break;
                         }
@@ -442,6 +445,7 @@ impl Playlist {
 struct ParsedSearch {
     value_lower: String,
     search_type: ParsedSearchType,
+    not: bool,
 }
 
 #[derive(Debug)]
@@ -452,39 +456,66 @@ enum ParsedSearchType {
     Any,
 }
 
+struct Terms {
+    search_type: String,
+    search_value: String,
+    not: bool,
+}
+
 impl ParsedSearch {
     fn parse_search_str(search_str: &str) -> Option<Self> {
-        let search_res = if !search_str.starts_with("$") {
-            Some((ParsedSearchType::Any, search_str.to_lowercase()))
-        } else if let Some((search_type, search_value)) = Self::try_get_terms(search_str) {
-            match &*search_type {
-                "title" => Some((ParsedSearchType::Title, search_value)),
+        if !search_str.starts_with("$") {
+            Some(ParsedSearch {
+                value_lower: search_str.to_lowercase(),
+                search_type: ParsedSearchType::Any,
+                not: false,
+            })
+        } else if let Some(Terms {
+            search_type,
+            search_value,
+            not,
+        }) = Self::try_get_terms(search_str)
+        {
+            let parsed_search_type = match &*search_type {
+                "title" => Some(ParsedSearchType::Title),
 
-                "artist" => Some((ParsedSearchType::Artist, search_value)),
+                "artist" => Some(ParsedSearchType::Artist),
 
-                "album" => Some((ParsedSearchType::Album, search_value)),
+                "album" => Some(ParsedSearchType::Album),
 
-                "any" => Some((ParsedSearchType::Any, search_value)),
+                "any" => Some(ParsedSearchType::Any),
 
                 _ => None,
-            }
+            };
+
+            parsed_search_type.map(|search_type| ParsedSearch {
+                value_lower: search_value,
+                search_type,
+                not,
+            })
         } else {
             None
-        };
-
-        search_res.map(|(search_type, value_lower)| ParsedSearch {
-            value_lower,
-            search_type,
-        })
+        }
     }
 
-    fn try_get_terms(search_str: &str) -> Option<(String, String)> {
+    fn try_get_terms(search_str: &str) -> Option<Terms> {
         let search_spl = &mut search_str[1..].split(":");
 
-        let search_type = search_spl.next()?.to_lowercase();
+        let mut search_type = search_spl.next()?.to_lowercase();
         let search_value = search_spl.next()?.to_lowercase();
 
-        Some((search_type, search_value))
+        let not = if search_type.starts_with("!") {
+            search_type.remove(0);
+            true
+        } else {
+            false
+        };
+
+        Some(Terms {
+            search_type,
+            search_value,
+            not,
+        })
     }
 }
 

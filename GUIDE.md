@@ -38,10 +38,15 @@ To use the custom syntax, prefix the search with "$" and then the attribute name
 artist", "album", and "any").
 Followed by a colon and the filter term.
 
-To filter all tracks by "Michael Jackson" the following query can be used:
-$artist:michael jackson
+To filter all tracks by "Daft Punk" the following query can be used:
+$artist:daft punk
 
-It is important to note that case is ignored for all search queries.
+You can also exclude specific attributes with the ! symbol.
+
+To filter out all tracks by "Daft Punk" the following query can be used:
+$!artist:daft punk
+
+Case is ignored for all search queries.
 
 ### Queue:
 
