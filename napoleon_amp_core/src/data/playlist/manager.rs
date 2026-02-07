@@ -170,7 +170,12 @@ impl MusicManager {
                     if sink.empty() {
                         let songs = read_rwlock(&songs);
                         let song_index = read_rwlock(&queue).get_current();
-                        let song = songs.get(song_index).expect("Invalid song index given");
+                        let song = if let Some(song) = songs.get(song_index) {
+                            song
+                        } else {
+                            write_rwlock(&queue).reset_queue();
+                            continue;
+                        };
 
                         let file = File::open(song.path())
                             .expect(&format!("Unable to open song file for: {:?}", song.path()));

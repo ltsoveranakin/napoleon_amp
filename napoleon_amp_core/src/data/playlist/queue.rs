@@ -20,6 +20,14 @@ impl Queue {
         }
     }
 
+    pub fn current_queue(&self) -> &[usize] {
+        &self.indexes[self.index..]
+    }
+
+    pub fn index(&self) -> usize {
+        self.index
+    }
+
     pub(super) fn next(&mut self) -> usize {
         self.index += 1;
         self.index
@@ -38,11 +46,7 @@ impl Queue {
         self.index = index;
     }
 
-    pub fn current_queue(&self) -> &[usize] {
-        &self.indexes[self.index..]
-    }
-
-    pub fn index(&self) -> usize {
-        self.index
+    pub(super) fn reset_queue(&mut self) {
+        self.index = 0;
     }
 }

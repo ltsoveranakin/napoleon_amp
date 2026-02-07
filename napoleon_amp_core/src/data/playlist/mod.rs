@@ -338,18 +338,9 @@ impl Playlist {
 
                 fs::copy(original_song_path, &new_song_path).expect("Failed copy song to dest");
 
-                let song_file = File::open(&new_song_path).expect("Open new song file");
-
                 if delete_original {
                     fs::remove_file(original_song_path).expect("Failed to remove original file");
                 }
-
-                let ext = new_song_path
-                    .extension()
-                    .unwrap()
-                    .to_str()
-                    .unwrap()
-                    .to_string();
 
                 let song = Song::new(PathNamed::new(new_song_path));
 
@@ -405,6 +396,8 @@ impl Playlist {
             music_manager.send_stop_command();
         }
     }
+
+    pub fn rename(&self) {}
 
     pub(crate) fn import_existing_songs(&self, new_songs: &[Song]) {
         {
