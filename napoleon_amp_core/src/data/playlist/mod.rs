@@ -168,15 +168,19 @@ impl Playlist {
                     let mut song_file_names = LinkedList::new();
                     for song_dir in fs::read_dir(songs_dir()).expect("Song directory to exist") {
                         if let Ok(song_dir) = song_dir {
-                            song_file_names.push_back(
-                                song_dir
-                                    .path()
-                                    .file_name()
-                                    .unwrap()
-                                    .to_str()
-                                    .unwrap()
-                                    .to_string(),
-                            );
+                            if let Some(ext) = song_dir.path().extension()
+                                && ext != "snap"
+                            {
+                                song_file_names.push_back(
+                                    song_dir
+                                        .path()
+                                        .file_name()
+                                        .unwrap()
+                                        .to_str()
+                                        .unwrap()
+                                        .to_string(),
+                                );
+                            }
                         }
                     }
 
