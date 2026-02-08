@@ -1,6 +1,6 @@
 use crate::data::playlist::PlaybackMode;
 use crate::data::song::Song;
-use rand::prelude::SliceRandom;
+use rand::Rng;
 
 #[derive(Clone, Debug)]
 pub struct Queue {
@@ -22,9 +22,15 @@ impl Queue {
             }
 
             PlaybackMode::Shuffle => {
-                start_index = 0;
                 let mut rng = rand::rng();
-                indexes.shuffle(&mut rng);
+                indexes.swap(start_index, 0);
+
+                for i in 1..indexes.len() {
+                    let swap_to = rng.random_range(1..indexes.len());
+                    indexes.swap(i, swap_to);
+                }
+
+                start_index = 0;
             }
         }
 
@@ -38,10 +44,6 @@ impl Queue {
         &self.indexes[self.index..]
     }
 
-    pub fn index(&self) -> usize {
-        self.index
-    }
-
     pub(super) fn next(&mut self) -> usize {
         self.index += 1;
         self.index
@@ -53,7 +55,7 @@ impl Queue {
     }
 
     pub(super) fn get_current(&self) -> usize {
-        self.index
+        self.indexes[self.index]
     }
 
     pub(super) fn set_index(&mut self, index: usize) {
