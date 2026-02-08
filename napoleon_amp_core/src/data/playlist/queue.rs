@@ -46,14 +46,22 @@ impl Queue {
 
     pub(super) fn next(&mut self) {
         self.index += 1;
+
+        if self.index >= self.indexes.len() {
+            self.index = 0;
+        }
+    }
+
+    fn sub_index(&mut self, amt: usize) {
+        self.index = self.index.checked_sub(amt).unwrap_or(0);
     }
 
     pub(super) fn previous(&mut self) {
-        self.index -= 2;
+        self.sub_index(2);
     }
 
     pub(super) fn restart_song(&mut self) {
-        self.index -= 1;
+        self.sub_index(1);
     }
 
     pub(super) fn get_current(&self) -> usize {
