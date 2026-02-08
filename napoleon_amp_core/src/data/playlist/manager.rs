@@ -154,7 +154,7 @@ impl MusicManager {
                                     }
 
                                     SwitchSongMusicCommand::Next => {
-                                        queue.next();
+                                        // Queue has already incremented
                                     }
 
                                     SwitchSongMusicCommand::SkipToQueueIndex(index) => {
@@ -224,7 +224,7 @@ impl MusicManager {
         })
     }
 
-    pub fn queue(&self) -> ReadWrapper<Queue> {
+    pub fn queue(&self) -> ReadWrapper<'_, Queue> {
         read_rwlock(&self.queue)
     }
 
