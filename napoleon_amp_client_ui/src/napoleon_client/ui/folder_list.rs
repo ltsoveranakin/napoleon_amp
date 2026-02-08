@@ -210,7 +210,9 @@ impl FolderList {
 
             let mut delete_index = None;
 
-            for (i, folder_content) in Folder::get_or_load_content(folder).iter().enumerate() {
+            for (current_index, folder_content) in
+                Folder::get_or_load_content(folder).iter().enumerate()
+            {
                 ui.separator();
 
                 match &folder_content.variant {
@@ -245,23 +247,23 @@ impl FolderList {
                                 }
                             }
 
-                            if ui.button("Delete Playlist").clicked() {
-                                delete_index = Some(i);
-                            }
+                            Self::popup_delete_button(ui, current_index, &mut delete_index)
                         });
                     }
 
                     FolderContentVariant::SubFolder(folder) => {
                         ui.horizontal(|ui| {
-                            if ui
-                                .collapsing(folder.name(), |ui| {
-                                    self.render_folder_content(ui, folder, playlist_panel, true);
-                                })
-                                .header_response
-                                .middle_clicked()
-                            {
+                            let folder_item = ui.collapsing(folder.name(), |ui| {
+                                self.render_folder_content(ui, folder, playlist_panel, true);
+                            });
+
+                            if folder_item.header_response.middle_clicked() {
                                 next_folder_folder = Some(Rc::clone(folder));
                             }
+
+                            Popup::context_menu(&folder_item.header_response).show(|ui| {
+                                Self::popup_delete_button(ui, current_index, &mut delete_index)
+                            })
                         });
                     }
                 }
@@ -279,6 +281,12 @@ impl FolderList {
                 *playlist_panel = Some(PlaylistPanel::new(next_playlist_content));
             }
         });
+    }
+
+    fn popup_delete_button(ui: &mut Ui, index: usize, delete_index: &mut Option<usize>) {
+        if ui.button("Delete").clicked() {
+            *delete_index = Some(index);
+        }
     }
 
     fn playlist_button(&mut self, ui: &mut Ui, label: &str) -> Response {
