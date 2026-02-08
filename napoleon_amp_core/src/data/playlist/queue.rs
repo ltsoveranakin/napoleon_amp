@@ -44,14 +44,16 @@ impl Queue {
         &self.indexes[self.index..]
     }
 
-    pub(super) fn next(&mut self) -> usize {
+    pub(super) fn next(&mut self) {
         self.index += 1;
-        self.index
     }
 
-    pub(super) fn previous(&mut self) -> usize {
+    pub(super) fn previous(&mut self) {
         self.index -= 2;
-        self.index
+    }
+
+    pub(super) fn restart_song(&mut self) {
+        self.index -= 1;
     }
 
     pub(super) fn get_current(&self) -> usize {

@@ -144,13 +144,15 @@ impl MusicManager {
                                 sink.play();
                             }
                             MusicCommand::SwitchSong(switch_song_command) => {
-                                sink.clear();
-
                                 let mut queue = write_rwlock(&queue);
 
                                 match switch_song_command {
                                     SwitchSongMusicCommand::Previous => {
-                                        queue.previous();
+                                        if sink.get_pos().as_secs() > 3 {
+                                            queue.restart_song();
+                                        } else {
+                                            queue.previous();
+                                        }
                                     }
 
                                     SwitchSongMusicCommand::Next => {
@@ -161,6 +163,8 @@ impl MusicManager {
                                         queue.set_index_from_queue(index);
                                     }
                                 }
+
+                                sink.clear();
                             }
 
                             MusicCommand::SetVolume(volume) => {
@@ -233,8 +237,6 @@ impl MusicManager {
     }
 
     /// Gets the current playhead position in the song.
-    ///
-    /// Returns None if there is no music active
 
     pub fn get_song_pos(&self) -> Duration {
         self.sink.get_pos()
@@ -246,7 +248,7 @@ impl MusicManager {
 
     /// Returns the current song status, this can deadlock if the song changes at the same time, instead use [`Self::get_song_status_cloned`] if cloning is acceptable
 
-    pub fn get_song_status_ref(&self) -> ReadWrapper<SongStatus> {
+    pub fn get_song_status_ref(&self) -> ReadWrapper<'_, SongStatus> {
         read_rwlock(&self.song_status)
     }
 
