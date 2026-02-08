@@ -56,6 +56,16 @@ impl PlaylistPanel {
                     });
                 }
             }
+
+            if ui
+                .button(format!(
+                    "Playback Mode: {}",
+                    self.current_playlist.playback_mode()
+                ))
+                .clicked()
+            {
+                self.current_playlist.next_playback_mode();
+            }
         } else {
             ui.heading("All Songs");
         }
