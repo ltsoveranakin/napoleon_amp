@@ -78,19 +78,6 @@ impl Folder {
         contents
     }
 
-    fn add_content(this: &Rc<Self>, folder_content_variant: FolderContentVariant) {
-        if this.contents.borrow().is_none() {
-            Self::get_or_load_content(this);
-        }
-
-        let mut contents = this.contents.borrow_mut();
-
-        contents
-            .as_mut()
-            .expect("Loaded contents if none; Guaranteed")
-            .push(Rc::new(FolderContent::new(folder_content_variant)))
-    }
-
     pub fn add_folder(this: &Rc<Self>, folder_name: String) {
         let path_named = this.path_named.extend(format!("{}/", folder_name));
         let folder = Folder::new(path_named, Some(Rc::downgrade(this)));
@@ -129,11 +116,24 @@ impl Folder {
                     }
 
                     FolderContentVariant::SubFolder(folder) => {
-                        todo!()
+                        fs::remove_dir_all(folder.path()).expect("Delete folder successfully");
                     }
                 }
             }
         }
+    }
+
+    fn add_content(this: &Rc<Self>, folder_content_variant: FolderContentVariant) {
+        if this.contents.borrow().is_none() {
+            Self::get_or_load_content(this);
+        }
+
+        let mut contents = this.contents.borrow_mut();
+
+        contents
+            .as_mut()
+            .expect("Loaded contents if none; Guaranteed")
+            .push(Rc::new(FolderContent::new(folder_content_variant)))
     }
 }
 
