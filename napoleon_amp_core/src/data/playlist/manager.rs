@@ -1,4 +1,5 @@
 use crate::data::playlist::queue::Queue;
+use crate::data::playlist::PlaybackMode;
 use crate::data::song::Song;
 use crate::data::NamedPathLike;
 use crate::{read_rwlock, write_rwlock, ReadWrapper};
@@ -88,6 +89,7 @@ impl MusicManager {
         songs_arc: Arc<RwLock<Vec<Song>>>,
         start_index: usize,
         volume: f32,
+        playback_mode: PlaybackMode,
     ) -> Option<Self> {
         let songs = read_rwlock(&songs_arc);
 
@@ -95,7 +97,7 @@ impl MusicManager {
             return None;
         }
 
-        let queue = Queue::new(start_index, &songs);
+        let queue = Queue::new(start_index, &songs, playback_mode);
 
         let (music_command_tx, music_command_rx) = mpsc::channel();
 

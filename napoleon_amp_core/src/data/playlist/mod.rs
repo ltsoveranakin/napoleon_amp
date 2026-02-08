@@ -4,13 +4,14 @@ mod queue;
 use crate::data::playlist::manager::{MusicCommand, MusicManager};
 use crate::data::song::song_data::get_song_data_from_song_file;
 use crate::data::song::Song;
-use crate::data::{unwrap_inner_ref, NamedPathLike, PathNamed};
+use crate::data::{unwrap_inner_ref, unwrap_inner_ref_mut, NamedPathLike, PathNamed};
 use crate::paths::{song_file, songs_dir};
 use crate::{read_rwlock, write_rwlock, ReadWrapper};
 use rodio::Source;
-use serbytes::prelude::SerBytes;
-use std::cell::{Cell, Ref, RefCell};
+use serbytes::prelude::{MayNotExistDefault, SerBytes};
+use std::cell::{Cell, Ref, RefCell, RefMut};
 use std::collections::LinkedList;
+use std::fmt::{Display, Formatter};
 use std::fs::File;
 use std::io::{Read, Write};
 use std::ops::{Deref, RangeInclusive};
@@ -18,9 +19,26 @@ use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 use std::{fs, io};
 
-#[derive(SerBytes)]
+#[derive(SerBytes, Default, Debug, Copy, Clone)]
+pub enum PlaybackMode {
+    #[default]
+    Sequential,
+    Shuffle,
+}
+
+impl Display for PlaybackMode {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Sequential => f.write_str("Sequential"),
+            Self::Shuffle => f.write_str("Shuffle"),
+        }
+    }
+}
+
+#[derive(SerBytes, Debug)]
 struct PlaylistData {
-    songs_file_names: Vec<String>,
+    song_file_names: Vec<String>,
+    playback_mode: MayNotExistDefault<PlaybackMode>,
 }
 
 impl PlaylistData {
@@ -30,7 +48,8 @@ impl PlaylistData {
 
     fn new_capacity(cap: usize) -> Self {
         Self {
-            songs_file_names: Vec::with_capacity(cap),
+            song_file_names: Vec::with_capacity(cap),
+            playback_mode: MayNotExistDefault::default(),
         }
     }
 }
@@ -110,6 +129,7 @@ pub struct Playlist {
     pub variant: PlaylistVariant,
     songs_filtered: RefCell<Option<Vec<Song>>>,
     selected_songs: RefCell<SelectedSongsVariant>,
+    playlist_data: RefCell<Option<PlaylistData>>,
 }
 
 impl Playlist {
@@ -122,6 +142,7 @@ impl Playlist {
             variant,
             songs_filtered: RefCell::new(None),
             selected_songs: RefCell::new(SelectedSongsVariant::None),
+            playlist_data: RefCell::new(None),
         }
     }
 
@@ -153,26 +174,21 @@ impl Playlist {
         if self.has_loaded_songs.get() {
             read_rwlock(&self.songs)
         } else {
-            let loaded_song_file_names = match self.variant {
-                PlaylistVariant::PlaylistFile => {
-                    let playlist_data =
-                        if let Ok(file_buf) = fs::read(&self.path_named.borrow().path) {
-                            PlaylistData::from_vec(file_buf).unwrap_or(PlaylistData::new_empty())
-                        } else {
-                            PlaylistData::new_empty()
-                        };
+            let playlist_data = self.get_or_load_playlist_data();
 
-                    playlist_data.songs_file_names
-                }
+            let mut loaded_song_file_names_backing = Vec::new();
+
+            let song_file_names = match self.variant {
+                PlaylistVariant::PlaylistFile => &playlist_data.song_file_names,
 
                 PlaylistVariant::SongFolder => {
-                    let mut song_file_names = LinkedList::new();
+                    // TODO: preallocate loaded_song_file_names_backing
                     for song_dir in fs::read_dir(songs_dir()).expect("Song directory to exist") {
                         if let Ok(song_dir) = song_dir {
                             if let Some(ext) = song_dir.path().extension()
                                 && ext != "snap"
                             {
-                                song_file_names.push_back(
+                                loaded_song_file_names_backing.push(
                                     song_dir
                                         .path()
                                         .file_name()
@@ -185,18 +201,18 @@ impl Playlist {
                         }
                     }
 
-                    song_file_names.into_iter().collect()
+                    &loaded_song_file_names_backing
                 }
             };
 
             {
+                // TODO: clean up with Vec::map
                 let mut songs = write_rwlock(&self.songs);
 
-                songs.reserve_exact(loaded_song_file_names.len());
+                songs.reserve_exact(song_file_names.len());
 
-                for song_name in loaded_song_file_names {
-                    let song_path = song_file(&song_name);
-                    // println!("song_name {:?} sp {:?}", song_name, song_path);
+                for song_name in song_file_names.iter() {
+                    let song_path = song_file(song_name);
 
                     songs.push(Song::new(PathNamed::new(song_path)));
                 }
@@ -211,7 +227,6 @@ impl Playlist {
     pub fn set_search_query_filter(&self, search_str: &str) {
         if !search_str.is_empty() {
             let filtered = if let Some(parsed_search) = ParsedSearch::parse_search_str(search_str) {
-                println!("parsed search: {:?}", parsed_search);
                 // TODO: use vec here instead maybe? Can you pre-alloc and shrink after?
 
                 let mut songs_filtered_ll = LinkedList::new();
@@ -293,10 +308,6 @@ impl Playlist {
 
     pub fn get_selected_songs_variant(&self) -> SelectedSongsVariant {
         self.selected_songs.borrow().clone()
-    }
-
-    fn set_selected_songs(&self, selected_songs: SelectedSongsVariant) {
-        *self.selected_songs.borrow_mut() = selected_songs;
     }
 
     pub fn import_songs(
@@ -381,9 +392,14 @@ impl Playlist {
             current_handle.join().expect("Unwrap for panic in thread");
         }
 
-        // write_rwlock(&self.queue).set_starting_index(song_index);
+        let playlist_data = self.get_or_load_playlist_data();
 
-        let music_manager = MusicManager::try_create(Arc::clone(&self.songs), song_index, volume);
+        let music_manager = MusicManager::try_create(
+            Arc::clone(&self.songs),
+            song_index,
+            volume,
+            *playlist_data.playback_mode,
+        );
 
         self.music_manager.replace(music_manager);
     }
@@ -406,6 +422,28 @@ impl Playlist {
         self.path_named.borrow_mut().rename(new_name)
     }
 
+    pub fn set_playback_mode(&self, playback_mode: PlaybackMode) {
+        {
+            let mut playlist_data = self.get_or_load_playlist_data_mut();
+
+            playlist_data.playback_mode = playback_mode.into();
+        }
+        self.save_contents();
+    }
+
+    pub fn next_playback_mode(&self) {
+        let next_playback_mode = match self.playback_mode() {
+            PlaybackMode::Sequential => PlaybackMode::Shuffle,
+            PlaybackMode::Shuffle => PlaybackMode::Sequential,
+        };
+
+        self.set_playback_mode(next_playback_mode);
+    }
+
+    pub fn playback_mode(&self) -> PlaybackMode {
+        self.get_or_load_playlist_data().playback_mode.into_inner()
+    }
+
     pub(crate) fn import_existing_songs(&self, new_songs: &[Song]) {
         {
             let mut playlist_songs = write_rwlock(&self.songs);
@@ -417,6 +455,48 @@ impl Playlist {
         }
 
         self.save_contents();
+    }
+
+    fn set_selected_songs(&self, selected_songs: SelectedSongsVariant) {
+        *self.selected_songs.borrow_mut() = selected_songs;
+    }
+
+    fn get_or_load_playlist_data(&self) -> Ref<'_, PlaylistData> {
+        let playlist_data = self.playlist_data.borrow();
+
+        if playlist_data.is_some() {
+            unwrap_inner_ref(playlist_data)
+        } else {
+            drop(playlist_data);
+
+            self.load_playlist_data_from_file();
+
+            unwrap_inner_ref(self.playlist_data.borrow())
+        }
+    }
+
+    fn get_or_load_playlist_data_mut(&self) -> RefMut<'_, PlaylistData> {
+        let playlist_data = self.playlist_data.borrow_mut();
+
+        if playlist_data.is_some() {
+            unwrap_inner_ref_mut(playlist_data)
+        } else {
+            drop(playlist_data);
+
+            self.load_playlist_data_from_file();
+
+            unwrap_inner_ref_mut(self.playlist_data.borrow_mut())
+        }
+    }
+
+    fn load_playlist_data_from_file(&self) {
+        let playlist_data = if let Ok(file_buf) = fs::read(&self.path_named.borrow().path) {
+            PlaylistData::from_vec(file_buf).unwrap_or(PlaylistData::new_empty())
+        } else {
+            PlaylistData::new_empty()
+        };
+
+        self.playlist_data.replace(Some(playlist_data));
     }
 
     /// Saves the list of songs to the file at `self.path_named`
@@ -434,10 +514,12 @@ impl Playlist {
 
         let songs = self.get_or_load_songs();
 
-        let mut playlist_data = PlaylistData::new_capacity(songs.len());
+        let mut playlist_data = self.get_or_load_playlist_data_mut();
+
+        playlist_data.song_file_names.clear();
 
         for song in songs.iter() {
-            playlist_data.songs_file_names.push(song.file_name())
+            playlist_data.song_file_names.push(song.file_name())
         }
 
         file.write_all(playlist_data.to_bb().buf())
