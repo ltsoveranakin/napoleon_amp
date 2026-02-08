@@ -158,7 +158,7 @@ impl MusicManager {
                                     }
 
                                     SwitchSongMusicCommand::SkipToQueueIndex(index) => {
-                                        queue.set_index(index);
+                                        queue.set_index_from_queue(index);
                                     }
                                 }
                             }

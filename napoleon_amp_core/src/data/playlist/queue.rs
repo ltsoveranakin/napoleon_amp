@@ -58,8 +58,8 @@ impl Queue {
         self.indexes[self.index]
     }
 
-    pub(super) fn set_index(&mut self, index: usize) {
-        self.index = index;
+    pub(super) fn set_index_from_queue(&mut self, index: usize) {
+        self.index += index;
     }
 
     pub(super) fn reset_queue(&mut self) {
