@@ -10,7 +10,6 @@ use crate::{read_rwlock, write_rwlock, ReadWrapper};
 use rodio::Source;
 use serbytes::prelude::{MayNotExistDefault, SerBytes};
 use std::cell::{Cell, Ref, RefCell, RefMut};
-use std::collections::LinkedList;
 use std::fmt::{Display, Formatter};
 use std::fs::File;
 use std::io::{Read, Write};
@@ -127,7 +126,7 @@ pub struct Playlist {
     has_loaded_songs: Cell<bool>,
     music_manager: RefCell<Option<MusicManager>>,
     pub variant: PlaylistVariant,
-    songs_filtered: RefCell<Option<Vec<Song>>>,
+    songs_filtered: Arc<RwLock<Vec<Song>>>,
     selected_songs: RefCell<SelectedSongsVariant>,
     playlist_data: RefCell<Option<PlaylistData>>,
 }
@@ -140,7 +139,7 @@ impl Playlist {
             has_loaded_songs: Cell::new(false),
             music_manager: RefCell::new(None),
             variant,
-            songs_filtered: RefCell::new(None),
+            songs_filtered: Arc::new(RwLock::new(Vec::new())),
             selected_songs: RefCell::new(SelectedSongsVariant::None),
             playlist_data: RefCell::new(None),
         }
@@ -160,13 +159,25 @@ impl Playlist {
 
     /// Gets the songs in the current playlist, with the filter if one is enabled
 
-    pub fn get_or_load_songs(&self) -> SongList<'_> {
-        let songs_filtered = self.songs_filtered.borrow();
+    pub fn get_or_load_songs(&self) -> ReadWrapper<'_, Vec<Song>> {
+        let songs_filtered = read_rwlock(&self.songs_filtered);
 
-        if songs_filtered.is_some() {
-            SongList::Filtered(unwrap_inner_ref(songs_filtered))
+        if songs_filtered.is_empty() {
+            self.get_or_load_songs_unfiltered()
         } else {
-            SongList::Unfiltered(self.get_or_load_songs_unfiltered())
+            songs_filtered
+        }
+    }
+
+    pub fn get_or_load_songs_arc(&self) -> Arc<RwLock<Vec<Song>>> {
+        let songs_filtered = read_rwlock(&self.songs_filtered);
+
+        if songs_filtered.is_empty() {
+            self.get_or_load_songs_unfiltered();
+
+            Arc::clone(&self.songs)
+        } else {
+            Arc::clone(&self.songs_filtered)
         }
     }
 
@@ -225,52 +236,48 @@ impl Playlist {
     }
 
     pub fn set_search_query_filter(&self, search_str: &str) {
-        if !search_str.is_empty() {
-            let filtered = if let Some(parsed_search) = ParsedSearch::parse_search_str(search_str) {
-                // TODO: use vec here instead maybe? Can you pre-alloc and shrink after?
+        let mut filtered_songs = write_rwlock(&self.songs_filtered);
+        filtered_songs.clear();
 
-                let mut songs_filtered_ll = LinkedList::new();
+        if search_str.is_empty() {
+            return;
+        }
 
-                for song in self.get_or_load_songs_unfiltered().iter() {
-                    let song_data = song.get_or_load_song_data();
-                    let strings_to_search: &[&String] = match parsed_search.search_type {
-                        ParsedSearchType::Title => &[&song_data.title],
+        let parsed_search = if let Some(parsed_search) = ParsedSearch::parse_search_str(search_str)
+        {
+            parsed_search
+        } else {
+            return;
+        };
 
-                        ParsedSearchType::Album => &[&song_data.album],
+        for song in self.get_or_load_songs_unfiltered().iter() {
+            let song_data = song.get_or_load_song_data();
+            let strings_to_search: &[&String] = match parsed_search.search_type {
+                ParsedSearchType::Title => &[&song_data.title],
 
-                        ParsedSearchType::Artist => &[&song_data.artist],
+                ParsedSearchType::Album => &[&song_data.album],
 
-                        ParsedSearchType::Any => {
-                            &[&song_data.title, &song_data.album, &song_data.artist]
-                        }
-                    };
+                ParsedSearchType::Artist => &[&song_data.artist],
 
-                    let mut valid_search = false;
-
-                    for str_search_to in strings_to_search {
-                        let search_to_lower = str_search_to.to_lowercase();
-                        if search_to_lower.contains(&parsed_search.value_lower) {
-                            valid_search = !parsed_search.not;
-                            break;
-                        } else if parsed_search.not {
-                            valid_search = true;
-                            break;
-                        }
-                    }
-
-                    if valid_search {
-                        songs_filtered_ll.push_back(song.clone());
-                    }
-                }
-
-                songs_filtered_ll.into_iter().collect()
-            } else {
-                Vec::new()
+                ParsedSearchType::Any => &[&song_data.title, &song_data.album, &song_data.artist],
             };
 
-            *self.songs_filtered.borrow_mut() = Some(filtered);
-        } else {
-            *self.songs_filtered.borrow_mut() = None;
+            let mut valid_search = false;
+
+            for str_search_to in strings_to_search {
+                let search_to_lower = str_search_to.to_lowercase();
+                if search_to_lower.contains(&parsed_search.value_lower) {
+                    valid_search = !parsed_search.not;
+                    break;
+                } else if parsed_search.not {
+                    valid_search = true;
+                    break;
+                }
+            }
+
+            if valid_search {
+                filtered_songs.push(song.clone());
+            }
         }
     }
 
@@ -395,7 +402,7 @@ impl Playlist {
         let playlist_data = self.get_or_load_playlist_data();
 
         let music_manager = MusicManager::try_create(
-            Arc::clone(&self.songs),
+            self.get_or_load_songs_arc(),
             song_index,
             volume,
             *playlist_data.playback_mode,
