@@ -217,7 +217,6 @@ impl Playlist {
             };
 
             {
-                // TODO: clean up with Vec::map
                 let mut songs = write_rwlock(&self.songs);
 
                 songs.reserve_exact(song_file_names.len());

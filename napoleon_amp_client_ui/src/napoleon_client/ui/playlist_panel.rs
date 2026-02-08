@@ -47,25 +47,27 @@ impl PlaylistPanel {
         if matches!(self.current_playlist.variant, PlaylistVariant::PlaylistFile) {
             ui.heading(self.current_playlist.get_path_name_ref().name());
 
-            #[cfg(not(target_os = "android"))]
-            if ui.button("Add Songs").clicked() {
-                if let Some(paths) = rfd::FileDialog::new().pick_files() {
-                    self.songs_imported = Some(SongsImported {
-                        paths,
-                        failed_song_indexes: None,
-                    });
+            ui.horizontal(|ui| {
+                #[cfg(not(target_os = "android"))]
+                if ui.button("Add Songs").clicked() {
+                    if let Some(paths) = rfd::FileDialog::new().pick_files() {
+                        self.songs_imported = Some(SongsImported {
+                            paths,
+                            failed_song_indexes: None,
+                        });
+                    }
                 }
-            }
 
-            if ui
-                .button(format!(
-                    "Playback Mode: {}",
-                    self.current_playlist.playback_mode()
-                ))
-                .clicked()
-            {
-                self.current_playlist.next_playback_mode();
-            }
+                if ui
+                    .button(format!(
+                        "Playback Mode: {}",
+                        self.current_playlist.playback_mode()
+                    ))
+                    .clicked()
+                {
+                    self.current_playlist.next_playback_mode();
+                }
+            });
         } else {
             ui.heading("All Songs");
         }
