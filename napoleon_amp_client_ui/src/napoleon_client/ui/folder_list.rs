@@ -199,10 +199,11 @@ impl FolderList {
             let mut next_folder = None;
             let mut next_playlist = None;
 
-            ui.separator();
-
-            if self.playlist_button(ui, "All Songs").clicked() {
-                next_playlist = Some(Rc::new(Playlist::all_songs()))
+            if folder.parent.is_none() {
+                if self.playlist_button(ui, "All Songs").clicked() {
+                    ui.separator();
+                    next_playlist = Some(Rc::new(Playlist::all_songs()))
+                }
             }
 
             self.render_sub_folder_content(
