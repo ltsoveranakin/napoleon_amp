@@ -385,39 +385,8 @@ impl Playlist {
         }
     }
 
-    pub(crate) fn start_play_song(&self, song_index: usize, volume: f32) {
-        if let Some(music_manager) = self.music_manager.take() {
-            let current_handle = music_manager.playing_handle;
-
-            let old_music_command_tx = music_manager.music_command_tx;
-
-            old_music_command_tx
-                .send(MusicCommand::Stop)
-                .expect("Current playing thread to be alive");
-
-            current_handle.join().expect("Unwrap for panic in thread");
-        }
-
-        let playlist_data = self.get_or_load_playlist_data();
-
-        let music_manager = MusicManager::try_create(
-            self.get_or_load_songs_arc(),
-            song_index,
-            volume,
-            *playlist_data.playback_mode,
-        );
-
-        self.music_manager.replace(music_manager);
-    }
-
     pub fn get_music_manager(&self) -> Ref<'_, Option<MusicManager>> {
         self.music_manager.borrow()
-    }
-
-    pub(crate) fn stop_music(&self) {
-        if let Some(music_manager) = self.music_manager.take() {
-            music_manager.send_stop_command();
-        }
     }
 
     pub fn get_path_name_ref(&self) -> Ref<'_, PathNamed> {
@@ -448,6 +417,67 @@ impl Playlist {
 
     pub fn playback_mode(&self) -> PlaybackMode {
         self.get_or_load_playlist_data().playback_mode.into_inner()
+    }
+
+    pub fn delete_song(&self, song_index: usize) {
+        {
+            let mut songs = write_rwlock(&self.songs);
+            let songs_filtered = read_rwlock(&self.songs_filtered);
+
+            if songs_filtered.is_empty() {
+                songs.remove(song_index);
+            } else {
+                let mut songs_filtered = write_rwlock(&self.songs_filtered);
+
+                let song_removed = songs_filtered.remove(song_index);
+
+                let mut index_to_remove = None;
+
+                for (i, song) in songs.iter().enumerate() {
+                    if song == &song_removed {
+                        index_to_remove = Some(i);
+                        break;
+                    }
+                }
+
+                if let Some(index) = index_to_remove {
+                    songs.remove(index);
+                }
+            }
+        }
+
+        self.save_contents();
+    }
+
+    pub(crate) fn start_play_song(&self, song_index: usize, volume: f32) {
+        if let Some(music_manager) = self.music_manager.take() {
+            let current_handle = music_manager.playing_handle;
+
+            let old_music_command_tx = music_manager.music_command_tx;
+
+            old_music_command_tx
+                .send(MusicCommand::Stop)
+                .expect("Current playing thread to be alive");
+
+            current_handle.join().expect("Unwrap for panic in thread");
+        }
+
+        let playlist_data = self.get_or_load_playlist_data();
+
+        let music_manager = MusicManager::try_create(
+            self.get_or_load_songs_arc(),
+            song_index,
+            volume,
+            *playlist_data.playback_mode,
+        );
+
+        self.music_manager.replace(music_manager);
+    }
+
+    pub(crate) fn stop_music(&self) {
+        if let Some(music_manager) = self.music_manager.take() {
+            music_manager.send_stop_command();
+        }
     }
 
     pub(crate) fn import_existing_songs(&self, new_songs: &[Song]) {

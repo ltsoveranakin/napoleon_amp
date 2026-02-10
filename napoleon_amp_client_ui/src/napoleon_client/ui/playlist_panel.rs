@@ -1,4 +1,6 @@
-use eframe::egui::{Button, Context, Event, Id, Modal, ScrollArea, Slider, TextWrapMode, Ui};
+use eframe::egui::{
+    Button, Context, Event, Id, Modal, Popup, ScrollArea, Slider, TextWrapMode, Ui,
+};
 use std::ops::Deref;
 
 use crate::napoleon_client::ui::helpers::scroll_area_styled;
@@ -270,42 +272,56 @@ impl PlaylistPanel {
                         });
                     })
                     .body(|body| {
-                        let songs = &*current_playlist.get_or_load_songs();
-                        let selected_songs = current_playlist.get_selected_songs_variant();
+                        let mut song_index_to_delete = None;
 
-                        body.rows(20.0, songs.len(), |mut row| {
-                            let song_index = row.index();
-                            let song = &songs[song_index];
+                        {
+                            let songs = &*current_playlist.get_or_load_songs();
+                            let selected_songs = current_playlist.get_selected_songs_variant();
 
-                            row.col(|ui| {
-                                let button = Button::new(&song.get_or_load_song_data().title)
-                                    .selected(selected_songs.is_selected(song_index))
-                                    .frame(true)
-                                    .frame_when_inactive(false);
+                            body.rows(20.0, songs.len(), |mut row| {
+                                let song_index = row.index();
+                                let song = &songs[song_index];
 
-                                let button_response = ui.add(button);
+                                row.col(|ui| {
+                                    let button = Button::new(&song.get_or_load_song_data().title)
+                                        .selected(selected_songs.is_selected(song_index))
+                                        .frame(true)
+                                        .frame_when_inactive(false);
 
-                                if button_response.clicked() {
-                                    current_playlist.select_single(song_index);
-                                }
+                                    let button_response = ui.add(button);
 
-                                if button_response.double_clicked() {
-                                    napoleon_instance.start_play_song(
-                                        Rc::clone(current_playlist),
-                                        song_index,
-                                        volume as f32 / 100.,
-                                    );
-                                }
+                                    if button_response.clicked() {
+                                        current_playlist.select_single(song_index);
+                                    }
+
+                                    if button_response.double_clicked() {
+                                        napoleon_instance.start_play_song(
+                                            Rc::clone(current_playlist),
+                                            song_index,
+                                            volume as f32 / 100.,
+                                        );
+                                    }
+
+                                    Popup::context_menu(&button_response).show(|ui| {
+                                        if ui.button("Delete from this playlist").clicked() {
+                                            song_index_to_delete = Some(song_index);
+                                        }
+                                    });
+                                });
+
+                                row.col(|ui| {
+                                    ui.label(&song.get_or_load_song_data().artist);
+                                });
+
+                                row.col(|ui| {
+                                    ui.label(&song.get_or_load_song_data().album);
+                                });
                             });
+                        }
 
-                            row.col(|ui| {
-                                ui.label(&song.get_or_load_song_data().artist);
-                            });
-
-                            row.col(|ui| {
-                                ui.label(&song.get_or_load_song_data().album);
-                            });
-                        });
+                        if let Some(song_index) = song_index_to_delete {
+                            current_playlist.delete_song(song_index);
+                        }
                     });
             });
         });
