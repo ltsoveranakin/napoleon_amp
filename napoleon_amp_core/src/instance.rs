@@ -4,12 +4,11 @@ use crate::data::song::Song;
 use crate::data::PathNamed;
 use crate::paths::folders_dir;
 use std::rc::Rc;
-use crate::net::server::NapoleonServer;
 
 pub struct NapoleonInstance {
     base_folder: Rc<Folder>,
     copied_songs: Option<Vec<Song>>,
-    server: Option<NapoleonServer>
+    currently_playing_playlist: Option<Rc<Playlist>>,
 }
 
 impl NapoleonInstance {
@@ -17,7 +16,7 @@ impl NapoleonInstance {
         Self {
             base_folder: Rc::new(Folder::new(PathNamed::new(folders_dir()), None)),
             copied_songs: None,
-            server: None
+            currently_playing_playlist: None,
         }
     }
 
@@ -37,6 +36,18 @@ impl NapoleonInstance {
     pub fn paste_copied_songs(&self, playlist: &Playlist) {
         if let Some(ref copied_songs) = self.copied_songs {
             playlist.import_existing_songs(copied_songs);
+        }
+    }
+
+    pub fn start_play_song(&mut self, playlist: Rc<Playlist>, song_index: usize, volume: f32) {
+        self.stop_music();
+        playlist.start_play_song(song_index, volume);
+        self.currently_playing_playlist = Some(playlist);
+    }
+
+    pub fn stop_music(&mut self) {
+        if let Some(current_playing_playlist) = self.currently_playing_playlist.take() {
+            current_playing_playlist.stop_music();
         }
     }
 }
