@@ -1,9 +1,10 @@
-use serbytes::prelude::{ReadByteBufferRefMut, SerBytes};
-use std::io::Read;
-use std::net::{TcpListener, TcpStream};
+use quinn::rustls::pki_types::{CertificateDer, PrivatePkcs8KeyDer};
+use quinn::{ConnectionError, Endpoint, Incoming, ServerConfig};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpStream};
+use std::sync::Arc;
 use std::thread;
 use std::thread::JoinHandle;
-use std::time::Duration;
+use tokio::runtime::Runtime;
 
 pub(crate) struct NapoleonServer {
     main_thread_handle: JoinHandle<()>,
@@ -11,7 +12,11 @@ pub(crate) struct NapoleonServer {
 
 impl NapoleonServer {
     pub(crate) fn new() -> Self {
-        let main_thread_handle = thread::spawn(server_main_thread);
+        let main_thread_handle = thread::spawn(|| {
+            let rt = Runtime::new().expect("Create tokio runtime");
+
+            rt.block_on(server_main_thread());
+        });
 
         Self { main_thread_handle }
     }
@@ -23,60 +28,47 @@ struct AliveStream {
     packet_len_rem: usize,
 }
 
-fn server_main_thread() {
-    let listener = TcpListener::bind("127.0.0.1:7124").expect("Unable to bind TcpListener to port");
+async fn server_main_thread() {
+    let server_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), 7124);
 
-    let mut alive_streams = Vec::new();
+    let cert = rcgen::generate_simple_self_signed(vec!["localhost".into()]).unwrap();
+    let cert_der = CertificateDer::from(cert.cert);
+    let priv_key = PrivatePkcs8KeyDer::from(cert.signing_key.serialize_der());
 
-    for stream in listener.incoming() {
-        match stream {
-            Ok(stream) => {
-                alive_streams.push(AliveStream {
-                    stream,
-                    packet_data: Vec::new(),
-                    packet_len_rem: 0,
-                });
+    let mut server_config = ServerConfig::with_single_cert(vec![cert_der.clone()], priv_key.into())
+        .expect("Create server config with certification");
+    let transport_config = Arc::get_mut(&mut server_config.transport).unwrap();
+    transport_config.max_concurrent_uni_streams(0_u8.into());
+
+    let endpoint = Endpoint::server(server_config, server_addr).expect("Create server endpoint");
+
+    loop {
+        let incoming = if let Some(incoming) = endpoint.accept().await {
+            incoming
+        } else {
+            break;
+        };
+
+        tokio::spawn(handle_connection(incoming));
+    }
+}
+
+async fn handle_connection(incoming: Incoming) -> Result<(), ConnectionError> {
+    let connection = incoming.await?;
+    loop {
+        let (send_stream, recv_stream) = match connection.accept_bi().await {
+            Err(ConnectionError::ApplicationClosed { .. }) => {
+                println!("Client disconnected");
+                return Ok(());
             }
 
             Err(e) => {
-                eprintln!("Error connecting to new incoming stream: {}", e);
-            }
-        }
-    }
-
-    loop {
-        let mut buf = [0; 1024];
-
-        for AliveStream {
-            stream,
-            packet_len_rem,
-            packet_data,
-        } in alive_streams.iter_mut()
-        {
-            let bytes_read = match stream.read(&mut buf) {
-                Ok(bytes_read) => bytes_read,
-
-                Err(e) => {
-                    panic!("Some stream error, should probably drop stream... {}", e)
-                }
-            };
-
-            let mut buf_slice = &mut buf;
-
-            if *packet_len_rem == 0 {
-                // First read, extract the first 2 bytes as packet size
-                // let rbb = ReadByteBufferRefMut::from_bytes(&mut buf, &mut 0, &mut 0);
-
-                *packet_len_rem = u16::from_bytes(&buf_slice);
+                return Err(e);
             }
 
-            if packet_len_rem < bytes_read {
-                // read more bytes than what was remaining on the last packet, therefore we have a fully constructed packet
-            }
+            Ok(s) => s,
+        };
 
-            for _ in 0..bytes_read {}
-        }
-
-        thread::sleep(Duration::from_millis(10))
+        let req = recv_stream.read_to_end()
     }
 }

@@ -8,3 +8,6 @@ dirs-next = "2.0"
 serbytes = { git = "https://github.com/ltsoveranakin/serbytes.git" }
 rodio = { version = "0.21", default-features = false, features = ["symphonia-all", "playback"] }
 symphonia = { version = "0.5.4", features = ["mp3", "symphonia-bundle-mp3"] }
+quinn = "0.11"
+rcgen = "0.14.7"
+tokio = { version = "1.49", features = ["rt-multi-thread"] }
