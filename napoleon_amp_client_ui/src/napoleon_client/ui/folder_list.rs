@@ -5,6 +5,7 @@ use napoleon_amp_core::data::folder::content::FolderContentVariant;
 use napoleon_amp_core::data::folder::Folder;
 use napoleon_amp_core::data::playlist::Playlist;
 use napoleon_amp_core::data::NamedPathLike;
+use std::ffi::OsStr;
 use std::rc::Rc;
 
 enum CreateFolderContentDialogVariant {
@@ -256,22 +257,17 @@ impl FolderList {
                             });
                         }
 
-                        #[cfg(not(target_os = "android"))]
-                        if ui.button("Open File Location").clicked() {
-                            if open::that_detached(
-                                playlist
-                                    .get_path_name_ref()
-                                    .path()
-                                    .parent()
-                                    .expect("File will always have parent directory"),
-                            )
-                            .is_err()
-                            {
-                                todo!()
-                            }
-                        }
-
-                        Self::popup_delete_button(ui, current_index, &mut delete_index)
+                        Self::shared_popup_ui(
+                            ui,
+                            current_index,
+                            &mut delete_index,
+                            "playlist",
+                            playlist
+                                .get_path_name_ref()
+                                .path()
+                                .parent()
+                                .expect("File will always have parent directory"),
+                        );
                     });
                 }
 
@@ -292,7 +288,13 @@ impl FolderList {
                         }
 
                         Popup::context_menu(&folder_item.header_response).show(|ui| {
-                            Self::popup_delete_button(ui, current_index, &mut delete_index)
+                            Self::shared_popup_ui(
+                                ui,
+                                current_index,
+                                &mut delete_index,
+                                "folder",
+                                folder.path(),
+                            );
                         })
                     });
                 }
@@ -304,8 +306,24 @@ impl FolderList {
         }
     }
 
-    fn popup_delete_button(ui: &mut Ui, index: usize, delete_index: &mut Option<usize>) {
-        if ui.button("Delete").clicked() {
+    fn shared_popup_ui(
+        ui: &mut Ui,
+        index: usize,
+        delete_index: &mut Option<usize>,
+        variant_text: &str,
+        path: impl AsRef<OsStr>,
+    ) {
+        #[cfg(not(target_os = "android"))]
+        if ui
+            .button(format!("Open {} location", variant_text))
+            .clicked()
+        {
+            if open::that_detached(path).is_err() {
+                todo!()
+            }
+        }
+
+        if ui.button(format!("Delete {}", variant_text)).clicked() {
             *delete_index = Some(index);
         }
     }
