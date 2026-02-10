@@ -4,10 +4,12 @@ use crate::data::song::Song;
 use crate::data::PathNamed;
 use crate::paths::folders_dir;
 use std::rc::Rc;
+use crate::net::server::NapoleonServer;
 
 pub struct NapoleonInstance {
     base_folder: Rc<Folder>,
     copied_songs: Option<Vec<Song>>,
+    server: Option<NapoleonServer>
 }
 
 impl NapoleonInstance {
@@ -15,6 +17,7 @@ impl NapoleonInstance {
         Self {
             base_folder: Rc::new(Folder::new(PathNamed::new(folders_dir()), None)),
             copied_songs: None,
+            server: None
         }
     }
 

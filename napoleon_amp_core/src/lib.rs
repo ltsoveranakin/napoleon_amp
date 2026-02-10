@@ -5,6 +5,7 @@ use std::sync::{Mutex, MutexGuard, RwLock, RwLockReadGuard, RwLockWriteGuard};
 pub mod data;
 pub mod instance;
 mod paths;
+mod net;
 
 static POISONED_LOCK_MESSAGE: &str = "Poisoned lock";
 
