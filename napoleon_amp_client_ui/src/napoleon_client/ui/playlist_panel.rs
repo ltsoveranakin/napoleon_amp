@@ -125,9 +125,9 @@ impl PlaylistPanel {
 
         self.render_modal(ui);
 
-        self.render_song_list(ui, &current_playlist_rc, *volume);
+        self.render_song_list(ui, &current_playlist_rc, *volume, napoleon_instance);
 
-        self.render_currently_playing(ctx, ui, volume);
+        self.render_currently_playing(ctx, ui, volume, napoleon_instance);
     }
 
     fn render_modal(&mut self, ui: &mut Ui) {
@@ -169,34 +169,12 @@ impl PlaylistPanel {
                 songs_plural(failed_count)
             ));
 
-            // println!(failed_song_indexes.len());
-            //
-            // ScrollArea::vertical().show_rows(
-            //     ui,
-            //     20.0,
-            //     failed_song_indexes.len(),
-            //     |ui, row_range| {
-            //         for row in row_range {
-            //             let failed_song_path = &songs_imported.paths[row];
-            //
-            //             ui.label(failed_song_path.to_str().expect("Valid utf8 path"));
-            //         }
-            //     },
-            // );
-
             scroll_area_styled(ui, ScrollArea::vertical().max_height(250.0), |ui| {
                 for failed_song_index in failed_song_indexes {
                     let failed_song_path = &songs_imported.paths[*failed_song_index];
                     ui.label(failed_song_path.to_str().expect("Valid utf8 path"));
                 }
             });
-
-            // ScrollArea::vertical().show(ui, |ui| {
-            //     for failed_song_index in failed_song_indexes {
-            //         let failed_song_path = &songs_imported.paths[*failed_song_index];
-            //         ui.label(failed_song_path.to_str().expect("Valid utf8 path"));
-            //     }
-            // });
 
             if ui.button("Ok").clicked() {
                 true
@@ -256,18 +234,21 @@ impl PlaylistPanel {
         }
     }
 
-    fn render_song_list(&self, ui: &mut Ui, current_playlist: &Playlist, volume: i32) {
+    fn render_song_list(
+        &self,
+        ui: &mut Ui,
+        current_playlist: &Rc<Playlist>,
+        volume: i32,
+        napoleon_instance: &mut NapoleonInstance,
+    ) {
         ScrollArea::vertical().show(ui, |ui| {
-            let max_height = if self.current_playlist.get_music_manager().is_some() {
-                ui.available_height() - 80.
-            } else {
-                f32::INFINITY
-            };
-
-            let songs = &*current_playlist.get_or_load_songs();
-            let selected_songs = current_playlist.get_selected_songs_variant();
-
             ui.scope(|ui| {
+                let max_height = if self.current_playlist.get_music_manager().is_some() {
+                    ui.available_height() - 80.
+                } else {
+                    f32::INFINITY
+                };
+
                 ui.style_mut().wrap_mode = Some(TextWrapMode::Truncate);
                 ui.set_max_height(max_height);
 
@@ -289,6 +270,9 @@ impl PlaylistPanel {
                         });
                     })
                     .body(|body| {
+                        let songs = &*current_playlist.get_or_load_songs();
+                        let selected_songs = current_playlist.get_selected_songs_variant();
+
                         body.rows(20.0, songs.len(), |mut row| {
                             let song_index = row.index();
                             let song = &songs[song_index];
@@ -306,8 +290,11 @@ impl PlaylistPanel {
                                 }
 
                                 if button_response.double_clicked() {
-                                    current_playlist
-                                        .start_play_song(song_index, volume as f32 / 100.);
+                                    napoleon_instance.start_play_song(
+                                        Rc::clone(current_playlist),
+                                        song_index,
+                                        volume as f32 / 100.,
+                                    );
                                 }
                             });
 
@@ -324,7 +311,13 @@ impl PlaylistPanel {
         });
     }
 
-    fn render_currently_playing(&self, ctx: &Context, ui: &mut Ui, volume: &mut i32) {
+    fn render_currently_playing(
+        &self,
+        ctx: &Context,
+        ui: &mut Ui,
+        volume: &mut i32,
+        napoleon_instance: &mut NapoleonInstance,
+    ) {
         let mut should_stop_music = false;
 
         if let Some(music_manager) = self.current_playlist.get_music_manager().deref() {
@@ -342,7 +335,7 @@ impl PlaylistPanel {
         }
 
         if should_stop_music {
-            self.current_playlist.stop_music();
+            napoleon_instance.stop_music();
         }
     }
 
