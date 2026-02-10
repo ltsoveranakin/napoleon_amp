@@ -1,8 +1,7 @@
-use eframe::egui::{
-    Button, Context, Event, Id, Modal, Popup, ScrollArea, Slider, TextWrapMode, Ui,
-};
+use eframe::egui::*;
 use std::ops::Deref;
 
+use crate::napoleon_client::ui::colors::*;
 use crate::napoleon_client::ui::helpers::scroll_area_styled;
 use crate::napoleon_client::ui::queue_panel::QueuePanel;
 use eframe::egui;
@@ -277,13 +276,38 @@ impl PlaylistPanel {
                         {
                             let songs = &*current_playlist.get_or_load_songs();
                             let selected_songs = current_playlist.get_selected_songs_variant();
+                            let current_playing_song_index =
+                                current_playlist.get_current_song_playing_index();
 
                             body.rows(20.0, songs.len(), |mut row| {
                                 let song_index = row.index();
                                 let song = &songs[song_index];
+                                let is_selected = selected_songs.is_selected(song_index);
 
                                 row.col(|ui| {
-                                    let button = Button::new(&song.get_or_load_song_data().title)
+                                    let mut button_text_color = DEFAULT_TEXT_COLOR;
+
+                                    if is_selected {
+                                        button_text_color = SELECTED_TEXT_COLOR;
+                                    }
+
+                                    if let Some(current_playing_song_index) =
+                                        current_playing_song_index
+                                        && current_playing_song_index == song_index
+                                    {
+                                        if is_selected {
+                                            button_text_color
+                                                .average_assign(SONG_PLAYING_TEXT_COLOR);
+                                        } else {
+                                            button_text_color = SONG_PLAYING_TEXT_COLOR;
+                                        }
+                                    }
+
+                                    let song_button_text =
+                                        RichText::new(&song.get_or_load_song_data().title)
+                                            .color(button_text_color);
+
+                                    let button = Button::new(song_button_text)
                                         .selected(selected_songs.is_selected(song_index))
                                         .frame(true)
                                         .frame_when_inactive(false);

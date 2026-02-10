@@ -449,6 +449,15 @@ impl Playlist {
         self.save_contents();
     }
 
+    /// Returns `None` if music manager is `None` (no song is playing) otherwise returns the index
+    /// of the next song that will be played (with respect to the queue)
+
+    pub fn get_current_song_playing_index(&self) -> Option<usize> {
+        self.get_music_manager()
+            .as_ref()
+            .map(|manager| manager.queue().get_current_song_index())
+    }
+
     pub(crate) fn start_play_song(&self, song_index: usize, volume: f32) {
         if let Some(music_manager) = self.music_manager.take() {
             let current_handle = music_manager.playing_handle;

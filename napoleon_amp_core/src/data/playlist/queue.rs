@@ -44,16 +44,16 @@ impl Queue {
         &self.indexes[self.index..]
     }
 
-    pub(super) fn next(&mut self) {
-        self.index += 1;
-
-        if self.index >= self.indexes.len() {
-            self.index = 0;
-        }
+    pub(super) fn get_next_song_index(&self) -> usize {
+        self.indexes[self.index]
     }
 
-    fn sub_index(&mut self, amt: usize) {
-        self.index = self.index.checked_sub(amt).unwrap_or(0);
+    pub(super) fn get_current_song_index(&self) -> usize {
+        self.indexes[self.get_wrapped_index(self.index as i32 - 1)]
+    }
+
+    pub(super) fn next(&mut self) {
+        self.index = self.get_wrapped_index(self.index as i32 + 1);
     }
 
     pub(super) fn previous(&mut self) {
@@ -64,15 +64,21 @@ impl Queue {
         self.sub_index(1);
     }
 
-    pub(super) fn get_current(&self) -> usize {
-        self.indexes[self.index]
-    }
-
     pub(super) fn set_index_from_queue(&mut self, index: usize) {
         self.index += index;
     }
 
     pub(super) fn reset_queue(&mut self) {
         self.index = 0;
+    }
+
+    fn sub_index(&mut self, amt: i32) {
+        let new_index = self.index as i32 - amt;
+
+        self.index = self.get_wrapped_index(new_index);
+    }
+
+    fn get_wrapped_index(&self, index: i32) -> usize {
+        index.rem_euclid(self.indexes.len() as i32) as usize
     }
 }
