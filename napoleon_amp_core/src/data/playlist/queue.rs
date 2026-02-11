@@ -1,6 +1,6 @@
 use crate::data::playlist::PlaybackMode;
 use crate::data::song::Song;
-use rand::Rng;
+use rand::RngExt;
 use std::sync::Arc;
 
 #[derive(Clone, Debug)]

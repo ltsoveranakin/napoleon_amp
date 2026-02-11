@@ -2,16 +2,20 @@ use crate::data::folder::Folder;
 use crate::data::playlist::Playlist;
 use crate::data::song::Song;
 use crate::data::PathNamed;
+use crate::discord_rpc::discord_rpc_thread;
 use crate::paths::folders_dir;
 use crate::song_pool::SongPool;
 use std::rc::Rc;
 use std::sync::Arc;
+use std::thread;
+use std::thread::JoinHandle;
 
 pub struct NapoleonInstance {
     base_folder: Rc<Folder>,
     copied_songs: Option<Vec<Arc<Song>>>,
     currently_playing_playlist: Option<Rc<Playlist>>,
     song_pool: Rc<SongPool>,
+    discord_rpc_thread: Option<JoinHandle<()>>,
 }
 
 impl NapoleonInstance {
@@ -21,6 +25,13 @@ impl NapoleonInstance {
             copied_songs: None,
             currently_playing_playlist: None,
             song_pool: Rc::new(SongPool::new()),
+            discord_rpc_thread: Some(thread::spawn(|| {
+                if discord_rpc_thread().is_ok() {
+                    println!("rpc thread fin ok");
+                } else {
+                    println!("rpc thread err");
+                }
+            })),
         }
     }
 

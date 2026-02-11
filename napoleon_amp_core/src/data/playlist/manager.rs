@@ -2,6 +2,7 @@ use crate::data::playlist::queue::Queue;
 use crate::data::playlist::PlaybackMode;
 use crate::data::song::Song;
 use crate::data::NamedPathLike;
+use crate::discord_rpc::{send_rpc_action, RPCAction};
 use crate::{read_rwlock, write_rwlock, ReadWrapper};
 use rodio::source::SeekError;
 use rodio::{Decoder, OutputStream, OutputStreamBuilder, Sink, Source};
@@ -193,12 +194,22 @@ impl MusicManager {
 
                             song_status.song = song.clone();
 
-                            song_status.total_duration =
+                            let total_song_duration =
                                 if let Some(total_duration) = source.total_duration() {
                                     Some(total_duration)
                                 } else {
                                     None
                                 };
+
+                            song_status.total_duration = total_song_duration;
+
+                            let song_data = song.get_or_load_song_data();
+
+                            send_rpc_action(RPCAction::ChangeSong {
+                                song_title: song_data.title.clone(),
+                                song_artist: song_data.artist.to_string(),
+                                song_duration: total_song_duration,
+                            });
 
                             sink.append(source);
 
