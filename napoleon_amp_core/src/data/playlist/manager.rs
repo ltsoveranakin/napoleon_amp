@@ -34,7 +34,7 @@ pub(super) enum MusicCommand {
 
 #[derive(Clone, Debug)]
 pub struct SongStatus {
-    pub(super) song: Song,
+    pub(super) song: Arc<Song>,
     pub(super) total_duration: Option<Duration>,
 }
 
@@ -86,7 +86,7 @@ pub struct MusicManager {
 
 impl MusicManager {
     pub(super) fn try_create(
-        songs_arc: Arc<RwLock<Vec<Song>>>,
+        songs_arc: Arc<RwLock<Vec<Arc<Song>>>>,
         start_index: usize,
         volume: f32,
         playback_mode: PlaybackMode,
@@ -102,7 +102,7 @@ impl MusicManager {
         let (music_command_tx, music_command_rx) = mpsc::channel();
 
         let song_status = Arc::new(RwLock::new(SongStatus {
-            song: songs[queue.indexes[0]].clone(),
+            song: Arc::clone(&songs[queue.indexes[0]]),
             total_duration: None,
         }));
         let song_status_thread = Arc::clone(&song_status);
@@ -292,7 +292,7 @@ impl MusicManager {
         self.send_command(MusicCommand::Stop);
     }
 
-    /// Attempts to send a MusicCommand. Returns true if it was able to send a command, false otherwise.
+    /// Attempts to send a MusicCommand.
     ///
     /// It will succeed so long as there is music currently active (returns true)
 

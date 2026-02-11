@@ -105,11 +105,19 @@ impl Clone for Song {
     }
 }
 
-impl PartialEq for &Song {
+impl PartialEq<Song> for Song {
     fn eq(&self, other: &Self) -> bool {
         self.path_named == other.path_named
     }
 }
+
+impl PartialEq<&Song> for Song {
+    fn eq(&self, other: &&Self) -> bool {
+        self.path_named == other.path_named
+    }
+}
+
+impl Eq for Song {}
 
 impl NamedPathLike for Song {
     fn get_path_named(&self) -> &PathNamed {

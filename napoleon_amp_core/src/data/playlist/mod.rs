@@ -100,7 +100,7 @@ impl SelectedSongsVariant {
         }
     }
 
-    pub fn get_selected_songs<'s>(&self, songs: &'s [Song]) -> &'s [Song] {
+    pub fn get_selected_songs<'s>(&self, songs: &'s [Arc<Song>]) -> &'s [Arc<Song>] {
         match self {
             SelectedSongsVariant::All => songs,
 
@@ -122,11 +122,11 @@ impl SelectedSongsVariant {
 #[derive(Debug)]
 pub struct Playlist {
     path_named: RefCell<PathNamed>,
-    songs: Arc<RwLock<Vec<Song>>>,
+    songs: Arc<RwLock<Vec<Arc<Song>>>>,
     has_loaded_songs: Cell<bool>,
     music_manager: RefCell<Option<MusicManager>>,
     pub variant: PlaylistVariant,
-    songs_filtered: Arc<RwLock<Vec<Song>>>,
+    songs_filtered: Arc<RwLock<Vec<Arc<Song>>>>,
     selected_songs: RefCell<SelectedSongsVariant>,
     playlist_data: RefCell<Option<PlaylistData>>,
 }
@@ -159,7 +159,7 @@ impl Playlist {
 
     /// Gets the songs in the current playlist, with the filter if one is enabled
 
-    pub fn get_or_load_songs(&self) -> ReadWrapper<'_, Vec<Song>> {
+    pub fn get_or_load_songs(&self) -> ReadWrapper<'_, Vec<Arc<Song>>> {
         let songs_filtered = read_rwlock(&self.songs_filtered);
 
         if songs_filtered.is_empty() {
@@ -169,7 +169,7 @@ impl Playlist {
         }
     }
 
-    pub fn get_or_load_songs_arc(&self) -> Arc<RwLock<Vec<Song>>> {
+    pub fn get_or_load_songs_arc(&self) -> Arc<RwLock<Vec<Arc<Song>>>> {
         let songs_filtered = read_rwlock(&self.songs_filtered);
 
         if songs_filtered.is_empty() {
@@ -181,7 +181,7 @@ impl Playlist {
         }
     }
 
-    pub fn get_or_load_songs_unfiltered(&self) -> ReadWrapper<'_, Vec<Song>> {
+    pub fn get_or_load_songs_unfiltered(&self) -> ReadWrapper<'_, Vec<Arc<Song>>> {
         if self.has_loaded_songs.get() {
             read_rwlock(&self.songs)
         } else {
@@ -224,7 +224,7 @@ impl Playlist {
                 for song_name in song_file_names.iter() {
                     let song_path = song_file(song_name);
 
-                    songs.push(Song::new(PathNamed::new(song_path)));
+                    songs.push(Arc::new(Song::new(PathNamed::new(song_path))));
                 }
             }
 
@@ -275,7 +275,7 @@ impl Playlist {
             }
 
             if valid_search {
-                filtered_songs.push(song.clone());
+                filtered_songs.push(Arc::clone(song));
             }
         }
     }
@@ -371,7 +371,7 @@ impl Playlist {
 
                 **write_rwlock(&song.has_loaded_song_data) = true;
 
-                songs.push(song);
+                songs.push(Arc::new(song));
             }
         }
 
@@ -490,13 +490,13 @@ impl Playlist {
         }
     }
 
-    pub(crate) fn import_existing_songs(&self, new_songs: &[Song]) {
+    pub(crate) fn import_existing_songs(&self, new_songs: &[Arc<Song>]) {
         {
             let mut playlist_songs = write_rwlock(&self.songs);
             playlist_songs.reserve_exact(new_songs.len());
 
             for new_song in new_songs {
-                playlist_songs.push(new_song.clone());
+                playlist_songs.push(Arc::clone(new_song));
             }
         }
 

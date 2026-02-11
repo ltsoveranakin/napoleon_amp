@@ -4,10 +4,11 @@ use crate::data::song::Song;
 use crate::data::PathNamed;
 use crate::paths::folders_dir;
 use std::rc::Rc;
+use std::sync::Arc;
 
 pub struct NapoleonInstance {
     base_folder: Rc<Folder>,
-    copied_songs: Option<Vec<Song>>,
+    copied_songs: Option<Vec<Arc<Song>>>,
     currently_playing_playlist: Option<Rc<Playlist>>,
 }
 
