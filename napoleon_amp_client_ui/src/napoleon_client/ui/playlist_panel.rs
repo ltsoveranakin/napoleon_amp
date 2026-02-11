@@ -16,7 +16,7 @@ use std::time::Duration;
 
 struct SongsImported {
     paths: Vec<PathBuf>,
-    failed_song_indexes: Option<Vec<usize>>,
+    song_already_exists_indexes: Option<Vec<usize>>,
 }
 
 pub(crate) struct PlaylistPanel {
@@ -54,7 +54,7 @@ impl PlaylistPanel {
                     if let Some(paths) = rfd::FileDialog::new().pick_files() {
                         self.songs_imported = Some(SongsImported {
                             paths,
-                            failed_song_indexes: None,
+                            song_already_exists_indexes: None,
                         });
                     }
                 }
@@ -132,47 +132,40 @@ impl PlaylistPanel {
     }
 
     fn render_modal(&mut self, ui: &mut Ui) {
-        if self.songs_imported.is_none() {
+        let songs_imported = if let Some(songs_imported) = &self.songs_imported {
+            songs_imported
+        } else {
             return;
-        }
+        };
 
-        if self
-            .songs_imported
-            .as_ref()
-            .expect("Checked None above")
-            .failed_song_indexes
-            .is_some()
-        {
-            self.draw_modal_failed_import(ui)
+        if let Some(song_already_exists_indexes) = &songs_imported.song_already_exists_indexes {
+            if self.draw_modal_failed_import(ui, song_already_exists_indexes, &songs_imported.paths)
+            {
+                self.songs_imported = None;
+            }
         } else {
             self.draw_main_import_modal(ui);
         }
     }
 
-    fn draw_modal_failed_import(&mut self, ui: &mut Ui) {
-        let songs_imported = self
-            .songs_imported
-            .as_ref()
-            .expect("Songs imported checked None");
+    fn draw_modal_failed_import(
+        &self,
+        ui: &mut Ui,
+        song_already_exists_indexes: &[usize],
+        song_imported_paths: &[PathBuf],
+    ) -> bool {
         let modal = Modal::new(Id::new("Failed Import Songs Modal")).show(ui.ctx(), |ui| {
-            // ui.set_width(250.0);
-
-            let failed_song_indexes = songs_imported
-                .failed_song_indexes
-                .as_ref()
-                .expect("Songs failed checked None");
-
-            let failed_count = failed_song_indexes.len();
+            let failed_count = song_already_exists_indexes.len();
 
             ui.heading(format!(
-                "Failed to import the following {} {}",
+                "The following {} {} already exist, as such the files were not overwritten, nor deleted",
                 failed_count,
                 songs_plural(failed_count)
             ));
 
             scroll_area_styled(ui, ScrollArea::vertical().max_height(250.0), |ui| {
-                for failed_song_index in failed_song_indexes {
-                    let failed_song_path = &songs_imported.paths[*failed_song_index];
+                for failed_song_index in song_already_exists_indexes {
+                    let failed_song_path = &song_imported_paths[*failed_song_index];
                     ui.label(failed_song_path.to_str().expect("Valid utf8 path"));
                 }
             });
@@ -184,9 +177,7 @@ impl PlaylistPanel {
             }
         });
 
-        if modal.inner || modal.should_close() {
-            self.songs_imported = None;
-        }
+        modal.inner || modal.should_close()
     }
 
     fn draw_main_import_modal(&mut self, ui: &mut Ui) {
@@ -207,12 +198,13 @@ impl PlaylistPanel {
 
             let r = ui.horizontal(|ui| {
                 if ui.button("Import").clicked() {
-                    return if let Err(failed_song_indexes) = self
+                    return if let Err(song_already_exists_indexes) = self
                         .current_playlist
                         .as_ref()
                         .import_songs(songs_imported_paths, self.delete_original_files)
                     {
-                        songs_imported.failed_song_indexes = Some(failed_song_indexes);
+                        songs_imported.song_already_exists_indexes =
+                            Some(song_already_exists_indexes);
 
                         false
                     } else {

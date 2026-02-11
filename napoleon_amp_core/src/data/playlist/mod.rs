@@ -321,7 +321,7 @@ impl Playlist {
         song_paths: &[PathBuf],
         delete_original: bool,
     ) -> Result<(), Vec<usize>> {
-        let mut failed_import = Vec::new();
+        let mut already_exists = Vec::new();
         {
             let mut songs = write_rwlock(&self.songs);
 
@@ -346,18 +346,19 @@ impl Playlist {
                     "Unable to verify new song path does not exist at path: {:?}",
                     new_song_path
                 )) {
-                    failed_import.push(i);
-                }
+                    already_exists.push(i);
+                } else {
+                    File::create(&new_song_path).expect(&format!(
+                        "Unable to create new song file to copy to; path: {:?}",
+                        new_song_path
+                    ));
 
-                File::create(&new_song_path).expect(&format!(
-                    "Unable to create new song file to copy to; path: {:?}",
-                    new_song_path
-                ));
+                    fs::copy(original_song_path, &new_song_path).expect("Failed copy song to dest");
 
-                fs::copy(original_song_path, &new_song_path).expect("Failed copy song to dest");
-
-                if delete_original {
-                    fs::remove_file(original_song_path).expect("Failed to remove original file");
+                    if delete_original {
+                        fs::remove_file(original_song_path)
+                            .expect("Failed to remove original file");
+                    }
                 }
 
                 let song = Song::new(PathNamed::new(new_song_path));
@@ -376,9 +377,9 @@ impl Playlist {
 
         self.save_contents();
 
-        if !failed_import.is_empty() {
+        if !already_exists.is_empty() {
             println!("Imported songs and saved successfully, but some failed to import");
-            Err(failed_import)
+            Err(already_exists)
         } else {
             println!("Imported songs and saved successfully");
             Ok(())
