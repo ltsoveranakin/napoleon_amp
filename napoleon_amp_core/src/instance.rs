@@ -3,6 +3,7 @@ use crate::data::playlist::Playlist;
 use crate::data::song::Song;
 use crate::data::PathNamed;
 use crate::paths::folders_dir;
+use crate::song_pool::SongPool;
 use std::rc::Rc;
 use std::sync::Arc;
 
@@ -10,6 +11,7 @@ pub struct NapoleonInstance {
     base_folder: Rc<Folder>,
     copied_songs: Option<Vec<Arc<Song>>>,
     currently_playing_playlist: Option<Rc<Playlist>>,
+    song_pool: Rc<SongPool>,
 }
 
 impl NapoleonInstance {
@@ -18,6 +20,7 @@ impl NapoleonInstance {
             base_folder: Rc::new(Folder::new(PathNamed::new(folders_dir()), None)),
             copied_songs: None,
             currently_playing_playlist: None,
+            song_pool: Rc::new(SongPool::new()),
         }
     }
 

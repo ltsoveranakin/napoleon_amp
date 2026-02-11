@@ -4,8 +4,9 @@ use std::sync::{Mutex, MutexGuard, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 pub mod data;
 pub mod instance;
-mod paths;
 mod net;
+mod paths;
+mod song_pool;
 
 static POISONED_LOCK_MESSAGE: &str = "Poisoned lock";
 
