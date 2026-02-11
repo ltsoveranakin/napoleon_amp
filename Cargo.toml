@@ -9,3 +9,6 @@ members = ["napoleon_amp_android", "napoleon_amp_client_ui", "napoleon_amp_core"
 [dependencies]
 eframe = { version = "0.33.3" }
 napoleon_amp_client_ui = { path = "napoleon_amp_client_ui" }
+
+[build-dependencies]
+winresource = "0.1.30"
