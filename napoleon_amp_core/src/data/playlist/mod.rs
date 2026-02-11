@@ -390,7 +390,7 @@ impl Playlist {
         self.music_manager.borrow()
     }
 
-    pub fn get_path_name_ref(&self) -> Ref<'_, PathNamed> {
+    pub fn get_path_named_ref(&self) -> Ref<'_, PathNamed> {
         self.path_named.borrow()
     }
 

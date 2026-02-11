@@ -5,6 +5,7 @@ use napoleon_amp_core::data::folder::content::FolderContentVariant;
 use napoleon_amp_core::data::folder::Folder;
 use napoleon_amp_core::data::playlist::Playlist;
 use napoleon_amp_core::data::NamedPathLike;
+use napoleon_amp_core::discord_rpc::set_rpc_playlist;
 use std::ffi::OsStr;
 use std::rc::Rc;
 
@@ -242,11 +243,14 @@ impl FolderList {
 
             match &folder_content.variant {
                 FolderContentVariant::Playlist(playlist) => {
-                    let playlist_label =
-                        self.playlist_button(ui, playlist.get_path_name_ref().name());
+                    let path_named_ref = playlist.get_path_named_ref();
+                    let playlist_name = path_named_ref.name();
+
+                    let playlist_label = self.playlist_button(ui, playlist_name);
 
                     if playlist_label.clicked() {
                         *next_playlist = Some(Rc::clone(playlist));
+                        set_rpc_playlist(playlist_name.to_string());
                     }
 
                     Popup::context_menu(&playlist_label).show(|ui| {
@@ -263,7 +267,7 @@ impl FolderList {
                             &mut delete_index,
                             "playlist",
                             playlist
-                                .get_path_name_ref()
+                                .get_path_named_ref()
                                 .path()
                                 .parent()
                                 .expect("File will always have parent directory"),

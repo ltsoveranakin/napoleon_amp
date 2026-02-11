@@ -101,7 +101,7 @@ impl Folder {
                     FolderContentVariant::Playlist(playlist) => {
                         match playlist.variant {
                             PlaylistVariant::PlaylistFile => {
-                                fs::remove_file(&*playlist.get_path_name_ref())
+                                fs::remove_file(&*playlist.get_path_named_ref())
                                     .expect("Delete file successfully");
                             }
 

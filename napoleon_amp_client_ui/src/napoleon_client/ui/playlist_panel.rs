@@ -46,7 +46,7 @@ impl PlaylistPanel {
         napoleon_instance: &mut NapoleonInstance,
     ) {
         if matches!(self.current_playlist.variant, PlaylistVariant::PlaylistFile) {
-            ui.heading(self.current_playlist.get_path_name_ref().name());
+            ui.heading(self.current_playlist.get_path_named_ref().name());
 
             ui.horizontal(|ui| {
                 #[cfg(not(target_os = "android"))]

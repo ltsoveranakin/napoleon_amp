@@ -3,7 +3,7 @@ use std::ops::{Deref, DerefMut};
 use std::sync::{Mutex, MutexGuard, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 pub mod data;
-mod discord_rpc;
+pub mod discord_rpc;
 pub mod instance;
 mod net;
 mod paths;

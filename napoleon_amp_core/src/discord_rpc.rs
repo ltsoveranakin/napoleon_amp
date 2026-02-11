@@ -1,5 +1,7 @@
 use crate::{read_rwlock, write_rwlock};
-use discord_rich_presence::activity::{Activity, ActivityType, StatusDisplayType, Timestamps};
+use discord_rich_presence::activity::{
+    Activity, ActivityType, Assets, StatusDisplayType, Timestamps,
+};
 use discord_rich_presence::{DiscordIpc, DiscordIpcClient};
 use std::sync::mpsc::Sender;
 use std::sync::{mpsc, RwLock};
@@ -10,15 +12,21 @@ const APPLICATION_ID_STR: &str = "1470966026106830868";
 
 static RPC_ACTION_TX: RwLock<Option<Sender<RPCAction>>> = RwLock::new(None);
 
-// TODO: this doesnt really need to be a separate thread, implement using statics and functions to call the statics
+// TODO: this doesnt really need to be a separate thread
+
+#[derive(Clone)]
+pub(super) struct SetSongData {
+    pub(super) song_title: String,
+    pub(super) song_artist: String,
+    pub(super) song_duration: Option<Duration>,
+}
 
 pub(super) enum RPCAction {
     Kill,
-    ChangeSong {
-        song_title: String,
-        song_artist: String,
-        song_duration: Option<Duration>,
-    },
+    SetSong(SetSongData),
+    StopMusic,
+    Resume,
+    SetPlaylistName(String),
 }
 
 pub(super) fn discord_rpc_thread() -> Result<(), Box<dyn std::error::Error>> {
@@ -27,16 +35,22 @@ pub(super) fn discord_rpc_thread() -> Result<(), Box<dyn std::error::Error>> {
     **write_rwlock(&RPC_ACTION_TX) = Some(tx);
 
     let mut client = DiscordIpcClient::new(APPLICATION_ID_STR);
-    let mut activity = Activity::new()
-        .state("Idling...")
+
+    let mut idle_activity = Activity::new()
+        .details("Idling...")
         .activity_type(ActivityType::Listening)
-        .status_display_type(StatusDisplayType::Details);
+        .status_display_type(StatusDisplayType::Details)
+        .assets(Assets::new().small_image("napoleon_icon"));
+
+    let mut activity = idle_activity.clone();
 
     client.connect()?;
 
     client
         .set_activity(activity.clone())
         .expect("Unable to set activity");
+
+    let mut use_idle_activity = false;
 
     loop {
         if let Ok(action) = rx.recv() {
@@ -45,32 +59,33 @@ pub(super) fn discord_rpc_thread() -> Result<(), Box<dyn std::error::Error>> {
                     break;
                 }
 
-                RPCAction::ChangeSong {
-                    song_title,
-                    song_artist,
-                    song_duration,
-                } => {
-                    println!("rcv song {:?}", song_title);
-                    let current_time = SystemTime::now()
-                        .duration_since(UNIX_EPOCH)
-                        .expect("Invalid time")
-                        .as_millis() as i64;
+                RPCAction::SetSong(ss_data) => {
+                    activity = set_activity_to_song_data(activity, ss_data.clone());
+                    use_idle_activity = false;
+                }
 
-                    let mut timestamp = Timestamps::new().start(current_time);
+                RPCAction::StopMusic => {
+                    use_idle_activity = true;
+                }
 
-                    if let Some(song_duration) = song_duration {
-                        timestamp = timestamp.end(current_time + song_duration.as_millis() as i64)
-                    }
+                RPCAction::Resume => {
+                    use_idle_activity = false;
+                }
 
-                    activity = activity
-                        .timestamps(timestamp)
-                        .state(format!("By {}", song_artist))
-                        .details(format!("Listening to {}", song_title));
+                RPCAction::SetPlaylistName(playlist_name) => {
+                    idle_activity =
+                        idle_activity.state(format!("Browsing playlist {}", playlist_name));
                 }
             }
 
+            let activity_to_use = if use_idle_activity {
+                idle_activity.clone()
+            } else {
+                activity.clone()
+            };
+
             client
-                .set_activity(activity.clone())
+                .set_activity(activity_to_use)
                 .expect("Unable to set activity");
             println!("set activity");
         } else {
@@ -85,6 +100,33 @@ pub(super) fn discord_rpc_thread() -> Result<(), Box<dyn std::error::Error>> {
     client.close()?;
 
     Ok(())
+}
+
+fn set_activity_to_song_data(mut activity: Activity, set_song_data: SetSongData) -> Activity {
+    let SetSongData {
+        song_title,
+        song_artist,
+        song_duration,
+    } = set_song_data;
+
+    println!("rcv song {:?}", song_title);
+    let current_time = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("Invalid time")
+        .as_millis() as i64;
+
+    let mut timestamp = Timestamps::new().start(current_time);
+
+    if let Some(song_duration) = song_duration {
+        timestamp = timestamp.end(current_time + song_duration.as_millis() as i64)
+    }
+
+    activity = activity
+        .timestamps(timestamp)
+        .state(format!("By {}", song_artist))
+        .details(song_title);
+
+    activity
 }
 
 pub(super) fn send_rpc_action(action: RPCAction) {
@@ -103,4 +145,8 @@ pub(super) fn send_rpc_action(action: RPCAction) {
     if kill_sender {
         write_rwlock(&RPC_ACTION_TX).take();
     }
+}
+
+pub fn set_rpc_playlist(playlist_name: String) {
+    send_rpc_action(RPCAction::SetPlaylistName(playlist_name))
 }

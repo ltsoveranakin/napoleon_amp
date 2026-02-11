@@ -2,7 +2,7 @@ use crate::data::playlist::queue::Queue;
 use crate::data::playlist::PlaybackMode;
 use crate::data::song::Song;
 use crate::data::NamedPathLike;
-use crate::discord_rpc::{send_rpc_action, RPCAction};
+use crate::discord_rpc::{send_rpc_action, RPCAction, SetSongData};
 use crate::{read_rwlock, write_rwlock, ReadWrapper};
 use rodio::source::SeekError;
 use rodio::{Decoder, OutputStream, OutputStreamBuilder, Sink, Source};
@@ -139,11 +139,13 @@ impl MusicManager {
 
                             MusicCommand::Pause => {
                                 sink.pause();
+                                send_rpc_action(RPCAction::StopMusic);
                             }
 
                             MusicCommand::Play => {
                                 sink.play();
                             }
+
                             MusicCommand::SwitchSong(switch_song_command) => {
                                 let mut queue = write_rwlock(&queue);
 
@@ -205,11 +207,11 @@ impl MusicManager {
 
                             let song_data = song.get_or_load_song_data();
 
-                            send_rpc_action(RPCAction::ChangeSong {
+                            send_rpc_action(RPCAction::SetSong(SetSongData {
                                 song_title: song_data.title.clone(),
                                 song_artist: song_data.artist.to_string(),
                                 song_duration: total_song_duration,
-                            });
+                            }));
 
                             sink.append(source);
 
@@ -223,6 +225,9 @@ impl MusicManager {
 
                     thread::sleep(Duration::from_millis(16))
                 }
+
+                // End of music thread... cleanup
+                send_rpc_action(RPCAction::StopMusic);
             })
             .expect("Unable to spawn thread at OS level");
 
