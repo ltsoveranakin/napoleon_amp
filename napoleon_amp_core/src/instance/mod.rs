@@ -1,7 +1,7 @@
-use crate::data::folder::Folder;
-use crate::data::playlist::Playlist;
-use crate::data::song::Song;
-use crate::data::PathNamed;
+use crate::content::folder::Folder;
+use crate::content::playlist::Playlist;
+use crate::content::song::Song;
+use crate::content::PathNamed;
 use crate::discord_rpc::discord_rpc_thread;
 use crate::paths::folders_dir;
 use std::rc::Rc;

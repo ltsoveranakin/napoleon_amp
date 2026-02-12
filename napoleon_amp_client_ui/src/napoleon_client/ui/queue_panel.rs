@@ -1,7 +1,7 @@
 use crate::napoleon_client::ui::helpers::{scroll_area_list, ScrollListDisplay};
 use eframe::egui::{ScrollArea, Ui};
-use napoleon_amp_core::data::playlist::manager::MusicManager;
-use napoleon_amp_core::data::playlist::Playlist;
+use napoleon_amp_core::content::playlist::manager::MusicManager;
+use napoleon_amp_core::content::playlist::Playlist;
 
 pub struct QueuePanel;
 

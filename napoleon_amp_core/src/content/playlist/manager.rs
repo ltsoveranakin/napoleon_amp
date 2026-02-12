@@ -1,7 +1,7 @@
-use crate::data::playlist::queue::Queue;
-use crate::data::playlist::PlaybackMode;
-use crate::data::song::Song;
-use crate::data::NamedPathLike;
+use crate::content::playlist::queue::Queue;
+use crate::content::playlist::PlaybackMode;
+use crate::content::song::Song;
+use crate::content::NamedPathLike;
 use crate::discord_rpc::{send_rpc_action, RPCAction, SetSongData};
 use crate::{read_rwlock, write_rwlock, ReadWrapper};
 use rodio::source::SeekError;

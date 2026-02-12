@@ -1,5 +1,5 @@
-use crate::data::song::Song;
-use crate::data::PathNamed;
+use crate::content::song::Song;
+use crate::content::PathNamed;
 use crate::paths::song_file;
 use crate::{read_rwlock, write_rwlock};
 use std::collections::HashMap;

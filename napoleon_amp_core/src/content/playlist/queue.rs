@@ -1,5 +1,5 @@
-use crate::data::playlist::PlaybackMode;
-use crate::data::song::Song;
+use crate::content::playlist::PlaybackMode;
+use crate::content::song::Song;
 use rand::RngExt;
 use std::sync::Arc;
 

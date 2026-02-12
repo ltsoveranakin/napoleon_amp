@@ -1,8 +1,8 @@
 mod master;
 pub(crate) mod song_data;
 
-use crate::data::song::song_data::get_song_data_from_song_file;
-use crate::data::{NamedPathLike, PathNamed};
+use crate::content::song::song_data::get_song_data_from_song_file;
+use crate::content::{NamedPathLike, PathNamed};
 use crate::{read_rwlock, write_rwlock, ReadWrapper};
 use serbytes::prelude::SerBytes;
 use std::collections::HashMap;

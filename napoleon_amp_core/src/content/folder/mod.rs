@@ -1,9 +1,9 @@
 pub mod content;
 
-use crate::data::folder::content::{FolderContent, FolderContentVariant};
+use crate::content::folder::content::{FolderContent, FolderContentVariant};
 
-use crate::data::playlist::{Playlist, PlaylistVariant};
-use crate::data::{unwrap_inner_ref, NamedPathLike, PathNamed};
+use crate::content::playlist::{Playlist, PlaylistVariant};
+use crate::content::{unwrap_inner_ref, NamedPathLike, PathNamed};
 use std::cell::{Ref, RefCell};
 use std::fs;
 use std::rc::{Rc, Weak};

@@ -1,10 +1,10 @@
 use crate::napoleon_client::ui::helpers::scroll_area_styled;
 use crate::napoleon_client::ui::playlist_panel::PlaylistPanel;
 use eframe::egui::{CursorIcon, Id, Modal, Popup, Response, ScrollArea, Ui};
-use napoleon_amp_core::data::folder::content::FolderContentVariant;
-use napoleon_amp_core::data::folder::Folder;
-use napoleon_amp_core::data::playlist::Playlist;
-use napoleon_amp_core::data::NamedPathLike;
+use napoleon_amp_core::content::folder::content::FolderContentVariant;
+use napoleon_amp_core::content::folder::Folder;
+use napoleon_amp_core::content::playlist::Playlist;
+use napoleon_amp_core::content::NamedPathLike;
 use napoleon_amp_core::discord_rpc::set_rpc_playlist;
 use std::ffi::OsStr;
 use std::rc::Rc;

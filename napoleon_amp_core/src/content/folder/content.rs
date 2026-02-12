@@ -1,5 +1,5 @@
-use crate::data::folder::Folder;
-use crate::data::playlist::Playlist;
+use crate::content::folder::Folder;
+use crate::content::playlist::Playlist;
 use std::rc::Rc;
 
 #[derive(Debug)]

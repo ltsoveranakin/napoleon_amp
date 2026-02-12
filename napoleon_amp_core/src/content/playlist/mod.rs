@@ -1,10 +1,10 @@
 pub mod manager;
 mod queue;
 
-use crate::data::playlist::manager::{MusicCommand, MusicManager};
-use crate::data::song::song_data::get_song_data_from_song_file;
-use crate::data::song::Song;
-use crate::data::{unwrap_inner_ref, unwrap_inner_ref_mut, NamedPathLike, PathNamed};
+use crate::content::playlist::manager::{MusicCommand, MusicManager};
+use crate::content::song::song_data::get_song_data_from_song_file;
+use crate::content::song::Song;
+use crate::content::{unwrap_inner_ref, unwrap_inner_ref_mut, NamedPathLike, PathNamed};
 use crate::paths::{song_file, songs_dir};
 use crate::song_pool::SONG_POOL;
 use crate::{read_rwlock, write_rwlock, ReadWrapper};

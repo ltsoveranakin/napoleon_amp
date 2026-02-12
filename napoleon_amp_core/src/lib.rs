@@ -2,7 +2,7 @@ use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
 use std::sync::{Mutex, MutexGuard, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
-pub mod data;
+pub mod content;
 pub mod discord_rpc;
 pub mod instance;
 mod net;
