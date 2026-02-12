@@ -144,6 +144,7 @@ impl MusicManager {
 
                             MusicCommand::Play => {
                                 sink.play();
+                                send_rpc_action(RPCAction::Resume);
                             }
 
                             MusicCommand::SwitchSong(switch_song_command) => {

@@ -124,7 +124,7 @@ fn set_activity_to_song_data(mut activity: Activity, set_song_data: SetSongData)
     activity = activity
         .timestamps(timestamp)
         .state(format!("By {}", song_artist))
-        .details(song_title);
+        .details(format!("{} - {}", song_artist, song_title));
 
     activity
 }

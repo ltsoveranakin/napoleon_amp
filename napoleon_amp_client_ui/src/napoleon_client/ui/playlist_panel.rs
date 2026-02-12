@@ -355,8 +355,9 @@ impl PlaylistPanel {
 
         if let Some(music_manager) = self.current_playlist.get_music_manager().deref() {
             let song_status = music_manager.get_song_status_ref();
+            let song_data = song_status.song().get_or_load_song_data();
 
-            ui.heading(song_status.song().name());
+            ui.heading(&song_data.title);
 
             should_stop_music = self.render_currently_playing_song_controls(
                 ctx,
