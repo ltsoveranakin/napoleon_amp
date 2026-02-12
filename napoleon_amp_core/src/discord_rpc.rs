@@ -46,11 +46,9 @@ pub(super) fn discord_rpc_thread() -> Result<(), Box<dyn std::error::Error>> {
 
     client.connect()?;
 
-    client
-        .set_activity(activity.clone())
-        .expect("Unable to set activity");
-
     let mut use_idle_activity = true;
+
+    client.set_activity(activity.clone()).ok();
 
     loop {
         if let Ok(action) = rx.recv() {
@@ -84,12 +82,13 @@ pub(super) fn discord_rpc_thread() -> Result<(), Box<dyn std::error::Error>> {
                 activity.clone()
             };
 
-            client
-                .set_activity(activity_to_use)
-                .expect("Unable to set activity");
-            println!("set activity");
+            if client.set_activity(activity_to_use).is_err() {
+                if client.reconnect().is_err() {
+                    break;
+                }
+            }
         } else {
-            println!("rpc channel hung up");
+            println!("main channel hung up, ending rpc loop");
             // channel hung up
             break;
         }
