@@ -9,5 +9,5 @@ serbytes = { git = "https://github.com/ltsoveranakin/serbytes.git" }
 rodio = { version = "0.21", default-features = false, features = ["symphonia-all", "playback"] }
 symphonia = { version = "0.5.4", features = ["mp3", "symphonia-bundle-mp3"] }
 rand = "0.10"
-#discord-presence = "3.2"
 discord-rich-presence = "1.1"
+chrono = "0.4.43"

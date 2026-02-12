@@ -6,7 +6,7 @@ pub mod data;
 pub mod discord_rpc;
 pub mod instance;
 mod net;
-mod paths;
+pub mod paths;
 mod song_pool;
 
 static POISONED_LOCK_MESSAGE: &str = "Poisoned lock";
@@ -85,12 +85,8 @@ impl<'a, T> From<RwLockReadGuard<'a, T>> for ReadWrapper<'a, T> {
     }
 }
 
-pub fn write_rwlock<T: Debug>(rw_lock: &RwLock<T>) -> WriteWrapper<T> {
-    // println!("try write {:?}", rw_lock);
-    // let bt = Backtrace::new();
-    // println!("{:?}", bt);
+pub fn write_rwlock<T: Debug>(rw_lock: &'_ RwLock<T>) -> WriteWrapper<'_, T> {
     let l = rw_lock.write().expect(POISONED_LOCK_MESSAGE);
-    // println!("obtained write");
 
     WriteWrapper::new(l)
 }
