@@ -6,6 +6,7 @@ use crate::data::song::song_data::get_song_data_from_song_file;
 use crate::data::song::Song;
 use crate::data::{unwrap_inner_ref, unwrap_inner_ref_mut, NamedPathLike, PathNamed};
 use crate::paths::{song_file, songs_dir};
+use crate::song_pool::SONG_POOL;
 use crate::{read_rwlock, write_rwlock, ReadWrapper};
 use rodio::Source;
 use serbytes::prelude::{MayNotExistDefault, SerBytes};
@@ -222,9 +223,7 @@ impl Playlist {
                 songs.reserve_exact(song_file_names.len());
 
                 for song_name in song_file_names.iter() {
-                    let song_path = song_file(song_name);
-
-                    songs.push(Arc::new(Song::new(PathNamed::new(song_path))));
+                    songs.push(SONG_POOL.get_song_by_name(song_name.clone()));
                 }
             }
 
@@ -361,7 +360,8 @@ impl Playlist {
                     }
                 }
 
-                let song = Song::new(PathNamed::new(new_song_path));
+                let song =
+                    SONG_POOL.get_song_by_name(file_name.to_str().expect("Valid utf8").to_string());
 
                 {
                     let mut song_data = write_rwlock(&song.song_data);
@@ -371,7 +371,7 @@ impl Playlist {
 
                 **write_rwlock(&song.has_loaded_song_data) = true;
 
-                songs.push(Arc::new(song));
+                songs.push(song);
             }
         }
 
