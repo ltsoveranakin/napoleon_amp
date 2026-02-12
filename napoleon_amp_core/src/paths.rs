@@ -25,11 +25,11 @@ pub fn log_dir() -> PathBuf {
     napoleon_amp_dir().join("logs/")
 }
 
-pub fn log_file_time_now() -> PathBuf {
+pub fn crash_file_time_now() -> PathBuf {
     let date_time = Local::now();
 
     log_dir().join(format!(
-        "YMD-{}-{}-{}-HMS-{}-{}-{}_log.txt",
+        "YMD-{}-{}-{}-HMS-{}-{}-{}_crash.txt",
         date_time.year(),
         date_time.month(),
         date_time.day(),

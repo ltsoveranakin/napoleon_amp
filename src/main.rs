@@ -8,7 +8,7 @@ use std::time::SystemTime;
 
 use eframe::{egui, NativeOptions};
 
-use napoleon_amp_client_ui::{log_dir, log_file_time_now, NapoleonClientApp};
+use napoleon_amp_client_ui::{crash_file_time_now, log_dir, NapoleonClientApp};
 
 fn main() {
     init_crash_logger();
@@ -61,7 +61,7 @@ fn init_crash_logger() {
             create_dir_all(logging_directory).ok();
         }
 
-        let mut log_file = match File::create_new(log_file_time_now()) {
+        let mut log_file = match File::create_new(crash_file_time_now()) {
             Ok(file) => file,
             Err(e) => {
                 eprintln!("Unable to create log file; {}", e);
