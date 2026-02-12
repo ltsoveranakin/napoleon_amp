@@ -50,7 +50,7 @@ pub(super) fn discord_rpc_thread() -> Result<(), Box<dyn std::error::Error>> {
         .set_activity(activity.clone())
         .expect("Unable to set activity");
 
-    let mut use_idle_activity = false;
+    let mut use_idle_activity = true;
 
     loop {
         if let Ok(action) = rx.recv() {

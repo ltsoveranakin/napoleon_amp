@@ -236,14 +236,15 @@ impl PlaylistPanel {
     ) {
         ScrollArea::vertical().show(ui, |ui| {
             ui.scope(|ui| {
-                let max_height = if self.current_playlist.get_music_manager().is_some() {
-                    ui.available_height() - 80.
+                let height_range = if self.current_playlist.get_music_manager().is_some() {
+                    let height = ui.available_height() - 80.;
+                    height..=height
                 } else {
-                    f32::INFINITY
+                    0.0..=f32::INFINITY
                 };
 
                 ui.style_mut().wrap_mode = Some(TextWrapMode::Truncate);
-                ui.set_max_height(max_height);
+                ui.set_height_range(height_range);
 
                 TableBuilder::new(ui)
                     .column(Column::remainder())
