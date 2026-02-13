@@ -9,6 +9,10 @@ fn napoleon_amp_dir() -> PathBuf {
     home_dir().join("/napoleon_amp/")
 }
 
+pub(super) fn instance_data_file_path() -> PathBuf {
+    napoleon_amp_dir().join("instance_data.dnap")
+}
+
 pub(super) fn folders_dir() -> PathBuf {
     napoleon_amp_dir().join("folders/")
 }
