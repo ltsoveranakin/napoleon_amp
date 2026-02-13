@@ -1,6 +1,8 @@
+mod data;
 pub mod manager;
 mod queue;
 
+use crate::content::playlist::data::{PlaybackMode, PlaylistData};
 use crate::content::playlist::manager::{MusicCommand, MusicManager};
 use crate::content::song::song_data::get_song_data_from_song_file;
 use crate::content::song::Song;
@@ -9,50 +11,15 @@ use crate::paths::{song_file, songs_dir};
 use crate::song_pool::SONG_POOL;
 use crate::{read_rwlock, write_rwlock, ReadWrapper};
 use rodio::Source;
-use serbytes::prelude::{MayNotExistDefault, SerBytes};
+use serbytes::prelude::SerBytes;
 use std::cell::{Cell, Ref, RefCell, RefMut};
-use std::fmt::{Display, Formatter};
+use std::fmt::Display;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::ops::{Deref, RangeInclusive};
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 use std::{fs, io};
-
-#[derive(SerBytes, Default, Debug, Copy, Clone)]
-pub enum PlaybackMode {
-    #[default]
-    Sequential,
-    Shuffle,
-}
-
-impl Display for PlaybackMode {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Sequential => f.write_str("Sequential"),
-            Self::Shuffle => f.write_str("Shuffle"),
-        }
-    }
-}
-
-#[derive(SerBytes, Debug)]
-struct PlaylistData {
-    song_file_names: Vec<String>,
-    playback_mode: MayNotExistDefault<PlaybackMode>,
-}
-
-impl PlaylistData {
-    fn new_empty() -> Self {
-        Self::new_capacity(0)
-    }
-
-    fn new_capacity(cap: usize) -> Self {
-        Self {
-            song_file_names: Vec::with_capacity(cap),
-            playback_mode: MayNotExistDefault::default(),
-        }
-    }
-}
 
 /// The type of playlist this will attempt to load songs from
 
@@ -417,7 +384,7 @@ impl Playlist {
     }
 
     pub fn playback_mode(&self) -> PlaybackMode {
-        self.get_or_load_playlist_data().playback_mode.into_inner()
+        *self.get_or_load_playlist_data().playback_mode.deref()
     }
 
     pub fn delete_song(&self, song_index: usize) {
