@@ -7,6 +7,7 @@ use crate::content::PathNamed;
 use crate::discord_rpc::discord_rpc_thread;
 use crate::instance::data::InstanceData;
 use crate::paths::folders_dir;
+use crate::read_rwlock;
 use std::cell::LazyCell;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -43,10 +44,11 @@ impl NapoleonInstance {
     }
 
     pub fn copy_selected_songs(&mut self, playlist: &Playlist) {
-        let songs = &playlist.get_or_load_songs();
+        let song_vec = playlist.get_or_load_songs();
+        let songs = read_rwlock(&song_vec);
         let selected_songs_variant = playlist.get_selected_songs_variant();
 
-        let selected_songs = selected_songs_variant.get_selected_songs(songs).to_vec();
+        let selected_songs = selected_songs_variant.get_selected_songs(&*songs).to_vec();
 
         self.copied_songs = Some(selected_songs);
     }

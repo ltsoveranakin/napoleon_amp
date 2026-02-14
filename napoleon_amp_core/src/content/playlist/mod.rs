@@ -1,15 +1,15 @@
 mod data;
 pub mod manager;
 mod queue;
+mod song_list;
 
 use crate::content::playlist::data::{PlaybackMode, PlaylistData};
 use crate::content::playlist::manager::{MusicCommand, MusicManager};
-use crate::content::song::song_data::get_song_data_from_song_file;
+use crate::content::playlist::song_list::{SongList, SongVec};
 use crate::content::song::Song;
 use crate::content::{unwrap_inner_ref, unwrap_inner_ref_mut, NamedPathLike, PathNamed};
 use crate::paths::{song_file, songs_dir};
-use crate::song_pool::SONG_POOL;
-use crate::{read_rwlock, write_rwlock, ReadWrapper};
+use crate::{read_rwlock, write_rwlock};
 use rodio::Source;
 use serbytes::prelude::SerBytes;
 use std::cell::{Cell, Ref, RefCell, RefMut};
@@ -29,22 +29,6 @@ pub enum PlaylistVariant {
     SongFolder,
     /// Will attempt to load all songs in the supplied file
     PlaylistFile,
-}
-
-pub enum SongList<'s> {
-    Filtered(Ref<'s, Vec<Song>>),
-    Unfiltered(ReadWrapper<'s, Vec<Song>>),
-}
-
-impl<'s> Deref for SongList<'s> {
-    type Target = [Song];
-
-    fn deref(&self) -> &Self::Target {
-        match self {
-            Self::Filtered(ref_songs) => &***ref_songs,
-            Self::Unfiltered(rw_songs) => &***rw_songs,
-        }
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -90,11 +74,11 @@ impl SelectedSongsVariant {
 #[derive(Debug)]
 pub struct Playlist {
     path_named: RefCell<PathNamed>,
-    songs: Arc<RwLock<Vec<Arc<Song>>>>,
+    songs: RefCell<SongList>,
     has_loaded_songs: Cell<bool>,
     music_manager: RefCell<Option<MusicManager>>,
     pub variant: PlaylistVariant,
-    songs_filtered: Arc<RwLock<Vec<Arc<Song>>>>,
+    songs_filtered: SongVec,
     selected_songs: RefCell<SelectedSongsVariant>,
     playlist_data: RefCell<Option<PlaylistData>>,
 }
@@ -103,7 +87,7 @@ impl Playlist {
     fn new(path_named: PathNamed, variant: PlaylistVariant) -> Self {
         Self {
             path_named: RefCell::new(path_named),
-            songs: Arc::new(RwLock::new(Vec::new())),
+            songs: RefCell::new(SongList::new()),
             has_loaded_songs: Cell::new(false),
             music_manager: RefCell::new(None),
             variant,
@@ -127,31 +111,31 @@ impl Playlist {
 
     /// Gets the songs in the current playlist, with the filter if one is enabled
 
-    pub fn get_or_load_songs(&self) -> ReadWrapper<'_, Vec<Arc<Song>>> {
+    pub fn get_or_load_songs(&self) -> SongVec {
         let songs_filtered = read_rwlock(&self.songs_filtered);
 
         if songs_filtered.is_empty() {
             self.get_or_load_songs_unfiltered()
         } else {
-            songs_filtered
+            Arc::clone(&self.songs_filtered)
         }
     }
 
-    pub fn get_or_load_songs_arc(&self) -> Arc<RwLock<Vec<Arc<Song>>>> {
+    fn get_or_load_songs_arc(&self) -> Arc<RwLock<Vec<Arc<Song>>>> {
         let songs_filtered = read_rwlock(&self.songs_filtered);
 
         if songs_filtered.is_empty() {
             self.get_or_load_songs_unfiltered();
 
-            Arc::clone(&self.songs)
+            self.songs.borrow().songs_arc()
         } else {
             Arc::clone(&self.songs_filtered)
         }
     }
 
-    pub fn get_or_load_songs_unfiltered(&self) -> ReadWrapper<'_, Vec<Arc<Song>>> {
+    pub fn get_or_load_songs_unfiltered(&self) -> SongVec {
         if self.has_loaded_songs.get() {
-            read_rwlock(&self.songs)
+            self.songs.borrow().songs_arc()
         } else {
             let playlist_data = self.get_or_load_playlist_data();
 
@@ -184,19 +168,13 @@ impl Playlist {
                 }
             };
 
-            {
-                let mut songs = write_rwlock(&self.songs);
+            let mut songs = self.songs.borrow_mut();
 
-                songs.reserve_exact(song_file_names.len());
-
-                for song_name in song_file_names.iter() {
-                    songs.push(SONG_POOL.get_song_by_name(song_name.clone()));
-                }
-            }
+            songs.push_songs(song_file_names);
 
             self.has_loaded_songs.set(true);
 
-            read_rwlock(&self.songs)
+            songs.songs_arc()
         }
     }
 
@@ -215,7 +193,7 @@ impl Playlist {
             return;
         };
 
-        for song in self.get_or_load_songs_unfiltered().iter() {
+        for song in read_rwlock(&self.get_or_load_songs_unfiltered()).iter() {
             let song_data = song.get_or_load_song_data();
             let strings_to_search: &[&String] = match parsed_search.search_type {
                 ParsedSearchType::Title => &[&song_data.title],
@@ -254,7 +232,8 @@ impl Playlist {
     /// If end is greater than or equal to (potentially filtered songs) length.
 
     pub fn select_range(&self, range: RangeInclusive<usize>) -> Result<(), ()> {
-        let songs = &*self.get_or_load_songs();
+        let songs_lock = self.get_or_load_songs();
+        let songs = read_rwlock(&songs_lock);
 
         let start = *range.start();
         let end = *range.end();
@@ -269,7 +248,7 @@ impl Playlist {
     }
 
     pub fn select_single(&self, index: usize) {
-        if index < self.get_or_load_songs().len() {
+        if index < read_rwlock(&self.get_or_load_songs_arc()).len() {
             self.set_selected_songs(SelectedSongsVariant::Single(index));
         }
     }
@@ -289,9 +268,9 @@ impl Playlist {
     ) -> Result<(), Vec<usize>> {
         let mut already_exists = Vec::new();
         {
-            let mut songs = write_rwlock(&self.songs);
+            let mut songs = self.songs.borrow_mut();
 
-            songs.reserve_exact(song_paths.len());
+            songs.reserve(song_paths.len());
 
             for (i, original_song_path) in song_paths.iter().enumerate() {
                 let file_name = original_song_path
@@ -327,18 +306,7 @@ impl Playlist {
                     }
                 }
 
-                let song =
-                    SONG_POOL.get_song_by_name(file_name.to_str().expect("Valid utf8").to_string());
-
-                {
-                    let mut song_data = write_rwlock(&song.song_data);
-
-                    get_song_data_from_song_file(&song, &mut song_data);
-                }
-
-                **write_rwlock(&song.has_loaded_song_data) = true;
-
-                songs.push(song);
+                songs.push_song(file_name.to_str().expect("Valid utf8").to_string());
             }
         }
 
@@ -389,11 +357,11 @@ impl Playlist {
 
     pub fn delete_song(&self, song_index: usize) {
         {
-            let mut songs = write_rwlock(&self.songs);
+            let mut song_list = self.songs.borrow_mut();
             let songs_filtered = read_rwlock(&self.songs_filtered);
 
             if songs_filtered.is_empty() {
-                songs.remove(song_index);
+                song_list.remove_song_at(song_index);
             } else {
                 let mut songs_filtered = write_rwlock(&self.songs_filtered);
 
@@ -401,7 +369,7 @@ impl Playlist {
 
                 let mut index_to_remove = None;
 
-                for (i, song) in songs.iter().enumerate() {
+                for (i, song) in song_list.songs().iter().enumerate() {
                     if song == &song_removed {
                         index_to_remove = Some(i);
                         break;
@@ -409,7 +377,7 @@ impl Playlist {
                 }
 
                 if let Some(index) = index_to_remove {
-                    songs.remove(index);
+                    song_list.remove_song_at(index);
                 }
             }
         }
@@ -472,12 +440,9 @@ impl Playlist {
 
     pub(crate) fn import_existing_songs(&self, new_songs: &[Arc<Song>]) {
         {
-            let mut playlist_songs = write_rwlock(&self.songs);
-            playlist_songs.reserve_exact(new_songs.len());
+            let mut songs = self.songs.borrow_mut();
 
-            for new_song in new_songs {
-                playlist_songs.push(Arc::clone(new_song));
-            }
+            songs.push_songs_arc_list(new_songs);
         }
 
         self.save_contents();
@@ -538,7 +503,9 @@ impl Playlist {
             .open(&*self.path_named.borrow())
             .expect("Failed to open file in write mode");
 
-        let songs = self.get_or_load_songs();
+        let songs_unfiltered = self.get_or_load_songs_unfiltered();
+
+        let songs = read_rwlock(&songs_unfiltered);
 
         let mut playlist_data = self.get_or_load_playlist_data_mut();
 

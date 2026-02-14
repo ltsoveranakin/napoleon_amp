@@ -2,6 +2,7 @@ use crate::napoleon_client::ui::helpers::{scroll_area_list, ScrollListDisplay};
 use eframe::egui::{ScrollArea, Ui};
 use napoleon_amp_core::content::playlist::manager::MusicManager;
 use napoleon_amp_core::content::playlist::Playlist;
+use napoleon_amp_core::read_rwlock;
 
 pub struct QueuePanel;
 
@@ -18,7 +19,8 @@ impl QueuePanel {
     ) {
         ui.heading("Queued Next:");
 
-        let songs = &*current_playlist.get_or_load_songs_unfiltered();
+        let songs_vec = current_playlist.get_or_load_songs_unfiltered();
+        let songs = read_rwlock(&songs_vec);
         let queue = music_manager.queue();
 
         scroll_area_list(

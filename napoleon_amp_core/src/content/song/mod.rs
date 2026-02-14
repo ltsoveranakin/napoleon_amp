@@ -7,6 +7,7 @@ use crate::{read_rwlock, write_rwlock, ReadWrapper};
 use serbytes::prelude::SerBytes;
 use std::collections::HashMap;
 use std::fs;
+use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::RwLock;
@@ -118,6 +119,12 @@ impl PartialEq<&Song> for Song {
 }
 
 impl Eq for Song {}
+
+impl Hash for Song {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.path_named.name.hash(state);
+    }
+}
 
 impl NamedPathLike for Song {
     fn get_path_named(&self) -> &PathNamed {

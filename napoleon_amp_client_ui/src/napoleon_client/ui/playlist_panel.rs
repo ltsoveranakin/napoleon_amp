@@ -10,6 +10,7 @@ use napoleon_amp_core::content::playlist::manager::{MusicManager, SongStatus};
 use napoleon_amp_core::content::playlist::{Playlist, PlaylistVariant};
 use napoleon_amp_core::content::NamedPathLike;
 use napoleon_amp_core::instance::NapoleonInstance;
+use napoleon_amp_core::read_rwlock;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::time::Duration;
@@ -265,7 +266,8 @@ impl PlaylistPanel {
                         let mut song_index_to_delete = None;
 
                         {
-                            let songs = &*current_playlist.get_or_load_songs();
+                            let song_vec = &*current_playlist.get_or_load_songs();
+                            let songs = read_rwlock(&song_vec);
                             let selected_songs = current_playlist.get_selected_songs_variant();
                             let current_playing_song = current_playlist.get_current_song_playing();
 
