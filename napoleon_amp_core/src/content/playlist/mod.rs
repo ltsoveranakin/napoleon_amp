@@ -426,7 +426,20 @@ impl Playlist {
             .map(|manager| manager.queue().get_current_song_index())
     }
 
-    pub(crate) fn start_play_song(&self, song_index: usize, volume: f32) {
+    pub fn get_volume(&self) -> f32 {
+        *self.get_or_load_playlist_data().volume
+    }
+
+    pub fn set_volume(&self, volume: f32) {
+        if let Some(manager) = &*self.get_music_manager() {
+            manager.set_volume(volume);
+        }
+
+        *self.get_or_load_playlist_data_mut().volume = volume;
+        self.save_contents();
+    }
+
+    pub(crate) fn start_play_song(&self, song_index: usize) {
         if let Some(music_manager) = self.music_manager.take() {
             let current_handle = music_manager.playing_handle;
 
@@ -444,7 +457,7 @@ impl Playlist {
         let music_manager = MusicManager::try_create(
             self.get_or_load_songs_arc(),
             song_index,
-            volume,
+            *playlist_data.volume,
             *playlist_data.playback_mode,
         );
 

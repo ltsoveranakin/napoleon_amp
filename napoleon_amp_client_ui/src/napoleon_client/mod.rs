@@ -12,7 +12,6 @@ pub struct NapoleonClientApp {
     core_instance: NapoleonInstance,
     folder_list: FolderList,
     playlist_panel: Option<PlaylistPanel>,
-    volume: i32,
 }
 
 impl NapoleonClientApp {
@@ -24,7 +23,6 @@ impl NapoleonClientApp {
             core_instance,
             folder_list: FolderList::new(current_folder),
             playlist_panel: None,
-            volume: 100,
         }
     }
 }
@@ -47,7 +45,7 @@ impl App for NapoleonClientApp {
             }
 
             CentralPanel::default().show(ctx, |ui| {
-                playlist_panel.render(ctx, ui, &mut self.volume, &mut self.core_instance);
+                playlist_panel.render(ctx, ui, &mut self.core_instance);
             });
         }
     }

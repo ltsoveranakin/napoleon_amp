@@ -57,9 +57,9 @@ impl NapoleonInstance {
         }
     }
 
-    pub fn start_play_song(&mut self, playlist: Rc<Playlist>, song_index: usize, volume: f32) {
+    pub fn start_play_song(&mut self, playlist: Rc<Playlist>, song_index: usize) {
         self.stop_music();
-        playlist.start_play_song(song_index, volume);
+        playlist.start_play_song(song_index);
         self.currently_playing_playlist = Some(playlist);
     }
 

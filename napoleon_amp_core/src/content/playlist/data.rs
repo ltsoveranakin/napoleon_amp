@@ -1,4 +1,6 @@
-use serbytes::prelude::{MayNotExistOrDefault, SerBytes};
+use serbytes::prelude::{
+    MayNotExistDataProvider, MayNotExistOrDefault, MayNotExistOrElse, SerBytes,
+};
 use std::fmt::{Display, Formatter};
 
 #[derive(SerBytes, Default, Debug, Copy, Clone)]
@@ -17,10 +19,20 @@ impl Display for PlaybackMode {
     }
 }
 
+#[derive(Debug)]
+pub(super) struct VolumeDNEDataProvider;
+
+impl MayNotExistDataProvider<f32> for VolumeDNEDataProvider {
+    fn get_data() -> f32 {
+        1.0
+    }
+}
+
 #[derive(SerBytes, Debug)]
 pub(super) struct PlaylistData {
     pub(super) song_file_names: Vec<String>,
     pub(super) playback_mode: MayNotExistOrDefault<PlaybackMode>,
+    pub(super) volume: MayNotExistOrElse<f32, VolumeDNEDataProvider>,
 }
 
 impl PlaylistData {
@@ -32,6 +44,7 @@ impl PlaylistData {
         Self {
             song_file_names: Vec::with_capacity(cap),
             playback_mode: MayNotExistOrDefault::default(),
+            volume: 1.0.into(),
         }
     }
 }

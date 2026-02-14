@@ -92,6 +92,7 @@ impl MusicManager {
         volume: f32,
         playback_mode: PlaybackMode,
     ) -> Option<Self> {
+        // TODO: return result instead of option
         let songs = read_rwlock(&songs_arc);
 
         if songs.is_empty() {
@@ -249,7 +250,7 @@ impl MusicManager {
         read_rwlock(&self.queue)
     }
 
-    pub fn set_volume(&self, volume: f32) {
+    pub(super) fn set_volume(&self, volume: f32) {
         self.send_command(MusicCommand::SetVolume(volume));
     }
 

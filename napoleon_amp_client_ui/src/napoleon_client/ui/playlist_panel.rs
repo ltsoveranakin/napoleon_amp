@@ -42,7 +42,6 @@ impl PlaylistPanel {
         &mut self,
         ctx: &Context,
         ui: &mut Ui,
-        volume: &mut i32,
         napoleon_instance: &mut NapoleonInstance,
     ) {
         if matches!(self.current_playlist.variant, PlaylistVariant::PlaylistFile) {
@@ -126,9 +125,9 @@ impl PlaylistPanel {
 
         self.render_modal(ui);
 
-        self.render_song_list(ui, &current_playlist_rc, *volume, napoleon_instance);
+        self.render_song_list(ui, &current_playlist_rc, napoleon_instance);
 
-        self.render_currently_playing(ctx, ui, volume, napoleon_instance);
+        self.render_currently_playing(ctx, ui, napoleon_instance);
     }
 
     fn render_modal(&mut self, ui: &mut Ui) {
@@ -231,7 +230,6 @@ impl PlaylistPanel {
         &self,
         ui: &mut Ui,
         current_playlist: &Rc<Playlist>,
-        volume: i32,
         napoleon_instance: &mut NapoleonInstance,
     ) {
         ScrollArea::vertical().show(ui, |ui| {
@@ -315,7 +313,6 @@ impl PlaylistPanel {
                                         napoleon_instance.start_play_song(
                                             Rc::clone(current_playlist),
                                             song_index,
-                                            volume as f32 / 100.,
                                         );
                                     }
 
@@ -348,7 +345,6 @@ impl PlaylistPanel {
         &self,
         ctx: &Context,
         ui: &mut Ui,
-        volume: &mut i32,
         napoleon_instance: &mut NapoleonInstance,
     ) {
         let mut should_stop_music = false;
@@ -359,13 +355,8 @@ impl PlaylistPanel {
 
             ui.heading(&song_data.title);
 
-            should_stop_music = self.render_currently_playing_song_controls(
-                ctx,
-                ui,
-                volume,
-                music_manager,
-                &song_status,
-            );
+            should_stop_music =
+                self.render_currently_playing_song_controls(ctx, ui, music_manager, &song_status);
         }
 
         if should_stop_music {
@@ -377,15 +368,17 @@ impl PlaylistPanel {
         &self,
         ctx: &Context,
         ui: &mut Ui,
-        volume: &mut i32,
         music_manager: &MusicManager,
         song_status: &SongStatus,
     ) -> bool {
+        let mut volume = (self.current_playlist.get_volume() * 100.) as i32;
         let should_stop = ui
             .horizontal(|ui| {
                 ui.label("Vol:");
-                if ui.add(Slider::new(volume, 0..=100)).changed() {
-                    music_manager.set_volume(*volume as f32 / 100.);
+
+                if ui.add(Slider::new(&mut volume, 0..=100)).changed() {
+                    self.current_playlist.set_volume(volume as f32 / 100.);
+                    // music_manager.set_volume(volume as f32 / 100.);
                 }
 
                 if ui.button("Prev").clicked() {
