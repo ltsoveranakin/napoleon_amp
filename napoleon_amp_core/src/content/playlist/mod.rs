@@ -420,10 +420,10 @@ impl Playlist {
     /// Returns `None` if music manager is `None` (no song is playing) otherwise returns the index
     /// of the next song that will be played (with respect to the queue)
 
-    pub fn get_current_song_playing_index(&self) -> Option<usize> {
+    pub fn get_current_song_playing(&self) -> Option<Arc<Song>> {
         self.get_music_manager()
             .as_ref()
-            .map(|manager| manager.queue().get_current_song_index())
+            .map(|manager| manager.get_song_status().song)
     }
 
     pub fn get_volume(&self) -> f32 {

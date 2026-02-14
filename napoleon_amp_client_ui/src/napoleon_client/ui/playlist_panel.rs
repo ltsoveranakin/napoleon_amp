@@ -267,8 +267,7 @@ impl PlaylistPanel {
                         {
                             let songs = &*current_playlist.get_or_load_songs();
                             let selected_songs = current_playlist.get_selected_songs_variant();
-                            let current_playing_song_index =
-                                current_playlist.get_current_song_playing_index();
+                            let current_playing_song = current_playlist.get_current_song_playing();
 
                             body.rows(20.0, songs.len(), |mut row| {
                                 let song_index = row.index();
@@ -282,9 +281,8 @@ impl PlaylistPanel {
                                         button_text_color = SELECTED_TEXT_COLOR;
                                     }
 
-                                    if let Some(current_playing_song_index) =
-                                        current_playing_song_index
-                                        && current_playing_song_index == song_index
+                                    if let Some(current_playing_song) = &current_playing_song
+                                        && &*current_playing_song == song
                                     {
                                         if is_selected {
                                             button_text_color
@@ -350,7 +348,7 @@ impl PlaylistPanel {
         let mut should_stop_music = false;
 
         if let Some(music_manager) = self.current_playlist.get_music_manager().deref() {
-            let song_status = music_manager.get_song_status_ref();
+            let song_status = music_manager.get_song_status();
             let song_data = song_status.song().get_or_load_song_data();
 
             ui.heading(&song_data.title);
@@ -378,7 +376,6 @@ impl PlaylistPanel {
 
                 if ui.add(Slider::new(&mut volume, 0..=100)).changed() {
                     self.current_playlist.set_volume(volume as f32 / 100.);
-                    // music_manager.set_volume(volume as f32 / 100.);
                 }
 
                 if ui.button("Prev").clicked() {

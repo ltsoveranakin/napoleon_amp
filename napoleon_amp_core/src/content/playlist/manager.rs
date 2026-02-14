@@ -264,14 +264,8 @@ impl MusicManager {
         self.sink.try_seek(pos)
     }
 
-    /// Returns the current song status, this can deadlock if the song changes at the same time, instead use [`Self::get_song_status_cloned`] if cloning is acceptable
-
-    pub fn get_song_status_ref(&self) -> ReadWrapper<'_, SongStatus> {
-        read_rwlock(&self.song_status)
-    }
-
-    pub fn get_song_status_cloned(&self) -> SongStatus {
-        self.get_song_status_ref().clone()
+    pub fn get_song_status(&self) -> SongStatus {
+        read_rwlock(&self.song_status).clone()
     }
 
     pub fn is_playing(&self) -> bool {
