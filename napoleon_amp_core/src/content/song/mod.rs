@@ -1,12 +1,10 @@
 mod master;
 pub(crate) mod song_data;
 
-use crate::content::song::song_data::get_song_data_from_song_file;
+use crate::content::song::song_data::{get_song_data_from_song_file, SongData};
 use crate::content::{NamedPathLike, PathNamed};
-use crate::{read_rwlock, write_rwlock, ReadWrapper};
+use crate::{read_rwlock, write_rwlock, ReadWrapper, WriteWrapper};
 use serbytes::prelude::SerBytes;
-use std::collections::HashMap;
-use std::fs;
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::path::PathBuf;
@@ -14,35 +12,6 @@ use std::sync::RwLock;
 
 pub static UNKNOWN_ARTIST_STR: &str = "Unknown Artist";
 pub static UNKNOWN_ALBUM_STR: &str = "Unknown Album";
-
-#[derive(SerBytes, Clone, Debug)]
-enum SongTagValue {
-    String(String),
-}
-
-#[derive(SerBytes, Eq, PartialEq, Hash, Clone, Debug)]
-enum TagType {
-    Dynamic(String),
-}
-
-#[derive(SerBytes, Clone, Debug)]
-pub struct SongData {
-    pub artist: String,
-    pub album: String,
-    pub title: String,
-    custom_song_tags: HashMap<TagType, SongTagValue>,
-}
-
-impl Default for SongData {
-    fn default() -> Self {
-        Self {
-            artist: UNKNOWN_ARTIST_STR.to_string(),
-            album: UNKNOWN_ALBUM_STR.to_string(),
-            title: String::new(),
-            custom_song_tags: HashMap::new(),
-        }
-    }
-}
 
 #[derive(Debug)]
 pub struct Song {
@@ -73,29 +42,51 @@ impl Song {
         if **read_rwlock(&self.has_loaded_song_data) {
             read_rwlock(&self.song_data)
         } else {
-            let mut song_data =
-                SongData::from_vec(fs::read(&self.song_data_path).expect("Read song data file"))
-                    .unwrap_or_else(|_| {
-                        let mut sd = SongData::default();
-                        get_song_data_from_song_file(self, &mut sd);
-
-                        sd
-                    });
-
-            if song_data.artist.len() == 0 {
-                song_data.artist = UNKNOWN_ARTIST_STR.into();
-            }
-
-            if song_data.album.len() == 0 {
-                song_data.album = UNKNOWN_ALBUM_STR.into();
-            }
-
-            **write_rwlock(&self.song_data) = song_data;
-
-            **write_rwlock(&self.has_loaded_song_data) = true;
+            self.load_song_data();
 
             read_rwlock(&self.song_data)
         }
+    }
+
+    pub fn get_or_load_song_data_mut(&self) -> WriteWrapper<'_, SongData> {
+        if **read_rwlock(&self.has_loaded_song_data) {
+            write_rwlock(&self.song_data)
+        } else {
+            self.load_song_data();
+
+            write_rwlock(&self.song_data)
+        }
+    }
+
+    fn load_song_data(&self) {
+        let mut song_data = SongData::from_file_path(&self.song_data_path).unwrap_or_else(|_| {
+            let mut sd = SongData::default();
+            get_song_data_from_song_file(self, &mut sd);
+
+            sd
+        });
+
+        if song_data.artist.len() == 0 {
+            song_data.artist = UNKNOWN_ARTIST_STR.into();
+        }
+
+        if song_data.album.len() == 0 {
+            song_data.album = UNKNOWN_ALBUM_STR.into();
+        }
+
+        **write_rwlock(&self.song_data) = song_data;
+
+        **write_rwlock(&self.has_loaded_song_data) = true;
+    }
+
+    pub fn set_song_data(&self, new_song_data: SongData) {
+        let mut song_data = self.get_or_load_song_data_mut();
+
+        **song_data = new_song_data;
+
+        song_data
+            .write_to_file_path(&self.song_data_path)
+            .expect("Write song data to file");
     }
 }
 
@@ -106,6 +97,8 @@ impl Clone for Song {
             song_data_path: self.song_data_path.clone(),
             // The RwLock is only ever written to once, when lazily loaded at Song::get_or_load_song_data.
             // The loading operation will never panic while holding a lock to the data, so this call to expect is okay
+
+            // No clue why I said that above, its completely redundant since if it did panic it would panic on the main thread anyway.
             song_data: RwLock::new(self.song_data.read().expect("Writer to not panic").clone()),
             has_loaded_song_data: RwLock::new(
                 *self

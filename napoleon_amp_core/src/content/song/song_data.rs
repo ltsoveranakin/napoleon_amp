@@ -1,6 +1,7 @@
-use crate::content::song::{Song, SongData};
+use crate::content::song::{Song, UNKNOWN_ALBUM_STR, UNKNOWN_ARTIST_STR};
 use crate::content::NamedPathLike;
 use serbytes::prelude::SerBytes;
+use std::collections::HashMap;
 use std::fs;
 use std::fs::File;
 use symphonia::core::formats::FormatOptions;
@@ -8,6 +9,35 @@ use symphonia::core::io::{MediaSourceStream, MediaSourceStreamOptions};
 use symphonia::core::meta::{MetadataOptions, StandardTagKey, Value};
 use symphonia::core::probe::Hint;
 use symphonia::default::get_probe;
+
+#[derive(SerBytes, Clone, Debug)]
+pub enum SongTagValue {
+    String(String),
+}
+
+#[derive(SerBytes, Eq, PartialEq, Hash, Clone, Debug)]
+pub enum TagType {
+    Dynamic(String),
+}
+
+#[derive(SerBytes, Clone, Debug)]
+pub struct SongData {
+    pub artist: String,
+    pub album: String,
+    pub title: String,
+    pub custom_song_tags: HashMap<TagType, SongTagValue>,
+}
+
+impl Default for SongData {
+    fn default() -> Self {
+        Self {
+            artist: UNKNOWN_ARTIST_STR.to_string(),
+            album: UNKNOWN_ALBUM_STR.to_string(),
+            title: String::new(),
+            custom_song_tags: HashMap::new(),
+        }
+    }
+}
 
 pub(crate) fn get_song_data_from_song_file(song: &Song, song_data: &mut SongData) {
     let song_path = song.path();
