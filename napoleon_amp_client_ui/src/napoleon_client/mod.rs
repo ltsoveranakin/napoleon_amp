@@ -1,11 +1,11 @@
+mod colors;
 mod ui;
 
 use eframe::egui::{CentralPanel, Context, SidePanel};
 use eframe::{App, Frame};
 
-use crate::napoleon_client::ui::folder_list::FolderList;
-use crate::napoleon_client::ui::playlist_panel::PlaylistPanel;
-
+use crate::napoleon_client::ui::panels::folder_list::FolderList;
+use crate::napoleon_client::ui::panels::playlist_panel::PlaylistPanel;
 use napoleon_amp_core::instance::NapoleonInstance;
 
 pub struct NapoleonClientApp {

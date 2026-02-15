@@ -1,5 +1,6 @@
 use crate::napoleon_client::ui::helpers::scroll_area_styled;
-use crate::napoleon_client::ui::playlist_panel::PlaylistPanel;
+
+use crate::napoleon_client::ui::panels::playlist_panel::PlaylistPanel;
 use eframe::egui::{CursorIcon, Id, Modal, Popup, Response, ScrollArea, Ui};
 use napoleon_amp_core::content::folder::content::FolderContentVariant;
 use napoleon_amp_core::content::folder::Folder;

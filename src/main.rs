@@ -34,7 +34,7 @@ fn main() {
     let _ = eframe::run_native(
         "Egui App",
         options,
-        Box::new(|cc| Ok(Box::new(NapoleonClientApp::new()))),
+        Box::new(|_| Ok(Box::new(NapoleonClientApp::new()))),
     );
 }
 

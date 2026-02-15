@@ -1,9 +1,12 @@
 use eframe::egui::*;
 use std::ops::Deref;
 
-use crate::napoleon_client::ui::colors::*;
 use crate::napoleon_client::ui::helpers::scroll_area_styled;
-use crate::napoleon_client::ui::queue_panel::QueuePanel;
+
+use crate::napoleon_client::colors::{
+    Average, DEFAULT_TEXT_COLOR, SELECTED_TEXT_COLOR, SONG_PLAYING_TEXT_COLOR,
+};
+use crate::napoleon_client::ui::panels::queue_panel::QueuePanel;
 use eframe::egui;
 use egui_extras::{Column, TableBuilder};
 use napoleon_amp_core::content::playlist::manager::{MusicManager, SongStatus};
