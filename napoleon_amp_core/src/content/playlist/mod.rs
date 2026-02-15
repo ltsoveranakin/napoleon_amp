@@ -404,6 +404,7 @@ impl Playlist {
         }
 
         *self.get_or_load_playlist_data_mut().volume = volume;
+
         self.save_contents();
     }
 
@@ -533,11 +534,6 @@ impl Playlist {
             return;
         }
 
-        let mut file = File::options()
-            .write(true)
-            .open(&*self.path_named.borrow())
-            .expect("Failed to open file in write mode");
-
         let songs_unfiltered = self.get_or_load_songs_unfiltered();
 
         let songs = read_rwlock(&songs_unfiltered);
@@ -545,13 +541,15 @@ impl Playlist {
         let mut playlist_data = self.get_or_load_playlist_data_mut();
 
         playlist_data.song_file_names.clear();
+        playlist_data.song_file_names.reserve(songs.len());
 
         for song in songs.iter() {
             playlist_data.song_file_names.push(song.file_name())
         }
 
-        file.write_all(playlist_data.to_bb().buf())
-            .expect("Unable to write playlist to file");
+        playlist_data
+            .write_to_file_path(&*self.path_named.borrow())
+            .expect("Write playlist data to file");
     }
 }
 

@@ -1,3 +1,4 @@
+use crate::content::song::UNKNOWN_ARTIST_STR;
 use crate::{read_rwlock, write_rwlock};
 use discord_rich_presence::activity::{
     Activity, ActivityType, Assets, StatusDisplayType, Timestamps,
@@ -58,7 +59,7 @@ pub(super) fn discord_rpc_thread() -> Result<(), Box<dyn std::error::Error>> {
                 }
 
                 RPCAction::SetSong(ss_data) => {
-                    activity = set_activity_to_song_data(activity, ss_data.clone());
+                    activity = set_activity_to_song_data(activity, ss_data);
                     use_idle_activity = false;
                 }
 
@@ -120,10 +121,18 @@ fn set_activity_to_song_data(mut activity: Activity, set_song_data: SetSongData)
         timestamp = timestamp.end(current_time + song_duration.as_millis() as i64)
     }
 
+    let (state_string, details_prefix) = if song_artist != UNKNOWN_ARTIST_STR {
+        (format!("By {}", song_artist), format!("{} - ", song_artist))
+    } else {
+        (String::new(), String::new())
+    };
+
+    let details_string = format!("{}{}", details_prefix, song_title);
+
     activity = activity
         .timestamps(timestamp)
-        .state(format!("By {}", song_artist))
-        .details(format!("{} - {}", song_artist, song_title));
+        .state(state_string)
+        .details(details_string);
 
     activity
 }

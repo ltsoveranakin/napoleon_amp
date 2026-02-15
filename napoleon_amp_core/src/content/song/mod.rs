@@ -12,6 +12,9 @@ use std::ops::Deref;
 use std::path::PathBuf;
 use std::sync::RwLock;
 
+pub static UNKNOWN_ARTIST_STR: &str = "Unknown Artist";
+pub static UNKNOWN_ALBUM_STR: &str = "Unknown Album";
+
 #[derive(SerBytes, Clone, Debug)]
 enum SongTagValue {
     String(String),
@@ -33,8 +36,8 @@ pub struct SongData {
 impl Default for SongData {
     fn default() -> Self {
         Self {
-            artist: "Unknown Artist".to_string(),
-            album: "Unknown Album".to_string(),
+            artist: UNKNOWN_ARTIST_STR.to_string(),
+            album: UNKNOWN_ALBUM_STR.to_string(),
             title: String::new(),
             custom_song_tags: HashMap::new(),
         }
@@ -70,7 +73,7 @@ impl Song {
         if **read_rwlock(&self.has_loaded_song_data) {
             read_rwlock(&self.song_data)
         } else {
-            let song_data =
+            let mut song_data =
                 SongData::from_vec(fs::read(&self.song_data_path).expect("Read song data file"))
                     .unwrap_or_else(|_| {
                         let mut sd = SongData::default();
@@ -78,6 +81,14 @@ impl Song {
 
                         sd
                     });
+
+            if song_data.artist.len() == 0 {
+                song_data.artist = UNKNOWN_ARTIST_STR.into();
+            }
+
+            if song_data.album.len() == 0 {
+                song_data.album = UNKNOWN_ALBUM_STR.into();
+            }
 
             **write_rwlock(&self.song_data) = song_data;
 
