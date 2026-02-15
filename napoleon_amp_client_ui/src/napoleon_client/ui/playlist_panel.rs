@@ -68,6 +68,15 @@ impl PlaylistPanel {
                 {
                     self.current_playlist.next_playback_mode();
                 }
+
+                let sort_by = self.current_playlist.get_sorting_by();
+
+                if ui
+                    .button(format!("Sort: {}", sort_by.sort_by_variant))
+                    .clicked()
+                {
+                    self.current_playlist.next_sorting_by_and_save();
+                }
             });
         } else {
             ui.heading("All Songs");

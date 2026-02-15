@@ -1,10 +1,40 @@
 use crate::content::song::Song;
 use crate::song_pool::SONG_POOL;
 use crate::{read_rwlock, write_rwlock, ReadWrapper};
+use serbytes::prelude::SerBytes;
 use std::collections::HashSet;
+use std::fmt::{Display, Formatter};
 use std::sync::{Arc, RwLock};
 
 pub type SongVec = Arc<RwLock<Vec<Arc<Song>>>>;
+
+#[derive(SerBytes, Default, Debug, Copy, Clone)]
+pub enum SortByVariant {
+    #[default]
+    Title,
+    Artist,
+    Album,
+}
+
+impl Display for SortByVariant {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let display_str = match self {
+            Self::Title => "Title",
+
+            Self::Artist => "Artist",
+
+            Self::Album => "Album",
+        };
+
+        f.write_str(display_str)
+    }
+}
+
+#[derive(SerBytes, Default, Debug, Copy, Clone)]
+pub struct SortBy {
+    pub sort_by_variant: SortByVariant,
+    pub inverted: bool,
+}
 
 /// A list of songs that may at most contain one of each song
 
@@ -75,6 +105,25 @@ impl SongList {
 
     pub(super) fn songs_arc(&self) -> SongVec {
         Arc::clone(&self.songs_vec)
+    }
+
+    pub(super) fn sort_songs(&self, sort_by: SortBy) {
+        write_rwlock(&self.songs_vec).sort_by(|a, b| {
+            let a_song_data = a.get_or_load_song_data();
+            let b_song_data = b.get_or_load_song_data();
+
+            let (sort_str_a, sort_str_b) = match sort_by.sort_by_variant {
+                SortByVariant::Title => (&a_song_data.title, &b_song_data.title),
+                SortByVariant::Artist => (&a_song_data.artist, &b_song_data.artist),
+                SortByVariant::Album => (&a_song_data.album, &b_song_data.album),
+            };
+
+            if !sort_by.inverted {
+                sort_str_a.cmp(sort_str_b)
+            } else {
+                sort_str_b.cmp(sort_str_a)
+            }
+        });
     }
 
     fn push_song0(

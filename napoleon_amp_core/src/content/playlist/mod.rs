@@ -5,7 +5,7 @@ mod song_list;
 
 use crate::content::playlist::data::{PlaybackMode, PlaylistData};
 use crate::content::playlist::manager::{MusicCommand, MusicManager};
-use crate::content::playlist::song_list::{SongList, SongVec};
+use crate::content::playlist::song_list::{SongList, SongVec, SortBy, SortByVariant};
 use crate::content::song::Song;
 use crate::content::{unwrap_inner_ref, unwrap_inner_ref_mut, NamedPathLike, PathNamed};
 use crate::paths::{song_file, songs_dir};
@@ -310,7 +310,7 @@ impl Playlist {
             }
         }
 
-        self.save_contents();
+        self.sort_songs_and_save();
 
         if !already_exists.is_empty() {
             println!("Imported songs and saved successfully, but some failed to import");
@@ -407,6 +407,41 @@ impl Playlist {
         self.save_contents();
     }
 
+    pub fn sort_by_and_save(&self, sort_by: SortBy) {
+        self.get_or_load_playlist_data_mut().sort_by = sort_by.into();
+        self.songs.borrow_mut().sort_songs(sort_by);
+
+        self.save_contents();
+    }
+
+    fn sort_songs_and_save(&self) {
+        self.songs
+            .borrow_mut()
+            .sort_songs(*self.get_or_load_playlist_data().sort_by);
+
+        self.save_contents();
+    }
+
+    pub fn get_sorting_by(&self) -> SortBy {
+        *self.get_or_load_playlist_data().sort_by
+    }
+
+    pub fn next_sorting_by_and_save(&self) {
+        let mut sort_by = *self.get_or_load_playlist_data().sort_by;
+
+        let next_sort_by = match sort_by.sort_by_variant {
+            SortByVariant::Title => SortByVariant::Artist,
+
+            SortByVariant::Artist => SortByVariant::Album,
+
+            SortByVariant::Album => SortByVariant::Title,
+        };
+
+        sort_by.sort_by_variant = next_sort_by;
+
+        self.sort_by_and_save(sort_by);
+    }
+
     pub(crate) fn start_play_song(&self, song_index: usize) {
         if let Some(music_manager) = self.music_manager.take() {
             let current_handle = music_manager.playing_handle;
@@ -445,7 +480,7 @@ impl Playlist {
             songs.push_songs_arc_list(new_songs);
         }
 
-        self.save_contents();
+        self.sort_songs_and_save();
     }
 
     fn set_selected_songs(&self, selected_songs: SelectedSongsVariant) {
