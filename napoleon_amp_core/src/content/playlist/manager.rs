@@ -30,7 +30,7 @@ pub(super) enum SwitchSongMusicCommand {
 pub(super) enum MusicCommand {
     Play,
     Pause,
-    Stop,
+    Stop { send_stop_action: bool },
     SwitchSong(SwitchSongMusicCommand),
     SetVolume(f32),
 }
@@ -132,6 +132,10 @@ impl MusicManager {
                 let mut audio_device_in_use = cpal::default_host().default_output_device();
                 let mut change_audio_device = false;
 
+                let mut is_playing = true;
+
+                let mut should_send_stop_action = true;
+
                 loop {
                     if change_audio_device {
                         println!("Changing audio device, replacing sink");
@@ -159,17 +163,20 @@ impl MusicManager {
 
                     if let Ok(music_command) = music_command_rx.try_recv() {
                         match music_command {
-                            MusicCommand::Stop => {
+                            MusicCommand::Stop { send_stop_action } => {
+                                should_send_stop_action = send_stop_action;
                                 sink.stop();
                                 break;
                             }
 
                             MusicCommand::Pause => {
+                                is_playing = false;
                                 sink.pause();
                                 send_rpc_action(RPCAction::StopMusic);
                             }
 
                             MusicCommand::Play => {
+                                is_playing = true;
                                 sink.play();
                                 send_rpc_action(RPCAction::Resume);
                             }
@@ -248,41 +255,31 @@ impl MusicManager {
                         write_rwlock(&queue).next();
                     }
 
-                    let just_polled_device = cpal::default_host().default_output_device();
+                    if is_playing {
+                        println!("poll");
+                        let just_polled_device = cpal::default_host().default_output_device();
 
-                    if let Some(just_polled_device) = just_polled_device {
-                        let audio_device_in_use = if let Some(ad) = &audio_device_in_use {
-                            ad
-                        } else {
-                            change_audio_device = true;
-                            continue;
-                        };
+                        if let Some(just_polled_device) = just_polled_device {
+                            let audio_device_in_use = if let Some(ad) = &audio_device_in_use {
+                                ad
+                            } else {
+                                change_audio_device = true;
+                                continue;
+                            };
 
-                        if just_polled_device.name() != audio_device_in_use.name() {
-                            change_audio_device = true;
+                            if just_polled_device.name() != audio_device_in_use.name() {
+                                change_audio_device = true;
+                            }
                         }
                     }
 
-                    // 1 - 0
-                    // 0 - 1
-                    // if audio_device_in_use.is_some() != just_polled_device.is_some() || audio_device_in_use.{
-                    //
-                    //     audio_device_in_use = just_polled_device;
-                    //     println!("new audio device");
-                    // } else {
-                    //     // 1 - 1
-                    //     // 0 - 0
-                    //
-                    //     // if let Some(current_device) = current_polled_device {
-                    //     //
-                    //     // };
-                    // }
-
-                    thread::sleep(Duration::from_millis(16))
+                    thread::sleep(Duration::from_millis(100))
                 }
 
                 // End of music thread... cleanup
-                send_rpc_action(RPCAction::StopMusic);
+                if should_send_stop_action {
+                    send_rpc_action(RPCAction::StopMusic);
+                }
             })
             .expect("Unable to spawn thread at OS level");
 
@@ -349,8 +346,8 @@ impl MusicManager {
         self.switch_song_command(SwitchSongMusicCommand::SkipToQueueIndex(index));
     }
 
-    pub(super) fn send_stop_command(&self) {
-        self.send_command(MusicCommand::Stop);
+    pub(super) fn send_stop_command(&self, send_stop_action: bool) {
+        self.send_command(MusicCommand::Stop { send_stop_action });
     }
 
     /// Attempts to send a MusicCommand.
@@ -383,7 +380,7 @@ fn create_sink(volume: f32) -> (Sink, OutputStream) {
     (sink, output_stream)
 }
 
-fn get_decoder_for_song(song: &Song) -> io::Result<Decoder<BufReader<std::fs::File>>> {
+fn get_decoder_for_song(song: &Song) -> io::Result<Decoder<BufReader<File>>> {
     let file =
         File::open(song.path()).expect(&format!("Unable to open song file for: {:?}", song.path()));
 

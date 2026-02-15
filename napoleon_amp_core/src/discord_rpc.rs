@@ -15,13 +15,14 @@ static RPC_ACTION_TX: RwLock<Option<Sender<RPCAction>>> = RwLock::new(None);
 
 // TODO: this doesnt really need to be a separate thread
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(super) struct SetSongData {
     pub(super) song_title: String,
     pub(super) song_artist: String,
     pub(super) song_duration: Option<Duration>,
 }
 
+#[derive(Debug)]
 pub(super) enum RPCAction {
     Kill,
     SetSong(SetSongData),
@@ -109,7 +110,6 @@ fn set_activity_to_song_data(mut activity: Activity, set_song_data: SetSongData)
         song_duration,
     } = set_song_data;
 
-    println!("rcv song {:?}", song_title);
     let current_time = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("Invalid time")

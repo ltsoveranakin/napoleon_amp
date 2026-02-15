@@ -388,7 +388,7 @@ impl PlaylistPanel {
             .horizontal(|ui| {
                 ui.label("Vol:");
 
-                if ui.add(Slider::new(&mut volume, 0..=100)).changed() {
+                if ui.add(Slider::new(&mut volume, 0..=100)).drag_stopped() {
                     self.current_playlist.set_volume(volume as f32 / 100.);
                 }
 

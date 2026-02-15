@@ -4,7 +4,7 @@ mod queue;
 mod song_list;
 
 use crate::content::playlist::data::{PlaybackMode, PlaylistData};
-use crate::content::playlist::manager::{MusicCommand, MusicManager};
+use crate::content::playlist::manager::MusicManager;
 use crate::content::playlist::song_list::{SongList, SongVec, SortBy, SortByVariant};
 use crate::content::song::Song;
 use crate::content::{unwrap_inner_ref, unwrap_inner_ref_mut, NamedPathLike, PathNamed};
@@ -398,7 +398,8 @@ impl Playlist {
         *self.get_or_load_playlist_data().volume
     }
 
-    pub fn set_volume(&self, volume: f32) {
+    pub fn set_volume(&self, mut volume: f32) {
+        volume = volume.clamp(0.0, 1.0);
         if let Some(manager) = &*self.get_music_manager() {
             manager.set_volume(volume);
         }
@@ -445,13 +446,9 @@ impl Playlist {
 
     pub(crate) fn start_play_song(&self, song_index: usize) {
         if let Some(music_manager) = self.music_manager.take() {
+            music_manager.send_stop_command(false);
+
             let current_handle = music_manager.playing_handle;
-
-            let old_music_command_tx = music_manager.music_command_tx;
-
-            old_music_command_tx
-                .send(MusicCommand::Stop)
-                .expect("Current playing thread to be alive");
 
             current_handle.join().expect("Unwrap for panic in thread");
         }
@@ -470,7 +467,7 @@ impl Playlist {
 
     pub(crate) fn stop_music(&self) {
         if let Some(music_manager) = self.music_manager.take() {
-            music_manager.send_stop_command();
+            music_manager.send_stop_command(true);
         }
     }
 
