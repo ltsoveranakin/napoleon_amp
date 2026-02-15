@@ -103,7 +103,7 @@ pub(super) fn discord_rpc_thread() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn set_activity_to_song_data(mut activity: Activity, set_song_data: SetSongData) -> Activity {
+fn set_activity_to_song_data(activity: Activity, set_song_data: SetSongData) -> Activity {
     let SetSongData {
         song_title,
         song_artist,
@@ -124,17 +124,15 @@ fn set_activity_to_song_data(mut activity: Activity, set_song_data: SetSongData)
     let (state_string, details_prefix) = if song_artist != UNKNOWN_ARTIST_STR {
         (format!("By {}", song_artist), format!("{} - ", song_artist))
     } else {
-        (String::new(), String::new())
+        ("Jammin'".into(), String::new())
     };
 
     let details_string = format!("{}{}", details_prefix, song_title);
 
-    activity = activity
+    activity
         .timestamps(timestamp)
         .state(state_string)
-        .details(details_string);
-
-    activity
+        .details(details_string)
 }
 
 pub(super) fn send_rpc_action(action: RPCAction) {

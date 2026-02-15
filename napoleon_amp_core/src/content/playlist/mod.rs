@@ -446,7 +446,7 @@ impl Playlist {
 
     pub(crate) fn start_play_song(&self, song_index: usize) {
         if let Some(music_manager) = self.music_manager.take() {
-            music_manager.send_stop_command(false);
+            music_manager.send_stop_command();
 
             let current_handle = music_manager.playing_handle;
 
@@ -467,7 +467,7 @@ impl Playlist {
 
     pub(crate) fn stop_music(&self) {
         if let Some(music_manager) = self.music_manager.take() {
-            music_manager.send_stop_command(true);
+            music_manager.send_stop_command();
         }
     }
 

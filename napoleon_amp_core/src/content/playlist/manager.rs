@@ -30,7 +30,7 @@ pub(super) enum SwitchSongMusicCommand {
 pub(super) enum MusicCommand {
     Play,
     Pause,
-    Stop { send_stop_action: bool },
+    Stop,
     SwitchSong(SwitchSongMusicCommand),
     SetVolume(f32),
 }
@@ -134,8 +134,6 @@ impl MusicManager {
 
                 let mut is_playing = true;
 
-                let mut should_send_stop_action = true;
-
                 loop {
                     if change_audio_device {
                         println!("Changing audio device, replacing sink");
@@ -163,8 +161,7 @@ impl MusicManager {
 
                     if let Ok(music_command) = music_command_rx.try_recv() {
                         match music_command {
-                            MusicCommand::Stop { send_stop_action } => {
-                                should_send_stop_action = send_stop_action;
+                            MusicCommand::Stop => {
                                 sink.stop();
                                 break;
                             }
@@ -256,7 +253,6 @@ impl MusicManager {
                     }
 
                     if is_playing {
-                        println!("poll");
                         let just_polled_device = cpal::default_host().default_output_device();
 
                         if let Some(just_polled_device) = just_polled_device {
@@ -277,9 +273,8 @@ impl MusicManager {
                 }
 
                 // End of music thread... cleanup
-                if should_send_stop_action {
-                    send_rpc_action(RPCAction::StopMusic);
-                }
+
+                send_rpc_action(RPCAction::StopMusic);
             })
             .expect("Unable to spawn thread at OS level");
 
@@ -346,8 +341,8 @@ impl MusicManager {
         self.switch_song_command(SwitchSongMusicCommand::SkipToQueueIndex(index));
     }
 
-    pub(super) fn send_stop_command(&self, send_stop_action: bool) {
-        self.send_command(MusicCommand::Stop { send_stop_action });
+    pub(super) fn send_stop_command(&self) {
+        self.send_command(MusicCommand::Stop);
     }
 
     /// Attempts to send a MusicCommand.
