@@ -307,7 +307,7 @@ impl PlaylistPanel {
                                     }
 
                                     let song_button_text =
-                                        RichText::new(&song.get_or_load_song_data().title)
+                                        RichText::new(&song.get_song_data().title)
                                             .color(button_text_color);
 
                                     let button = Button::new(song_button_text)
@@ -336,11 +336,11 @@ impl PlaylistPanel {
                                 });
 
                                 row.col(|ui| {
-                                    ui.label(&song.get_or_load_song_data().artist);
+                                    ui.label(&song.get_song_data().artist);
                                 });
 
                                 row.col(|ui| {
-                                    ui.label(&song.get_or_load_song_data().album);
+                                    ui.label(&song.get_song_data().album);
                                 });
                             });
                         }
@@ -363,7 +363,7 @@ impl PlaylistPanel {
 
         if let Some(music_manager) = self.current_playlist.get_music_manager().deref() {
             let song_status = music_manager.get_song_status();
-            let song_data = song_status.song().get_or_load_song_data();
+            let song_data = song_status.song().get_song_data();
 
             ui.heading(&song_data.title);
 

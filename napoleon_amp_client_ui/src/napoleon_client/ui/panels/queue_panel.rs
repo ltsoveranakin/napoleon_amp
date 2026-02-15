@@ -28,10 +28,7 @@ impl QueuePanel {
             ScrollArea::vertical(),
             queue.current_queue(),
             |_, song_index| {
-                ScrollListDisplay::new(
-                    false,
-                    songs[*song_index].get_or_load_song_data().title.clone(),
-                )
+                ScrollListDisplay::new(false, songs[*song_index].get_song_data().title.clone())
             },
             |clicked_queue_index| {
                 music_manager.set_queue_index(clicked_queue_index);

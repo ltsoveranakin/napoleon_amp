@@ -234,7 +234,7 @@ impl MusicManager {
 
                             song_status.total_duration = total_song_duration;
 
-                            let song_data = song.get_or_load_song_data();
+                            let song_data = song.get_song_data();
 
                             send_rpc_action(RPCAction::SetSong(SetSongData {
                                 song_title: song_data.title.clone(),

@@ -194,7 +194,7 @@ impl Playlist {
         };
 
         for song in read_rwlock(&self.get_or_load_songs_unfiltered()).iter() {
-            let song_data = song.get_or_load_song_data();
+            let song_data = song.get_song_data();
             let strings_to_search: &[&String] = match parsed_search.search_type {
                 ParsedSearchType::Title => &[&song_data.title],
 

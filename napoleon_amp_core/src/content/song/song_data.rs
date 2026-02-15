@@ -4,6 +4,7 @@ use serbytes::prelude::SerBytes;
 use std::collections::HashMap;
 use std::fs;
 use std::fs::File;
+use std::path::PathBuf;
 use symphonia::core::formats::FormatOptions;
 use symphonia::core::io::{MediaSourceStream, MediaSourceStreamOptions};
 use symphonia::core::meta::{MetadataOptions, StandardTagKey, Value};
@@ -40,7 +41,14 @@ impl Default for SongData {
 }
 
 pub(crate) fn get_song_data_from_song_file(song: &Song, song_data: &mut SongData) {
-    let song_path = song.path();
+    get_song_data_from_song_file_with_paths(song.path(), &song.song_data_path, song_data);
+}
+
+pub(super) fn get_song_data_from_song_file_with_paths(
+    song_path: &PathBuf,
+    song_data_path: &PathBuf,
+    song_data: &mut SongData,
+) {
     let song_file = File::open(&song_path).expect("Open new song file");
 
     let ext = song_path.extension().unwrap().to_str().unwrap().to_string();
@@ -107,6 +115,5 @@ pub(crate) fn get_song_data_from_song_file(song: &Song, song_data: &mut SongData
         }
     }
 
-    fs::write(&song.song_data_path, song_data.to_bb().buf())
-        .expect("Clean write to song data file");
+    fs::write(song_data_path, song_data.to_bb().buf()).expect("Clean write to song data file");
 }

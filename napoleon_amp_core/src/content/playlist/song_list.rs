@@ -109,8 +109,8 @@ impl SongList {
 
     pub(super) fn sort_songs(&self, sort_by: SortBy) {
         write_rwlock(&self.songs_vec).sort_by(|a, b| {
-            let a_song_data = a.get_or_load_song_data();
-            let b_song_data = b.get_or_load_song_data();
+            let a_song_data = a.get_song_data();
+            let b_song_data = b.get_song_data();
 
             let (sort_str_a, sort_str_b) = match sort_by.sort_by_variant {
                 SortByVariant::Title => (&a_song_data.title, &b_song_data.title),
