@@ -179,6 +179,8 @@ impl Playlist {
     }
 
     pub fn set_search_query_filter(&self, search_str: &str) {
+        self.set_selected_songs(SelectedSongsVariant::None);
+
         let mut filtered_songs = write_rwlock(&self.songs_filtered);
         filtered_songs.clear();
 
