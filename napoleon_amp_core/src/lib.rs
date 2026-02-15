@@ -85,7 +85,7 @@ impl<'a, T> From<RwLockReadGuard<'a, T>> for ReadWrapper<'a, T> {
     }
 }
 
-pub fn write_rwlock<T: Debug>(rw_lock: &'_ RwLock<T>) -> WriteWrapper<'_, T> {
+pub fn write_rwlock<T>(rw_lock: &'_ RwLock<T>) -> WriteWrapper<'_, T> {
     let l = rw_lock.write().expect(POISONED_LOCK_MESSAGE);
 
     WriteWrapper::new(l)

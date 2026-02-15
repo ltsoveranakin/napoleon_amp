@@ -4,17 +4,19 @@ use crate::content::song::Song;
 use crate::content::NamedPathLike;
 use crate::discord_rpc::{send_rpc_action, RPCAction, SetSongData};
 use crate::{read_rwlock, write_rwlock, ReadWrapper};
+use rodio::cpal::traits::HostTrait;
 use rodio::source::SeekError;
-use rodio::{Decoder, OutputStream, OutputStreamBuilder, Sink, Source};
+use rodio::{cpal, Decoder, DeviceTrait, OutputStream, OutputStreamBuilder, Sink, Source};
 use std::any::Any;
 use std::fmt::{Debug, Formatter};
 use std::fs::File;
+use std::io::{BufReader, ErrorKind};
 use std::ops::{Deref, DerefMut};
 use std::sync::mpsc::Sender;
 use std::sync::{mpsc, Arc, RwLock};
-use std::thread;
 use std::thread::JoinHandle;
 use std::time::Duration;
+use std::{io, thread};
 
 static DEAD_MUSIC_THREAD_MESSAGE: &'static str =
     "Music thread should be dead, and this should be cleaned up";
@@ -78,11 +80,9 @@ impl<T> DerefMut for DebugWrapper<T> {
 pub struct MusicManager {
     pub(super) playing_handle: JoinHandle<()>,
     pub(super) music_command_tx: Sender<MusicCommand>,
-    pub(super) sink: DebugWrapper<Arc<Sink>>,
+    pub(super) sink: DebugWrapper<Arc<RwLock<Sink>>>,
     pub(super) queue: Arc<RwLock<Queue>>,
     song_status: Arc<RwLock<SongStatus>>,
-    /// Not currently used, but must not be dropped in order to keep audio stream alive
-    pub(super) _output_stream: DebugWrapper<OutputStream>,
 }
 
 impl MusicManager {
@@ -109,10 +109,11 @@ impl MusicManager {
         }));
         let song_status_thread = Arc::clone(&song_status);
 
-        let output_stream = OutputStreamBuilder::open_default_stream()
-            .expect("Unable to open audio stream to default audio device");
+        let (sink, output_stream) = create_sink(volume);
 
-        let sink = Arc::new(Sink::connect_new(&output_stream.mixer()));
+        let stream = RwLock::new(output_stream);
+
+        let sink = Arc::new(RwLock::new(sink));
         let sink_thread = Arc::clone(&sink);
 
         let queue = Arc::new(RwLock::new(queue));
@@ -123,14 +124,39 @@ impl MusicManager {
         let playing_handle = thread::Builder::new()
             .name("Music Manager".to_string())
             .spawn(move || {
-                let sink = sink_thread;
+                let sink_arc = sink_thread;
                 let queue = queue_thread;
                 let song_status = song_status_thread;
                 let songs = songs_thread;
 
-                sink.set_volume(volume);
+                let mut audio_device_in_use = cpal::default_host().default_output_device();
+                let mut change_audio_device = false;
 
                 loop {
+                    if change_audio_device {
+                        println!("Changing audio device, replacing sink");
+
+                        audio_device_in_use = cpal::default_host().default_output_device();
+
+                        let mut sink = write_rwlock(&sink_arc);
+                        let song_pos = sink.get_pos();
+
+                        let (new_sink, new_stream) = create_sink(volume);
+
+                        **sink = new_sink;
+
+                        **write_rwlock(&stream) = new_stream;
+
+                        if let Ok(source) = get_decoder_for_song(&read_rwlock(&song_status).song) {
+                            sink.append(source);
+                            sink.try_seek(song_pos).ok();
+                        }
+
+                        change_audio_device = false;
+                    }
+
+                    let sink = read_rwlock(&sink_arc);
+
                     if let Ok(music_command) = music_command_rx.try_recv() {
                         match music_command {
                             MusicCommand::Stop => {
@@ -189,11 +215,8 @@ impl MusicManager {
                             continue;
                         };
 
-                        let file = File::open(song.path())
-                            .expect(&format!("Unable to open song file for: {:?}", song.path()));
-
                         // Skip if invalid file
-                        if let Ok(source) = Decoder::try_from(file) {
+                        if let Ok(source) = get_decoder_for_song(song) {
                             let mut song_status = write_rwlock(&song_status);
 
                             song_status.song = song.clone();
@@ -225,6 +248,36 @@ impl MusicManager {
                         write_rwlock(&queue).next();
                     }
 
+                    let just_polled_device = cpal::default_host().default_output_device();
+
+                    if let Some(just_polled_device) = just_polled_device {
+                        let audio_device_in_use = if let Some(ad) = &audio_device_in_use {
+                            ad
+                        } else {
+                            change_audio_device = true;
+                            continue;
+                        };
+
+                        if just_polled_device.name() != audio_device_in_use.name() {
+                            change_audio_device = true;
+                        }
+                    }
+
+                    // 1 - 0
+                    // 0 - 1
+                    // if audio_device_in_use.is_some() != just_polled_device.is_some() || audio_device_in_use.{
+                    //
+                    //     audio_device_in_use = just_polled_device;
+                    //     println!("new audio device");
+                    // } else {
+                    //     // 1 - 1
+                    //     // 0 - 0
+                    //
+                    //     // if let Some(current_device) = current_polled_device {
+                    //     //
+                    //     // };
+                    // }
+
                     thread::sleep(Duration::from_millis(16))
                 }
 
@@ -233,16 +286,12 @@ impl MusicManager {
             })
             .expect("Unable to spawn thread at OS level");
 
-        // let playing_handle = OnceCell::new();
-        // playing_handle.set(handle).unwrap();
-
         Some(Self {
             playing_handle,
             music_command_tx,
             sink: DebugWrapper(sink),
             queue,
             song_status,
-            _output_stream: DebugWrapper(output_stream),
         })
     }
 
@@ -257,11 +306,11 @@ impl MusicManager {
     /// Gets the current playhead position in the song.
 
     pub fn get_song_pos(&self) -> Duration {
-        self.sink.get_pos()
+        self.get_sink().get_pos()
     }
 
     pub fn try_seek(&self, pos: Duration) -> Result<(), SeekError> {
-        self.sink.try_seek(pos)
+        self.get_sink().try_seek(pos)
     }
 
     pub fn get_song_status(&self) -> SongStatus {
@@ -269,7 +318,7 @@ impl MusicManager {
     }
 
     pub fn is_playing(&self) -> bool {
-        !self.sink.is_paused()
+        !self.get_sink().is_paused()
     }
 
     pub fn toggle_playback(&self) {
@@ -317,4 +366,26 @@ impl MusicManager {
     fn switch_song_command(&self, switch_song_music_command: SwitchSongMusicCommand) {
         self.send_command(MusicCommand::SwitchSong(switch_song_music_command));
     }
+
+    fn get_sink(&self) -> ReadWrapper<'_, Sink> {
+        read_rwlock(&self.sink)
+    }
+}
+
+fn create_sink(volume: f32) -> (Sink, OutputStream) {
+    let output_stream = OutputStreamBuilder::open_default_stream()
+        .expect("Unable to open audio stream to default audio device");
+
+    let sink = Sink::connect_new(&output_stream.mixer());
+
+    sink.set_volume(volume);
+
+    (sink, output_stream)
+}
+
+fn get_decoder_for_song(song: &Song) -> io::Result<Decoder<BufReader<std::fs::File>>> {
+    let file =
+        File::open(song.path()).expect(&format!("Unable to open song file for: {:?}", song.path()));
+
+    Decoder::try_from(file).map_err(|_| ErrorKind::InvalidData.into())
 }
