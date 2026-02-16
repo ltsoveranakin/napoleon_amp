@@ -7,6 +7,7 @@ use crate::napoleon_client::colors::{
     Average, DEFAULT_TEXT_COLOR, SELECTED_TEXT_COLOR, SONG_PLAYING_TEXT_COLOR,
 };
 use crate::napoleon_client::ui::panels::queue_panel::QueuePanel;
+use egui_autocomplete::AutoCompleteTextEdit;
 use egui_extras::{Column, TableBuilder};
 use napoleon_amp_core::content::playlist::manager::{MusicManager, SongStatus};
 use napoleon_amp_core::content::playlist::{Playlist, PlaylistVariant};
@@ -28,6 +29,8 @@ enum PlaylistModals {
     EditSong {
         song: Arc<Song>,
         editing_song_data: SongData,
+        artist_list: Vec<String>,
+        album_list: Vec<String>,
     },
 }
 
@@ -104,11 +107,9 @@ impl PlaylistPanel {
 
         self.keystrokes_pressed(napoleon_instance, ctx);
 
-        let current_playlist_rc = Rc::clone(&self.current_playlist);
-
         self.render_modal(ui);
 
-        self.render_song_list(ui, &current_playlist_rc, napoleon_instance);
+        self.render_song_list(ui, napoleon_instance);
 
         self.render_currently_playing(ctx, ui, napoleon_instance);
     }
@@ -183,10 +184,13 @@ impl PlaylistPanel {
             }
 
             PlaylistModals::EditSong {
-                editing_song_data, ..
+                editing_song_data,
+                artist_list,
+                album_list,
+                ..
             } => {
                 let (should_close_modal, should_save_song_data) =
-                    Self::draw_edit_song_modal(ui, editing_song_data);
+                    Self::draw_edit_song_modal(ui, editing_song_data, artist_list, album_list);
 
                 clear_modals = should_close_modal;
                 save_song_data = should_save_song_data;
@@ -202,6 +206,7 @@ impl PlaylistPanel {
                 PlaylistModals::EditSong {
                     song,
                     editing_song_data,
+                    ..
                 } => {
                     song.set_song_data(editing_song_data);
                 }
@@ -283,7 +288,12 @@ impl PlaylistPanel {
         modal.inner || modal.should_close()
     }
 
-    fn draw_edit_song_modal(ui: &mut Ui, editing_song_data: &mut SongData) -> (bool, bool) {
+    fn draw_edit_song_modal(
+        ui: &mut Ui,
+        editing_song_data: &mut SongData,
+        artist_list: &[String],
+        album_list: &[String],
+    ) -> (bool, bool) {
         let modal = Modal::new(Id::new("Edit Song")).show(ui.ctx(), |ui| {
             ui.set_width(250.);
 
@@ -293,17 +303,33 @@ impl PlaylistPanel {
             ui.text_edit_singleline(&mut editing_song_data.title);
 
             ui.label("Artist:");
-            ui.text_edit_singleline(&mut editing_song_data.artist.artist_string);
+            ui.add(AutoCompleteTextEdit::new(
+                &mut editing_song_data.artist.artist_string,
+                artist_list,
+            ));
 
             ui.label("Album:");
-            ui.text_edit_singleline(&mut editing_song_data.album);
+            ui.add(AutoCompleteTextEdit::new(
+                &mut editing_song_data.album,
+                album_list,
+            ));
 
-            if ui.button("Save").clicked() {
-                return (true, true);
-            }
+            let action = ui
+                .horizontal(|ui| {
+                    if ui.button("Save").clicked() {
+                        return (true, true);
+                    }
 
-            if ui.button("Cancel").clicked() {
-                return (true, false);
+                    if ui.button("Cancel").clicked() {
+                        return (true, false);
+                    }
+
+                    (false, false)
+                })
+                .inner;
+
+            if action.0 {
+                return action;
             }
 
             (false, false)
@@ -312,12 +338,9 @@ impl PlaylistPanel {
         (modal.inner.0 || modal.should_close(), modal.inner.1)
     }
 
-    fn render_song_list(
-        &mut self,
-        ui: &mut Ui,
-        current_playlist: &Rc<Playlist>,
-        napoleon_instance: &mut NapoleonInstance,
-    ) {
+    fn render_song_list(&mut self, ui: &mut Ui, napoleon_instance: &mut NapoleonInstance) {
+        let current_playlist = &self.current_playlist;
+
         ScrollArea::vertical().show(ui, |ui| {
             ui.scope(|ui| {
                 let height_range = if self.current_playlist.get_music_manager().is_some() {
@@ -412,6 +435,8 @@ impl PlaylistPanel {
                                             self.playlist_modal = Some(PlaylistModals::EditSong {
                                                 song: Arc::clone(song),
                                                 editing_song_data: song.get_song_data().clone(),
+                                                artist_list: current_playlist.get_artist_list(),
+                                                album_list: current_playlist.get_album_list(),
                                             })
                                         }
                                     });

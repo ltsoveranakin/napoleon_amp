@@ -13,6 +13,7 @@ use crate::{read_rwlock, write_rwlock};
 use rodio::Source;
 use serbytes::prelude::SerBytes;
 use std::cell::{Cell, Ref, RefCell, RefMut};
+use std::collections::HashSet;
 use std::fmt::Display;
 use std::fs::File;
 use std::io::{Read, Write};
@@ -121,17 +122,17 @@ impl Playlist {
         }
     }
 
-    fn get_or_load_songs_arc(&self) -> Arc<RwLock<Vec<Arc<Song>>>> {
-        let songs_filtered = read_rwlock(&self.songs_filtered);
-
-        if songs_filtered.is_empty() {
-            self.get_or_load_songs_unfiltered();
-
-            self.songs.borrow().songs_arc()
-        } else {
-            Arc::clone(&self.songs_filtered)
-        }
-    }
+    // fn get_or_load_songs_arc(&self) -> Arc<RwLock<Vec<Arc<Song>>>> {
+    //     let songs_filtered = read_rwlock(&self.songs_filtered);
+    //
+    //     if songs_filtered.is_empty() {
+    //         self.get_or_load_songs_unfiltered();
+    //
+    //         self.songs.borrow().songs_arc()
+    //     } else {
+    //         Arc::clone(&self.songs_filtered)
+    //     }
+    // }
 
     pub fn get_or_load_songs_unfiltered(&self) -> SongVec {
         if self.has_loaded_songs.get() {
@@ -254,7 +255,7 @@ impl Playlist {
     }
 
     pub fn select_single(&self, index: usize) {
-        if index < read_rwlock(&self.get_or_load_songs_arc()).len() {
+        if index < read_rwlock(&self.get_or_load_songs()).len() {
             self.set_selected_songs(SelectedSongsVariant::Single(index));
         }
     }
@@ -450,6 +451,34 @@ impl Playlist {
         self.sort_by_and_save(sort_by);
     }
 
+    pub fn get_artist_list(&self) -> Vec<String> {
+        let mut artist_set = HashSet::new();
+
+        for song in read_rwlock(&self.get_or_load_songs()).iter() {
+            let artist = &song.get_song_data().artist.artist_string;
+
+            if !artist_set.contains(artist) {
+                artist_set.insert(artist.clone());
+            }
+        }
+
+        artist_set.into_iter().collect()
+    }
+
+    pub fn get_album_list(&self) -> Vec<String> {
+        let mut album_set = HashSet::new();
+
+        for song in read_rwlock(&self.get_or_load_songs()).iter() {
+            let album = &song.get_song_data().album;
+
+            if !album_set.contains(album) {
+                album_set.insert(album.clone());
+            }
+        }
+
+        album_set.into_iter().collect()
+    }
+
     pub(crate) fn start_play_song(&self, song_index: usize) {
         if let Some(music_manager) = self.music_manager.take() {
             music_manager.send_stop_command();
@@ -462,7 +491,7 @@ impl Playlist {
         let playlist_data = self.get_or_load_playlist_data();
 
         let music_manager = MusicManager::try_create(
-            self.get_or_load_songs_arc(),
+            self.get_or_load_songs(),
             song_index,
             *playlist_data.volume,
             *playlist_data.playback_mode,
