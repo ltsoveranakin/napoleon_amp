@@ -1,5 +1,5 @@
 mod master;
-pub(crate) mod song_data;
+pub mod song_data;
 
 use crate::content::song::song_data::{get_song_data_from_song_file, SongData};
 use crate::content::{NamedPathLike, PathNamed};
