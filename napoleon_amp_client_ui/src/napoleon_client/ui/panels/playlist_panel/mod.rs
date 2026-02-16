@@ -7,7 +7,6 @@ use crate::napoleon_client::colors::{
     Average, DEFAULT_TEXT_COLOR, SELECTED_TEXT_COLOR, SONG_PLAYING_TEXT_COLOR,
 };
 use crate::napoleon_client::ui::panels::queue_panel::QueuePanel;
-use eframe::egui;
 use egui_extras::{Column, TableBuilder};
 use napoleon_amp_core::content::playlist::manager::{MusicManager, SongStatus};
 use napoleon_amp_core::content::playlist::{Playlist, PlaylistVariant};
@@ -123,13 +122,7 @@ impl PlaylistPanel {
         });
 
         let select_all_keystroke_pressed =
-            ctx.input(|state| state.key_pressed(egui::Key::A) && state.modifiers.command);
-
-        // let copy_keystroke_pressed =
-        //     ctx.input(|state| state.key_pressed(egui::Key::C) && state.modifiers.command);
-        //
-        // let paste_keystroke_pressed =
-        //     ctx.input(|state| state.key_pressed(egui::Key::V) && state.modifiers.command);
+            ctx.input(|state| state.key_pressed(Key::A) && state.modifiers.command);
 
         if select_all_keystroke_pressed {
             self.current_playlist.select_all();
