@@ -114,7 +114,10 @@ impl SongList {
 
             let (sort_str_a, sort_str_b) = match sort_by.sort_by_variant {
                 SortByVariant::Title => (&a_song_data.title, &b_song_data.title),
-                SortByVariant::Artist => (&a_song_data.artist, &b_song_data.artist),
+                SortByVariant::Artist => (
+                    &a_song_data.artist.artist_string,
+                    &b_song_data.artist.artist_string,
+                ),
                 SortByVariant::Album => (&a_song_data.album, &b_song_data.album),
             };
 

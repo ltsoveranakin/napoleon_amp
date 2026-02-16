@@ -102,6 +102,22 @@ impl PlaylistPanel {
             self.current_playlist.set_search_query_filter(search_text);
         }
 
+        self.keystrokes_pressed(napoleon_instance, ctx);
+
+        let current_playlist_rc = Rc::clone(&self.current_playlist);
+
+        self.render_modal(ui);
+
+        self.render_song_list(ui, &current_playlist_rc, napoleon_instance);
+
+        self.render_currently_playing(ctx, ui, napoleon_instance);
+    }
+
+    fn keystrokes_pressed(&self, napoleon_instance: &mut NapoleonInstance, ctx: &Context) {
+        if self.playlist_modal.is_some() {
+            return;
+        }
+
         let mut copy_keystroke_pressed = false;
         let mut paste_keystroke_pressed = false;
 
@@ -135,14 +151,6 @@ impl PlaylistPanel {
         if paste_keystroke_pressed {
             napoleon_instance.paste_copied_songs(&*self.current_playlist);
         }
-
-        let current_playlist_rc = Rc::clone(&self.current_playlist);
-
-        self.render_modal(ui);
-
-        self.render_song_list(ui, &current_playlist_rc, napoleon_instance);
-
-        self.render_currently_playing(ctx, ui, napoleon_instance);
     }
 
     fn render_modal(&mut self, ui: &mut Ui) {
@@ -285,7 +293,7 @@ impl PlaylistPanel {
             ui.text_edit_singleline(&mut editing_song_data.title);
 
             ui.label("Artist:");
-            ui.text_edit_singleline(&mut editing_song_data.artist);
+            ui.text_edit_singleline(&mut editing_song_data.artist.artist_string);
 
             ui.label("Album:");
             ui.text_edit_singleline(&mut editing_song_data.album);
@@ -410,7 +418,7 @@ impl PlaylistPanel {
                                 });
 
                                 row.col(|ui| {
-                                    ui.label(&song.get_song_data().artist);
+                                    ui.label(&song.get_song_data().artist.artist_string);
                                 });
 
                                 row.col(|ui| {

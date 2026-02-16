@@ -202,9 +202,13 @@ impl Playlist {
 
                 ParsedSearchType::Album => &[&song_data.album],
 
-                ParsedSearchType::Artist => &[&song_data.artist],
+                ParsedSearchType::Artist => &[&song_data.artist.artist_string],
 
-                ParsedSearchType::Any => &[&song_data.title, &song_data.album, &song_data.artist],
+                ParsedSearchType::Any => &[
+                    &song_data.title,
+                    &song_data.album,
+                    &song_data.artist.artist_string,
+                ],
             };
 
             let mut valid_search = false;

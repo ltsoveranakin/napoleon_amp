@@ -22,8 +22,44 @@ pub enum TagType {
 }
 
 #[derive(SerBytes, Clone, Debug)]
+pub struct Artist {
+    pub artist_string: String,
+}
+
+impl Artist {
+    fn new(artist_string: impl Into<String>) -> Self {
+        Self {
+            artist_string: artist_string.into(),
+        }
+    }
+
+    /// Returns the artist string as it is, if there are multiple artists they will be separated by a "/"
+    ///
+    /// Ex. Artist0/Artist1/ArtistN
+
+    // pub fn fully_qualified_artist_string(&self) -> &String {
+    //     &self.artist_string
+    // }
+
+    // pub(crate) fn set_artist(&mut self, artist_string: impl Into<String>) {
+    //     self.artist_string = artist_string.into();
+    // }
+
+    pub fn get_artist_list(&self) -> Vec<&str> {
+        self.artist_string.split("/").collect()
+    }
+
+    pub fn main_artist(&self) -> &str {
+        self.artist_string
+            .split("/")
+            .next()
+            .unwrap_or(UNKNOWN_ARTIST_STR)
+    }
+}
+
+#[derive(SerBytes, Clone, Debug)]
 pub struct SongData {
-    pub artist: String,
+    pub artist: Artist,
     pub album: String,
     pub title: String,
     pub custom_song_tags: HashMap<TagType, SongTagValue>,
@@ -32,7 +68,7 @@ pub struct SongData {
 impl Default for SongData {
     fn default() -> Self {
         Self {
-            artist: UNKNOWN_ARTIST_STR.to_string(),
+            artist: Artist::new(UNKNOWN_ARTIST_STR),
             album: UNKNOWN_ALBUM_STR.to_string(),
             title: String::new(),
             custom_song_tags: HashMap::new(),
@@ -70,8 +106,8 @@ pub(super) fn get_song_data_from_song_file_with_paths(
                         if let Some(std_key) = tag.std_key {
                             match std_key {
                                 StandardTagKey::Artist => match tag.value {
-                                    Value::String(ref artist) => {
-                                        song_data.artist = artist.clone();
+                                    Value::String(ref artist_string) => {
+                                        song_data.artist = Artist::new(artist_string);
                                     }
 
                                     _ => {

@@ -238,7 +238,7 @@ impl MusicManager {
 
                             send_rpc_action(RPCAction::SetSong(SetSongData {
                                 song_title: song_data.title.clone(),
-                                song_artist: song_data.artist.to_string(),
+                                song_artist: song_data.artist.main_artist().to_string(),
                                 song_duration: total_song_duration,
                             }));
 

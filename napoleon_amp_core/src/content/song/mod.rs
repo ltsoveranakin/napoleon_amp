@@ -56,8 +56,8 @@ impl Song {
                     sd
                 });
 
-            if song_data.artist.len() == 0 {
-                song_data.artist = UNKNOWN_ARTIST_STR.into();
+            if song_data.artist.artist_string.len() == 0 {
+                song_data.artist.artist_string = UNKNOWN_ARTIST_STR.to_string();
             }
 
             if song_data.album.len() == 0 {
