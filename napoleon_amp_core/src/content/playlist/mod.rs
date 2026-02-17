@@ -6,6 +6,7 @@ mod song_list;
 use crate::content::playlist::data::{PlaybackMode, PlaylistData};
 use crate::content::playlist::manager::MusicManager;
 use crate::content::playlist::song_list::{SongList, SongVec, SortBy, SortByVariant};
+use crate::content::song::song_data::SongData;
 use crate::content::song::Song;
 use crate::content::{unwrap_inner_ref, unwrap_inner_ref_mut, NamedPathLike, PathNamed};
 use crate::paths::{song_file, songs_dir};
@@ -452,31 +453,26 @@ impl Playlist {
     }
 
     pub fn get_artist_list(&self) -> Vec<String> {
-        let mut artist_set = HashSet::new();
-
-        for song in read_rwlock(&self.get_or_load_songs()).iter() {
-            let artist = &song.get_song_data().artist.artist_string;
-
-            if !artist_set.contains(artist) {
-                artist_set.insert(artist.clone());
-            }
-        }
-
-        artist_set.into_iter().collect()
+        self.get_string_list(|song_data| &song_data.artist.artist_string)
     }
 
     pub fn get_album_list(&self) -> Vec<String> {
-        let mut album_set = HashSet::new();
+        self.get_string_list(|song_data| &song_data.album)
+    }
 
-        for song in read_rwlock(&self.get_or_load_songs()).iter() {
-            let album = &song.get_song_data().album;
+    fn get_string_list(&self, f: impl Fn(&SongData) -> &String) -> Vec<String> {
+        let mut string_set = HashSet::new();
 
-            if !album_set.contains(album) {
-                album_set.insert(album.clone());
+        for song in read_rwlock(&self.get_or_load_songs_unfiltered()).iter() {
+            let song_data = song.get_song_data();
+            let string_ref = f(&song_data);
+
+            if !string_set.contains(string_ref) {
+                string_set.insert(string_ref.clone());
             }
         }
 
-        album_set.into_iter().collect()
+        string_set.into_iter().collect()
     }
 
     pub(crate) fn start_play_song(&self, song_index: usize) {
@@ -491,7 +487,7 @@ impl Playlist {
         let playlist_data = self.get_or_load_playlist_data();
 
         let music_manager = MusicManager::try_create(
-            self.get_or_load_songs(),
+            self.get_or_load_songs_unfiltered(),
             song_index,
             *playlist_data.volume,
             *playlist_data.playback_mode,
