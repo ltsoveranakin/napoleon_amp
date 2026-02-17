@@ -435,7 +435,7 @@ impl Playlist {
         *self.get_or_load_playlist_data().sort_by
     }
 
-    pub fn next_sorting_by_and_save(&self) {
+    pub fn next_sorting_by(&self) {
         let mut sort_by = *self.get_or_load_playlist_data().sort_by;
 
         let next_sort_by = match sort_by.sort_by_variant {

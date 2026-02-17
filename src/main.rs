@@ -49,11 +49,17 @@ fn init_crash_logger() {
             .payload_as_str()
             .unwrap_or("Unknown panicking reason");
 
-        let panic_location = panic_info
-            .location()
-            .map_or("Unknown panic location".to_string(), |location| {
-                format!("{}:{}", location.file(), location.line())
-            });
+        let panic_location =
+            panic_info
+                .location()
+                .map_or("Unknown panic location".to_string(), |location| {
+                    format!(
+                        "File: {}\nLine: {}\n Col: {}",
+                        location.file(),
+                        location.line(),
+                        location.column()
+                    )
+                });
 
         let logging_directory = log_dir();
 
