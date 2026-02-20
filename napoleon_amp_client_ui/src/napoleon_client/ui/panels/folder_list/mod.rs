@@ -7,6 +7,7 @@ use napoleon_amp_core::content::folder::Folder;
 use napoleon_amp_core::content::playlist::Playlist;
 use napoleon_amp_core::content::NamedPathLike;
 use napoleon_amp_core::discord_rpc::set_rpc_playlist;
+use napoleon_amp_core::instance::NapoleonInstance;
 use std::ffi::OsStr;
 use std::rc::Rc;
 
@@ -141,7 +142,12 @@ impl FolderList {
         }
     }
 
-    pub(crate) fn render(&mut self, ui: &mut Ui, playlist_panel: &mut Option<PlaylistPanel>) {
+    pub(crate) fn render(
+        &mut self,
+        ui: &mut Ui,
+        playlist_panel: &mut Option<PlaylistPanel>,
+        napoleon_instance: &mut NapoleonInstance,
+    ) {
         self.render_current_modal(ui);
 
         // self.render_new_content_modal(ui);
@@ -151,7 +157,7 @@ impl FolderList {
 
         let current_folder = Rc::clone(&self.current_folder);
 
-        self.render_folder_content(ui, &current_folder, playlist_panel);
+        self.render_folder_content(ui, &current_folder, playlist_panel, napoleon_instance);
     }
 
     fn render_current_modal(&mut self, ui: &mut Ui) {
@@ -197,6 +203,7 @@ impl FolderList {
         ui: &mut Ui,
         folder: &Rc<Folder>,
         playlist_panel: &mut Option<PlaylistPanel>,
+        napoleon_instance: &mut NapoleonInstance,
     ) {
         scroll_area_styled(ui, ScrollArea::vertical(), |ui| {
             let mut next_folder = None;
@@ -215,6 +222,7 @@ impl FolderList {
                 playlist_panel,
                 &mut next_playlist,
                 &mut next_folder,
+                napoleon_instance,
             );
 
             if let Some(next_folder) = next_folder {
@@ -234,6 +242,7 @@ impl FolderList {
         playlist_panel: &mut Option<PlaylistPanel>,
         next_playlist: &mut Option<Rc<Playlist>>,
         next_folder: &mut Option<Rc<Folder>>,
+        napoleon_instance: &mut NapoleonInstance,
     ) {
         let mut delete_index = None;
 
@@ -247,14 +256,20 @@ impl FolderList {
                     let path_named_ref = playlist.get_path_named_ref();
                     let playlist_name = path_named_ref.name();
 
-                    let playlist_label = self.playlist_button(ui, playlist_name);
+                    let playlist_button = self.playlist_button(ui, playlist_name);
 
-                    if playlist_label.clicked() {
+                    if playlist_button.clicked() {
                         *next_playlist = Some(Rc::clone(playlist));
                         set_rpc_playlist(playlist_name.to_string());
                     }
 
-                    Popup::context_menu(&playlist_label).show(|ui| {
+                    if playlist_button.double_clicked() {
+                        if let Some(playlist) = next_playlist {
+                            napoleon_instance.start_play_playlist(Rc::clone(playlist));
+                        }
+                    }
+
+                    Popup::context_menu(&playlist_button).show(|ui| {
                         if ui.button("Rename Playlist").clicked() {
                             self.current_modal = Some(FolderListModal::RenamePlaylist {
                                 name: String::new(),
@@ -285,6 +300,7 @@ impl FolderList {
                                 playlist_panel,
                                 next_playlist,
                                 next_folder,
+                                napoleon_instance,
                             );
                         });
 

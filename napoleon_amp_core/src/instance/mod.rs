@@ -1,6 +1,7 @@
 mod data;
 
 use crate::content::folder::Folder;
+use crate::content::playlist::data::PlaybackMode;
 use crate::content::playlist::Playlist;
 use crate::content::song::Song;
 use crate::content::PathNamed;
@@ -8,6 +9,7 @@ use crate::discord_rpc::discord_rpc_thread;
 use crate::instance::data::InstanceData;
 use crate::paths::folders_dir;
 use crate::read_rwlock;
+use rand::{rng, RngExt};
 use std::cell::LazyCell;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -63,6 +65,19 @@ impl NapoleonInstance {
         self.stop_music();
         playlist.start_play_song(song_index);
         self.currently_playing_playlist = Some(playlist);
+    }
+
+    pub fn start_play_playlist(&mut self, playlist: Rc<Playlist>) {
+        let song_index = match playlist.playback_mode() {
+            PlaybackMode::Sequential => 0,
+
+            PlaybackMode::Shuffle => {
+                let songs_len = read_rwlock(&playlist.get_or_load_songs()).len();
+                rng().random_range(0..songs_len)
+            }
+        };
+
+        self.start_play_song(playlist, song_index);
     }
 
     pub fn stop_music(&mut self) {

@@ -1,4 +1,4 @@
-mod data;
+pub mod data;
 pub mod manager;
 mod queue;
 mod song_list;
@@ -495,6 +495,10 @@ impl Playlist {
 
         self.music_manager.replace(music_manager);
     }
+
+    // pub(crate) fn start_play_playlist(&self, ) {
+    //
+    // }
 
     pub(crate) fn stop_music(&self) {
         if let Some(music_manager) = self.music_manager.take() {

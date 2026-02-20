@@ -38,7 +38,8 @@ impl App for NapoleonClientApp {
         });
 
         SidePanel::left("folder_list").show(ctx, |ui| {
-            self.folder_list.render(ui, &mut self.playlist_panel);
+            self.folder_list
+                .render(ui, &mut self.playlist_panel, &mut self.core_instance);
         });
 
         if let Some(ref mut playlist_panel) = self.playlist_panel {
