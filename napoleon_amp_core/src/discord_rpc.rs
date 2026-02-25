@@ -6,7 +6,6 @@ use discord_rich_presence::activity::{
 use discord_rich_presence::{DiscordIpc, DiscordIpcClient};
 use std::sync::mpsc::Sender;
 use std::sync::{mpsc, RwLock};
-use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 const APPLICATION_ID_STR: &str = "1470966026106830868";
@@ -52,50 +51,39 @@ pub(super) fn discord_rpc_thread() -> Result<(), Box<dyn std::error::Error>> {
 
     client.set_activity(activity.clone()).ok();
 
-    loop {
-        if let Ok(action) = rx.recv() {
-            match action {
-                RPCAction::Kill => {
-                    break;
-                }
-
-                RPCAction::SetSong(ss_data) => {
-                    activity = set_activity_to_song_data(activity, ss_data);
-                    use_idle_activity = false;
-                }
-
-                RPCAction::StopMusic => {
-                    use_idle_activity = true;
-                }
-
-                RPCAction::Resume => {
-                    use_idle_activity = false;
-                }
-
-                RPCAction::SetPlaylistName(playlist_name) => {
-                    idle_activity =
-                        idle_activity.state(format!("Browsing playlist {}", playlist_name));
-                }
+    for action in rx.iter() {
+        match action {
+            RPCAction::Kill => {
+                break;
             }
 
-            let activity_to_use = if use_idle_activity {
-                idle_activity.clone()
-            } else {
-                activity.clone()
-            };
-
-            if client.set_activity(activity_to_use).is_err() {
-                if client.reconnect().is_err() {
-                    break;
-                }
+            RPCAction::SetSong(ss_data) => {
+                activity = set_activity_to_song_data(activity, ss_data);
+                use_idle_activity = false;
             }
-        } else {
-            println!("main channel hung up, ending rpc loop");
-            // channel hung up
-            break;
+
+            RPCAction::StopMusic => {
+                use_idle_activity = true;
+            }
+
+            RPCAction::Resume => {
+                use_idle_activity = false;
+            }
+
+            RPCAction::SetPlaylistName(playlist_name) => {
+                idle_activity = idle_activity.state(format!("Browsing playlist {}", playlist_name));
+            }
         }
 
-        thread::sleep(Duration::from_secs(1));
+        let activity_to_use = if use_idle_activity {
+            idle_activity.clone()
+        } else {
+            activity.clone()
+        };
+
+        if client.set_activity(activity_to_use).is_err() {
+            client.reconnect().ok();
+        }
     }
 
     client.close()?;
