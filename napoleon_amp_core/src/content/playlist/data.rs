@@ -1,4 +1,5 @@
 use crate::content::playlist::song_list::SortBy;
+use crate::id_generator::Id;
 use serbytes::prelude::{
     MayNotExistDataProvider, MayNotExistOrDefault, MayNotExistOrElse, SerBytes,
 };
@@ -29,6 +30,16 @@ impl MayNotExistDataProvider<f32> for VolumeDNEDataProvider {
     fn get_data() -> f32 {
         DEFAULT_VOLUME
     }
+}
+
+pub(super) struct PlaylistUserData {
+    playback_mode: PlaybackMode,
+    volume: f32,
+    sort_by: SortBy,
+}
+
+pub(super) struct PlaylistSongData {
+    pub(super) song_ids_order: Vec<Id>,
 }
 
 #[derive(SerBytes, Debug)]
