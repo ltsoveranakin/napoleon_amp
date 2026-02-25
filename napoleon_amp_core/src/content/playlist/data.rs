@@ -1,9 +1,9 @@
 use crate::content::playlist::song_list::SortBy;
+use crate::id_generator::Id;
 use serbytes::prelude::{
     MayNotExistDataProvider, MayNotExistOrDefault, MayNotExistOrElse, SerBytes,
 };
 use std::fmt::{Display, Formatter};
-use uuid::Uuid;
 
 const DEFAULT_VOLUME: f32 = 1.0;
 
@@ -39,7 +39,7 @@ pub(super) struct PlaylistUserData {
 }
 
 pub(super) struct PlaylistSongData {
-    pub(super) song_ids_order: Vec<Uuid>,
+    pub(super) song_ids_order: Vec<Id>,
 }
 
 #[derive(SerBytes, Debug)]
