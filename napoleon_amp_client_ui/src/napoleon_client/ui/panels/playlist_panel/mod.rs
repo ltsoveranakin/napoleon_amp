@@ -43,6 +43,7 @@ impl PlaylistPanel {
         ui: &mut Ui,
         napoleon_instance: &mut NapoleonInstance,
     ) {
+        self.keystrokes_pressed(napoleon_instance, ctx);
         if matches!(self.current_playlist.variant, PlaylistVariant::PlaylistFile) {
             ui.heading(self.current_playlist.get_path_named_ref().name());
 
@@ -89,8 +90,6 @@ impl PlaylistPanel {
             self.current_playlist.set_search_query_filter(search_text);
         }
 
-        self.keystrokes_pressed(napoleon_instance, ctx);
-
         self.render_modal(ui);
 
         self.render_song_list(ui, napoleon_instance);
@@ -99,7 +98,7 @@ impl PlaylistPanel {
     }
 
     fn keystrokes_pressed(&self, napoleon_instance: &mut NapoleonInstance, ctx: &Context) {
-        if matches!(self.playlist_modal, PlaylistModals::None) {
+        if !matches!(self.playlist_modal, PlaylistModals::None) {
             return;
         }
 
@@ -116,7 +115,6 @@ impl PlaylistPanel {
                     Event::Paste(_) => {
                         paste_keystroke_pressed = true;
                     }
-
                     _ => {}
                 }
             }
