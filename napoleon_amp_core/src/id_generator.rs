@@ -30,7 +30,8 @@ impl IdGenerator {
             % MAX_TIME) as u16;
         let data = self.rng.random();
 
-        self.increment = self.increment.overflowing_add(1).0;
+        self.increment += 1;
+        self.increment = self.increment % 127;
 
         Id {
             header,
