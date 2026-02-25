@@ -4,6 +4,7 @@ use std::sync::{Mutex, MutexGuard, RwLock, RwLockReadGuard, RwLockWriteGuard};
 
 pub mod content;
 pub mod discord_rpc;
+mod id_generator;
 pub mod instance;
 mod net;
 pub mod paths;

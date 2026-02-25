@@ -3,6 +3,7 @@ use serbytes::prelude::{
     MayNotExistDataProvider, MayNotExistOrDefault, MayNotExistOrElse, SerBytes,
 };
 use std::fmt::{Display, Formatter};
+use uuid::Uuid;
 
 const DEFAULT_VOLUME: f32 = 1.0;
 
@@ -29,6 +30,16 @@ impl MayNotExistDataProvider<f32> for VolumeDNEDataProvider {
     fn get_data() -> f32 {
         DEFAULT_VOLUME
     }
+}
+
+pub(super) struct PlaylistUserData {
+    playback_mode: PlaybackMode,
+    volume: f32,
+    sort_by: SortBy,
+}
+
+pub(super) struct PlaylistSongData {
+    pub(super) song_ids_order: Vec<Uuid>,
 }
 
 #[derive(SerBytes, Debug)]
