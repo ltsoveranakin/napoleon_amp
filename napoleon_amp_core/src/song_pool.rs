@@ -1,6 +1,6 @@
 use crate::content::song::Song;
 use crate::content::PathNamed;
-use crate::paths::song_file;
+use crate::paths::song_file_v1;
 use crate::{read_rwlock, write_rwlock};
 use std::collections::HashMap;
 use std::sync::{Arc, LazyLock, RwLock};
@@ -20,7 +20,7 @@ impl SongPool {
         }
     }
 
-    pub(super) fn get_song_by_name(&self, song_name: String) -> Arc<Song> {
+    pub(super) fn get_song_by_id(&self, song_name: String) -> Arc<Song> {
         let songs = read_rwlock(&self.songs);
 
         let song = if let Some(song) = songs.get(&song_name) {
@@ -41,7 +41,7 @@ impl SongPool {
     }
 
     fn load_song(&self, song_name: String) -> Arc<Song> {
-        let song_path = song_file(&song_name);
+        let song_path = song_file_v1(&song_name);
 
         let song = Arc::new(Song::new(PathNamed::new(song_path)));
 

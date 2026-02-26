@@ -32,12 +32,14 @@ impl MayNotExistDataProvider<f32> for VolumeDNEDataProvider {
     }
 }
 
+#[derive(SerBytes)]
 pub(super) struct PlaylistUserData {
     playback_mode: PlaybackMode,
     volume: f32,
     sort_by: SortBy,
 }
 
+#[derive(SerBytes)]
 pub(super) struct PlaylistSongData {
     pub(super) song_ids_order: Vec<Id>,
 }

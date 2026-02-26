@@ -134,7 +134,7 @@ impl SongList {
         songs_set: &mut HashSet<Arc<Song>>,
         songs_vec: &mut Vec<Arc<Song>>,
     ) {
-        let song = SONG_POOL.get_song_by_name(song_name);
+        let song = SONG_POOL.get_song_by_id(song_name);
 
         if !songs_set.contains(&song) {
             songs_set.insert(Arc::clone(&song));

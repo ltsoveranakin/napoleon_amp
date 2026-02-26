@@ -9,7 +9,7 @@ use crate::content::playlist::song_list::{SongList, SongVec, SortBy, SortByVaria
 use crate::content::song::song_data::SongData;
 use crate::content::song::Song;
 use crate::content::{unwrap_inner_ref, unwrap_inner_ref_mut, NamedPathLike, PathNamed};
-use crate::paths::{song_file, songs_dir};
+use crate::paths::{song_file_v1, songs_dir_v1};
 use crate::{read_rwlock, write_rwlock};
 use rodio::Source;
 use serbytes::prelude::SerBytes;
@@ -108,7 +108,7 @@ impl Playlist {
     }
 
     pub fn all_songs() -> Self {
-        Self::new_folder(PathNamed::new(songs_dir()))
+        Self::new_folder(PathNamed::new(songs_dir_v1()))
     }
 
     /// Gets the songs in the current playlist, with the filter if one is enabled
@@ -148,7 +148,7 @@ impl Playlist {
 
                 PlaylistVariant::SongFolder => {
                     // TODO: preallocate loaded_song_file_names_backing
-                    for song_dir in fs::read_dir(songs_dir()).expect("Song directory to exist") {
+                    for song_dir in fs::read_dir(songs_dir_v1()).expect("Song directory to exist") {
                         if let Ok(song_dir) = song_dir {
                             if let Some(ext) = song_dir.path().extension()
                                 && ext != "snap"
@@ -285,13 +285,13 @@ impl Playlist {
                     .file_name()
                     .expect("Path does not terminate in ..");
 
-                let songs_dir = songs_dir();
+                let songs_dir = songs_dir_v1();
 
                 if !fs::exists(&songs_dir).expect("Verified existence of song directory") {
                     fs::create_dir_all(songs_dir).expect("Directories created");
                 }
 
-                let new_song_path = song_file(file_name);
+                let new_song_path = song_file_v1(file_name);
 
                 // TODO: handle if new song location already exists, also just handling all the errors here properly. esp invalid format
 

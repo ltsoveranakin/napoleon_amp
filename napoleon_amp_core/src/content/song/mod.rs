@@ -3,6 +3,7 @@ pub mod song_data;
 
 use crate::content::song::song_data::{get_song_data_from_song_file, SongData};
 use crate::content::{NamedPathLike, PathNamed};
+use crate::paths::SONG_DATA_EXT;
 use crate::{read_rwlock, write_rwlock, ReadWrapper, WriteWrapper};
 use serbytes::prelude::SerBytes;
 use std::hash::{Hash, Hasher};
@@ -15,7 +16,7 @@ pub static UNKNOWN_ALBUM_STR: &str = "Unknown Album";
 #[derive(Debug)]
 pub struct Song {
     path_named: PathNamed,
-    pub(super) song_data_path: PathBuf,
+    pub(crate) song_data_path: PathBuf,
     pub(super) song_data: OnceLock<RwLock<SongData>>,
 }
 
@@ -25,7 +26,7 @@ impl Song {
             .path
             .parent()
             .expect("Valid song path")
-            .join(format!("{}.snap", path_named.name));
+            .join(format!("{}{}", path_named.name, SONG_DATA_EXT));
 
         Self {
             song_data: OnceLock::new(),

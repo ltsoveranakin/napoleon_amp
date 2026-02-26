@@ -1,6 +1,6 @@
 use crate::content::song::{Song, UNKNOWN_ALBUM_STR, UNKNOWN_ARTIST_STR};
 use crate::content::NamedPathLike;
-use serbytes::prelude::SerBytes;
+use serbytes::prelude::{MayNotExistOrDefault, SerBytes};
 use std::collections::HashMap;
 use std::fs;
 use std::fs::File;
@@ -13,7 +13,7 @@ use symphonia::default::get_probe;
 
 #[derive(SerBytes, Clone, Debug)]
 pub enum SongTagValue {
-    String(String),
+    StringTag(String),
 }
 
 #[derive(SerBytes, Eq, PartialEq, Hash, Clone, Debug)]
@@ -63,6 +63,7 @@ pub struct SongData {
     pub album: String,
     pub title: String,
     pub custom_song_tags: HashMap<TagType, SongTagValue>,
+    pub(crate) audio_file: MayNotExistOrDefault<String>,
 }
 
 impl Default for SongData {
@@ -72,6 +73,7 @@ impl Default for SongData {
             album: UNKNOWN_ALBUM_STR.to_string(),
             title: String::new(),
             custom_song_tags: HashMap::new(),
+            audio_file: String::new().into(),
         }
     }
 }

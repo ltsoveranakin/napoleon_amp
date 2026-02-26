@@ -3,6 +3,7 @@ use serbytes::prelude::{
     from_buf, BBReadResult, ReadByteBufferRefMut, SerBytes, WriteByteBufferOwned,
 };
 use std::fmt::{Display, Formatter, Write};
+use std::hash::{Hash, Hasher};
 use std::time::SystemTime;
 
 pub(super) struct IdGenerator {
@@ -48,12 +49,26 @@ impl IdGenerator {
 // (2-3)/(1-2): Time, nanoseconds since unix epoch mod 2^16. When creating a batch of ids, the time may or may not be the same
 // (4-16)/(3-15): Data bytes, should be random
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Eq, Debug)]
 pub struct Id {
     header: u8,
     pub increment: u8,
     pub time: u16,
     pub data: [u8; 12],
+}
+
+impl Hash for Id {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        state.write_u8(self.increment);
+        state.write_u16(self.time);
+        state.write(&self.data);
+    }
+}
+
+impl PartialEq for Id {
+    fn eq(&self, other: &Self) -> bool {
+        self.increment == other.increment && self.time == other.time && self.data == other.data
+    }
 }
 
 impl Id {

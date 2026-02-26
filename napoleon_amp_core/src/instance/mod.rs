@@ -1,4 +1,5 @@
 mod data;
+mod fixup;
 
 use crate::content::folder::Folder;
 use crate::content::playlist::data::PlaybackMode;
@@ -26,6 +27,7 @@ pub struct NapoleonInstance {
 
 impl NapoleonInstance {
     pub fn new() -> Self {
+        // fixup_needed().expect("fixup failed");
         Self {
             base_folder: Rc::new(Folder::new(PathNamed::new(folders_dir()), None)),
             copied_songs: None,
