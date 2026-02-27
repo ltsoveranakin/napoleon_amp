@@ -1,3 +1,5 @@
+#![deny(unused_must_use)]
+
 use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
 use std::sync::{Mutex, MutexGuard, RwLock, RwLockReadGuard, RwLockWriteGuard};

@@ -9,7 +9,11 @@ use crate::content::playlist::song_list::{SongList, SongVec, SortBy, SortByVaria
 use crate::content::song::song_data::SongData;
 use crate::content::song::Song;
 use crate::content::{unwrap_inner_ref, unwrap_inner_ref_mut, NamedPathLike, PathNamed};
-use crate::paths::{song_file, songs_dir};
+use crate::id_generator::{Id, IdGenerator};
+use crate::paths::{
+    song_audio_file_v2, songs_audio_dir_v2, songs_data_dir_v2, songs_dir_v1, SONG_DATA_EXT_NO_PER,
+};
+use crate::song_pool::SONG_POOL;
 use crate::{read_rwlock, write_rwlock};
 use rodio::Source;
 use serbytes::prelude::SerBytes;
@@ -108,7 +112,7 @@ impl Playlist {
     }
 
     pub fn all_songs() -> Self {
-        Self::new_folder(PathNamed::new(songs_dir()))
+        Self::new_folder(PathNamed::new(songs_dir_v1()))
     }
 
     /// Gets the songs in the current playlist, with the filter if one is enabled
@@ -141,38 +145,40 @@ impl Playlist {
         } else {
             let playlist_data = self.get_or_load_playlist_data();
 
-            let mut loaded_song_file_names_backing = Vec::new();
+            let mut loaded_song_ids_backing = Vec::new();
 
-            let song_file_names = match self.variant {
-                PlaylistVariant::PlaylistFile => &playlist_data.song_file_names,
+            let song_ids = match self.variant {
+                PlaylistVariant::PlaylistFile => &playlist_data.song_ids,
 
                 PlaylistVariant::SongFolder => {
+                    fs::create_dir_all(songs_data_dir_v2()).expect("Create songs_data_dir_v2");
                     // TODO: preallocate loaded_song_file_names_backing
-                    for song_dir in fs::read_dir(songs_dir()).expect("Song directory to exist") {
-                        if let Ok(song_dir) = song_dir {
-                            if let Some(ext) = song_dir.path().extension()
-                                && ext != "snap"
-                            {
-                                loaded_song_file_names_backing.push(
-                                    song_dir
-                                        .path()
-                                        .file_name()
-                                        .unwrap()
-                                        .to_str()
-                                        .unwrap()
-                                        .to_string(),
-                                );
-                            }
-                        }
+                    for song_dir in fs::read_dir(songs_data_dir_v2())
+                        .expect("Song directory to exist")
+                        .flatten()
+                    {
+                        let mut song_file_path = song_dir.path();
+
+                        song_file_path.set_extension("");
+
+                        let song_file_name = song_file_path
+                            .file_name()
+                            .expect("Get song file name")
+                            .to_str()
+                            .expect("Valid utf8 for song file");
+
+                        let id = Id::try_from_str(song_file_name).expect("Parse valid id");
+
+                        loaded_song_ids_backing.push(id);
                     }
 
-                    &loaded_song_file_names_backing
+                    &loaded_song_ids_backing
                 }
             };
 
             let mut songs = self.songs.borrow_mut();
 
-            songs.push_songs(song_file_names);
+            songs.push_songs(song_ids);
 
             self.has_loaded_songs.set(true);
 
@@ -280,33 +286,51 @@ impl Playlist {
 
             songs.reserve(song_paths.len());
 
+            let dirs_to_create = [songs_audio_dir_v2(), songs_data_dir_v2()];
+
+            for dir in dirs_to_create {
+                if !fs::exists(&dir).expect("Verified existence of song directory") {
+                    fs::create_dir_all(dir).expect("Directories created");
+                }
+            }
+
+            let mut generator = IdGenerator::new();
+
             for (i, original_song_path) in song_paths.iter().enumerate() {
-                let file_name = original_song_path
-                    .file_name()
-                    .expect("Path does not terminate in ..");
-
-                let songs_dir = songs_dir();
-
-                if !fs::exists(&songs_dir).expect("Verified existence of song directory") {
-                    fs::create_dir_all(songs_dir).expect("Directories created");
+                if original_song_path.extension().unwrap() == SONG_DATA_EXT_NO_PER {
+                    continue;
                 }
 
-                let new_song_path = song_file(file_name);
+                let mut original_song_path1 = original_song_path.clone();
+
+                original_song_path1.set_extension("");
+
+                let original_song_file_name = original_song_path1
+                    .file_name()
+                    .expect("Valid filename")
+                    .to_str()
+                    .expect("Valid osstr")
+                    .to_string();
+
+                let song_id = generator.generate_new_id();
+
+                let new_song_audio_path = song_audio_file_v2(&song_id);
 
                 // TODO: handle if new song location already exists, also just handling all the errors here properly. esp invalid format
 
-                if fs::exists(&new_song_path).expect(&format!(
+                if fs::exists(&new_song_audio_path).expect(&format!(
                     "Unable to verify new song path does not exist at path: {:?}",
-                    new_song_path
+                    new_song_audio_path
                 )) {
                     already_exists.push(i);
                 } else {
-                    File::create(&new_song_path).expect(&format!(
+                    File::create(&new_song_audio_path).expect(&format!(
                         "Unable to create new song file to copy to; path: {:?}",
-                        new_song_path
+                        new_song_audio_path
                     ));
 
-                    fs::copy(original_song_path, &new_song_path).expect("Failed copy song to dest");
+                    fs::copy(original_song_path, &new_song_audio_path)
+                        .expect("Failed copy song to dest");
 
                     if delete_original {
                         fs::remove_file(original_song_path)
@@ -314,9 +338,13 @@ impl Playlist {
                     }
                 }
 
-                songs.push_song(file_name.to_str().expect("Valid utf8").to_string());
+                songs.push_new_song(song_id, &original_song_file_name);
             }
         }
+
+        SONG_POOL
+            .save_registered_songs()
+            .expect("save registered songs");
 
         self.sort_songs_and_save();
 
@@ -360,7 +388,7 @@ impl Playlist {
     }
 
     pub fn playback_mode(&self) -> PlaybackMode {
-        *self.get_or_load_playlist_data().playback_mode.deref()
+        self.get_or_load_playlist_data().playback_mode
     }
 
     pub fn delete_song(&self, song_index: usize) {
@@ -403,7 +431,7 @@ impl Playlist {
     }
 
     pub fn get_volume(&self) -> f32 {
-        *self.get_or_load_playlist_data().volume
+        self.get_or_load_playlist_data().volume
     }
 
     pub fn set_volume(&self, mut volume: f32) {
@@ -412,7 +440,7 @@ impl Playlist {
             manager.set_volume(volume);
         }
 
-        *self.get_or_load_playlist_data_mut().volume = volume;
+        self.get_or_load_playlist_data_mut().volume = volume;
 
         self.save_contents();
     }
@@ -427,17 +455,17 @@ impl Playlist {
     fn sort_songs_and_save(&self) {
         self.songs
             .borrow_mut()
-            .sort_songs(*self.get_or_load_playlist_data().sort_by);
+            .sort_songs(self.get_or_load_playlist_data().sort_by);
 
         self.save_contents();
     }
 
     pub fn get_sorting_by(&self) -> SortBy {
-        *self.get_or_load_playlist_data().sort_by
+        self.get_or_load_playlist_data().sort_by
     }
 
     pub fn next_sorting_by(&self) {
-        let mut sort_by = *self.get_or_load_playlist_data().sort_by;
+        let mut sort_by = self.get_or_load_playlist_data().sort_by;
 
         let next_sort_by = match sort_by.sort_by_variant {
             SortByVariant::Title => SortByVariant::Artist,
@@ -489,8 +517,8 @@ impl Playlist {
         let music_manager = MusicManager::try_create(
             self.get_or_load_songs_unfiltered(),
             song_index,
-            *playlist_data.volume,
-            *playlist_data.playback_mode,
+            playlist_data.volume,
+            playlist_data.playback_mode,
         );
 
         self.music_manager.replace(music_manager);
@@ -572,11 +600,11 @@ impl Playlist {
 
         let mut playlist_data = self.get_or_load_playlist_data_mut();
 
-        playlist_data.song_file_names.clear();
-        playlist_data.song_file_names.reserve(songs.len());
+        playlist_data.song_ids.clear();
+        playlist_data.song_ids.reserve(songs.len());
 
         for song in songs.iter() {
-            playlist_data.song_file_names.push(song.file_name())
+            playlist_data.song_ids.push(song.id);
         }
 
         playlist_data

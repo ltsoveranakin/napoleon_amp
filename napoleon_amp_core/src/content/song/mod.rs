@@ -2,7 +2,8 @@ mod master;
 pub mod song_data;
 
 use crate::content::song::song_data::{get_song_data_from_song_file, SongData};
-use crate::content::{NamedPathLike, PathNamed};
+use crate::id_generator::Id;
+use crate::paths::{song_audio_file_v2, song_data_file_v2};
 use crate::{read_rwlock, write_rwlock, ReadWrapper, WriteWrapper};
 use serbytes::prelude::SerBytes;
 use std::hash::{Hash, Hasher};
@@ -14,23 +15,22 @@ pub static UNKNOWN_ALBUM_STR: &str = "Unknown Album";
 
 #[derive(Debug)]
 pub struct Song {
-    path_named: PathNamed,
-    pub(super) song_data_path: PathBuf,
+    pub(crate) id: Id,
+    pub(crate) song_audio_path: PathBuf,
+    pub(crate) song_data_path: PathBuf,
     pub(super) song_data: OnceLock<RwLock<SongData>>,
 }
 
 impl Song {
-    pub(crate) fn new(path_named: PathNamed) -> Self {
-        let song_data_path = path_named
-            .path
-            .parent()
-            .expect("Valid song path")
-            .join(format!("{}.snap", path_named.name));
+    pub(crate) fn new(song_id: Id) -> Self {
+        let song_audio_path = song_audio_file_v2(&song_id);
+        let song_data_path = song_data_file_v2(&song_id);
 
         Self {
             song_data: OnceLock::new(),
             song_data_path,
-            path_named,
+            song_audio_path,
+            id: song_id,
         }
     }
 
@@ -43,7 +43,7 @@ impl Song {
     pub fn get_or_load_song_data_mut(&self) -> WriteWrapper<'_, SongData> {
         let song_data_lock = self.get_song_data_rwlock();
 
-        write_rwlock(&song_data_lock)
+        write_rwlock(song_data_lock)
     }
 
     fn get_song_data_rwlock(&self) -> &RwLock<SongData> {
@@ -81,13 +81,13 @@ impl Song {
 
 impl PartialEq<Song> for Song {
     fn eq(&self, other: &Self) -> bool {
-        self.path_named == other.path_named
+        self.id == other.id
     }
 }
 
 impl PartialEq<&Song> for Song {
     fn eq(&self, other: &&Self) -> bool {
-        self.path_named == other.path_named
+        self.id == other.id
     }
 }
 
@@ -95,12 +95,6 @@ impl Eq for Song {}
 
 impl Hash for Song {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.path_named.name.hash(state);
-    }
-}
-
-impl NamedPathLike for Song {
-    fn get_path_named(&self) -> &PathNamed {
-        &self.path_named
+        self.id.hash(state);
     }
 }

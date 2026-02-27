@@ -1,7 +1,7 @@
 use crate::content::playlist::song_list::SortBy;
 use crate::id_generator::Id;
 use serbytes::prelude::{
-    MayNotExistDataProvider, MayNotExistOrDefault, MayNotExistOrElse, SerBytes,
+    MayNotExistDataProvider, SerBytes,
 };
 use std::fmt::{Display, Formatter};
 
@@ -9,8 +9,8 @@ const DEFAULT_VOLUME: f32 = 1.0;
 
 #[derive(SerBytes, Default, Debug, Copy, Clone)]
 pub enum PlaybackMode {
-    #[default]
     Sequential,
+    #[default]
     Shuffle,
 }
 
@@ -31,23 +31,12 @@ impl MayNotExistDataProvider<f32> for VolumeDNEDataProvider {
         DEFAULT_VOLUME
     }
 }
-
-pub(super) struct PlaylistUserData {
-    playback_mode: PlaybackMode,
-    volume: f32,
-    sort_by: SortBy,
-}
-
-pub(super) struct PlaylistSongData {
-    pub(super) song_ids_order: Vec<Id>,
-}
-
 #[derive(SerBytes, Debug)]
 pub(super) struct PlaylistData {
-    pub(super) song_file_names: Vec<String>,
-    pub(super) playback_mode: MayNotExistOrDefault<PlaybackMode>,
-    pub(super) volume: MayNotExistOrElse<f32, VolumeDNEDataProvider>,
-    pub(super) sort_by: MayNotExistOrDefault<SortBy>,
+    pub(super) song_ids: Vec<Id>,
+    pub(super) playback_mode: PlaybackMode,
+    pub(super) volume: f32,
+    pub(super) sort_by: SortBy,
 }
 
 impl PlaylistData {
@@ -57,10 +46,10 @@ impl PlaylistData {
 
     pub(super) fn new_capacity(cap: usize) -> Self {
         Self {
-            song_file_names: Vec::with_capacity(cap),
-            playback_mode: MayNotExistOrDefault::default(),
-            volume: DEFAULT_VOLUME.into(),
-            sort_by: SortBy::default().into(),
+            song_ids: Vec::with_capacity(cap),
+            playback_mode: PlaybackMode::default(),
+            volume: DEFAULT_VOLUME,
+            sort_by: SortBy::default(),
         }
     }
 }

@@ -1,5 +1,4 @@
 use crate::content::song::{Song, UNKNOWN_ALBUM_STR, UNKNOWN_ARTIST_STR};
-use crate::content::NamedPathLike;
 use serbytes::prelude::SerBytes;
 use std::collections::HashMap;
 use std::fs;
@@ -13,7 +12,7 @@ use symphonia::default::get_probe;
 
 #[derive(SerBytes, Clone, Debug)]
 pub enum SongTagValue {
-    String(String),
+    StringTag(String),
 }
 
 #[derive(SerBytes, Eq, PartialEq, Hash, Clone, Debug)]
@@ -63,6 +62,7 @@ pub struct SongData {
     pub album: String,
     pub title: String,
     pub custom_song_tags: HashMap<TagType, SongTagValue>,
+    pub(crate) audio_file: String,
 }
 
 impl Default for SongData {
@@ -72,22 +72,28 @@ impl Default for SongData {
             album: UNKNOWN_ALBUM_STR.to_string(),
             title: String::new(),
             custom_song_tags: HashMap::new(),
+            audio_file: String::new().into(),
         }
     }
 }
 
 pub(crate) fn get_song_data_from_song_file(song: &Song, song_data: &mut SongData) {
-    get_song_data_from_song_file_with_paths(song.path(), &song.song_data_path, song_data);
+    get_song_data_from_song_file_with_paths(&song.song_audio_path, &song.song_data_path, song_data);
 }
 
 pub(super) fn get_song_data_from_song_file_with_paths(
-    song_path: &PathBuf,
+    song_audio_path: &PathBuf,
     song_data_path: &PathBuf,
     song_data: &mut SongData,
 ) {
-    let song_file = File::open(&song_path).expect("Open new song file");
+    let song_file = File::open(&song_audio_path).expect("Open new song file");
 
-    let ext = song_path.extension().unwrap().to_str().unwrap().to_string();
+    let ext = song_audio_path
+        .extension()
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_string();
 
     let mss_options = MediaSourceStreamOptions::default();
 
@@ -146,10 +152,11 @@ pub(super) fn get_song_data_from_song_file_with_paths(
         Err(error) => {
             println!(
                 "failed getting format for {:?}; error: {}",
-                song_path, error
+                song_audio_path, error
             );
         }
     }
 
+    // TODO: why is this here?
     fs::write(song_data_path, song_data.to_bb().buf()).expect("Clean write to song data file");
 }

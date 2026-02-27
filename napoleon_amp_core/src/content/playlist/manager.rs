@@ -3,6 +3,7 @@ use crate::content::playlist::PlaybackMode;
 use crate::content::song::Song;
 use crate::content::NamedPathLike;
 use crate::discord_rpc::{send_rpc_action, RPCAction, SetSongData};
+use crate::paths::song_audio_file_v2;
 use crate::{read_rwlock, write_rwlock, ReadWrapper};
 use rodio::cpal::traits::HostTrait;
 use rodio::source::{Buffered, SeekError};
@@ -376,8 +377,8 @@ fn create_sink(volume: f32) -> (Sink, OutputStream) {
 }
 
 fn get_decoder_for_song(song: &Song) -> io::Result<Buffered<Decoder<BufReader<File>>>> {
-    let file =
-        File::open(song.path()).expect(&format!("Unable to open song file for: {:?}", song.path()));
+    let file = File::open(song_audio_file_v2(&song.id))
+        .expect(&format!("Unable to open song file for: {:?}", song.id));
 
     Decoder::try_from(file)
         .map(|decoder| decoder.buffered())

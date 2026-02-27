@@ -1,4 +1,5 @@
 use crate::content::song::Song;
+use crate::id_generator::Id;
 use crate::song_pool::SONG_POOL;
 use crate::{read_rwlock, write_rwlock, ReadWrapper};
 use serbytes::prelude::SerBytes;
@@ -52,15 +53,15 @@ impl SongList {
         }
     }
 
-    pub(super) fn push_songs(&mut self, song_name_list: &[String]) {
+    pub(super) fn push_songs(&mut self, song_id_list: &[Id]) {
         let songs_set = &mut self.songs_set;
         let mut songs_vec = write_rwlock(&self.songs_vec);
 
-        songs_set.reserve(song_name_list.len());
-        songs_vec.reserve_exact(song_name_list.len());
+        songs_set.reserve(song_id_list.len());
+        songs_vec.reserve_exact(song_id_list.len());
 
-        for song_name in song_name_list {
-            Self::push_song0(song_name.clone(), songs_set, &mut songs_vec);
+        for song_id in song_id_list {
+            Self::push_song0(*song_id, songs_set, &mut songs_vec, None);
         }
     }
 
@@ -79,11 +80,11 @@ impl SongList {
         }
     }
 
-    pub(super) fn push_song(&mut self, song_name: String) {
+    pub(super) fn push_new_song(&mut self, song_id: Id, original_name: &str) {
         let songs_set = &mut self.songs_set;
         let mut songs_vec = write_rwlock(&self.songs_vec);
 
-        Self::push_song0(song_name, songs_set, &mut songs_vec);
+        Self::push_song0(song_id, songs_set, &mut songs_vec, Some(original_name));
     }
 
     pub(super) fn remove_song_at(&mut self, index: usize) {
@@ -130,11 +131,25 @@ impl SongList {
     }
 
     fn push_song0(
-        song_name: String,
+        song_id: Id,
         songs_set: &mut HashSet<Arc<Song>>,
         songs_vec: &mut Vec<Arc<Song>>,
+        original_name: Option<&str>,
     ) {
-        let song = SONG_POOL.get_song_by_name(song_name);
+        if let Some(original_name) = original_name {
+            SONG_POOL.register_song(song_id, original_name.to_string());
+        }
+
+        let song = SONG_POOL.get_song_by_id(song_id);
+
+        {
+            let mut song_data = song.get_song_data().clone();
+
+            if song_data.title.is_empty() {
+                song_data.title = original_name.unwrap_or("Unnamed Song").to_string();
+                song.set_song_data(song_data);
+            }
+        }
 
         if !songs_set.contains(&song) {
             songs_set.insert(Arc::clone(&song));
