@@ -72,6 +72,9 @@ impl PartialEq for Id {
 }
 
 impl Id {
+    const BYTE_LEN_WITHOUT_HEADER: usize = 15;
+    const BYTE_LEN_WITH_HEADER: usize = Self::BYTE_LEN_WITHOUT_HEADER + 1;
+
     pub fn has_header(&self) -> bool {
         is_header(self.header)
     }
@@ -94,6 +97,50 @@ impl Id {
 
         out
     }
+
+    // TODO: make function to combine this and serbytes impl?
+    pub fn try_from_str(s: &str) -> Option<Self> {
+        let no_hyphens: Vec<char> = s.chars().filter(|c| *c != '-').collect();
+
+        if no_hyphens.len() != Self::BYTE_LEN_WITHOUT_HEADER * 2
+            && no_hyphens.len() != Self::BYTE_LEN_WITH_HEADER * 2
+        {
+            return None;
+        }
+
+        let mut chunks = no_hyphens.as_chunks::<2>().0.into_iter();
+
+        let header;
+        let increment;
+
+        let maybe_header = from_hex_chars(*chunks.next()?)?;
+
+        if is_header(maybe_header) {
+            header = maybe_header;
+            increment = from_hex_chars(*chunks.next()?)?;
+        } else {
+            header = 0b00000000;
+            increment = maybe_header;
+        }
+
+        let time_hi = from_hex_chars(*chunks.next()?)? as u16;
+        let time_low = from_hex_chars(*chunks.next()?)? as u16;
+
+        let time = (time_hi << 8) | time_low;
+
+        let mut data = [0; 12];
+
+        for (i, &chunk) in chunks.enumerate() {
+            data[i] = from_hex_chars(chunk)?;
+        }
+
+        Some(Self {
+            header,
+            increment,
+            time,
+            data,
+        })
+    }
 }
 
 fn is_header(byte: u8) -> bool {
@@ -105,17 +152,17 @@ impl SerBytes for Id {
     where
         Self: Sized,
     {
-        let header_maybe = u8::from_buf(buf)?;
+        let maybe_header = u8::from_buf(buf)?;
 
         let header;
         let increment;
 
-        if is_header(header_maybe) {
-            header = header_maybe;
+        if is_header(maybe_header) {
+            header = maybe_header;
             increment = u8::from_buf(buf)?;
         } else {
             header = 0b00000000;
-            increment = header_maybe;
+            increment = maybe_header;
         }
 
         let time = from_buf(buf)?;
@@ -144,18 +191,24 @@ impl SerBytes for Id {
     }
 }
 
-fn to_hex_chars(byte: u8) -> [char; 2] {
-    const CHARS: [char; 16] = [
-        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F',
-    ];
+const HEX_CHARS: [u8; 16] = *b"0123456789ABCDEF";
 
+fn to_hex_chars(byte: u8) -> [char; 2] {
     let char1_index = (byte >> 4) as usize;
     let char2_index = (byte & 0xF) as usize;
 
-    let char1 = CHARS[char1_index];
-    let char2 = CHARS[char2_index];
+    let char1 = HEX_CHARS[char1_index];
+    let char2 = HEX_CHARS[char2_index];
 
-    [char1, char2]
+    [char1 as char, char2 as char]
+}
+
+fn from_hex_char(c: char) -> Option<u8> {
+    c.to_digit(16).map(|u| u as u8)
+}
+
+fn from_hex_chars([c1, c2]: [char; 2]) -> Option<u8> {
+    Some((from_hex_char(c1)? << 4) | from_hex_char(c2)?)
 }
 
 impl Display for Id {
@@ -195,7 +248,7 @@ impl Display for Id {
 
 #[cfg(test)]
 mod tests {
-    use crate::id_generator::IdGenerator;
+    use crate::id_generator::{Id, IdGenerator};
 
     #[test]
     fn test_id_gen() {
@@ -204,5 +257,22 @@ mod tests {
         for _ in 0..300 {
             println!("{}", idgen.generate_new_id());
         }
+    }
+
+    #[test]
+    fn test_string() {
+        let mut idgen = IdGenerator::new();
+
+        let id = idgen.generate_new_id();
+
+        let id_str = id.to_string();
+
+        println!("id string: {}", id_str);
+
+        let id_from_str = Id::try_from_str(&id_str).expect("parse from str");
+
+        println!("from str: {}", id_from_str);
+
+        assert_eq!(id, id_from_str);
     }
 }

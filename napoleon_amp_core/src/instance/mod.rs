@@ -70,13 +70,15 @@ impl NapoleonInstance {
     }
 
     pub fn start_play_playlist(&mut self, playlist: Rc<Playlist>) {
+        let songs_len = read_rwlock(&playlist.get_or_load_songs()).len();
+        if songs_len == 0 {
+            return;
+        }
+
         let song_index = match playlist.playback_mode() {
             PlaybackMode::Sequential => 0,
 
-            PlaybackMode::Shuffle => {
-                let songs_len = read_rwlock(&playlist.get_or_load_songs()).len();
-                rng().random_range(0..songs_len)
-            }
+            PlaybackMode::Shuffle => rng().random_range(0..songs_len),
         };
 
         self.start_play_song(playlist, song_index);

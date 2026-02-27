@@ -1,7 +1,8 @@
-use crate::content::song::Song;
-use crate::content::{NamedPathLike, PathNamed};
+use crate::content::song::song_data::SongData;
+use crate::content::NamedPathLike;
 use crate::id_generator::IdGenerator;
-use crate::paths::{song_audio_file_v2, song_data_file_v2, songs_dir_v1, SONG_DATA_EXT};
+use crate::paths::{song_audio_file_v2, song_data_file_v2, songs_dir_v1, SONG_DATA_EXT_NO_PER};
+use serbytes::prelude::SerBytes;
 use std::io::ErrorKind;
 use std::path::PathBuf;
 use std::{fs, io};
@@ -26,7 +27,7 @@ fn fixup_songs_v1_to_v2() -> io::Result<()> {
             continue;
         };
 
-        if extension != SONG_DATA_EXT {
+        if extension != SONG_DATA_EXT_NO_PER {
             fixup_song_audio_file(old_path, &mut generator)?;
         }
     }
@@ -34,15 +35,23 @@ fn fixup_songs_v1_to_v2() -> io::Result<()> {
     Ok(())
 }
 
-fn fixup_song_audio_file(old_path: PathBuf, generator: &mut IdGenerator) -> io::Result<()> {
+fn fixup_song_audio_file(
+    old_song_audio_path: PathBuf,
+    generator: &mut IdGenerator,
+) -> io::Result<()> {
     let song_id = generator.generate_new_id();
 
-    let old_song = Song::new(PathNamed::new(old_path));
+    let mut old_song_data_path = old_song_audio_path.clone();
+    old_song_data_path.set_extension(SONG_DATA_EXT_NO_PER);
+
+    // println!("{:?}", old_song_data_path);
+    //
+    // panic!();
 
     let new_song_data_path = song_data_file_v2(&song_id);
     let new_song_audio_path = song_audio_file_v2(&song_id);
 
-    let mut old_song_data = old_song.get_song_data().clone();
+    let mut old_song_data = SongData::from_file_path(&old_song_data_path)?;
     old_song_data.audio_file = new_song_audio_path
         .to_str()
         .ok_or(ErrorKind::InvalidFilename)?
@@ -65,8 +74,8 @@ fn fixup_song_audio_file(old_path: PathBuf, generator: &mut IdGenerator) -> io::
         )?;
     }
 
-    fs::copy(old_song.path(), new_song_audio_path)?;
-    fs::copy(old_song.song_data_path, new_song_data_path)?;
+    fs::copy(old_song_audio_path, new_song_audio_path)?;
+    fs::copy(old_song_data_path, new_song_data_path)?;
 
     Ok(())
 }

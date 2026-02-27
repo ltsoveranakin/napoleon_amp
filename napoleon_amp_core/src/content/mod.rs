@@ -23,7 +23,7 @@ impl PathNamed {
     /// Panics if unable to create directories at the system level
     pub(super) fn new(path: PathBuf) -> Self {
         if !path.try_exists().expect("TODO: HANDLE ME") {
-            println!("create directories: {:?}", path);
+            // println!("create directories: {:?}", path);
             if path
                 .to_str()
                 .expect("Invalid string from path")
