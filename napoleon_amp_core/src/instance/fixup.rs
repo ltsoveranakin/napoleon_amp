@@ -1,7 +1,8 @@
 use crate::content::song::song_data::SongData;
 use crate::content::NamedPathLike;
 use crate::id_generator::IdGenerator;
-use crate::paths::{song_audio_file_v2, song_data_file_v2, songs_dir_v1, SONG_DATA_EXT_NO_PER};
+use crate::paths::song::{song_audio_file_v2, song_data_file_v2, songs_dir_v1};
+use crate::paths::SONG_DATA_EXT_NO_PER;
 use serbytes::prelude::SerBytes;
 use std::io::ErrorKind;
 use std::path::PathBuf;

@@ -10,9 +10,8 @@ use crate::content::song::song_data::SongData;
 use crate::content::song::Song;
 use crate::content::{unwrap_inner_ref, unwrap_inner_ref_mut, NamedPathLike, PathNamed};
 use crate::id_generator::{Id, IdGenerator};
-use crate::paths::{
-    song_audio_file_v2, songs_audio_dir_v2, songs_data_dir_v2, songs_dir_v1, SONG_DATA_EXT_NO_PER,
-};
+use crate::paths::song::{song_audio_file_v2, songs_audio_dir_v2, songs_data_dir_v2, songs_dir_v1};
+use crate::paths::SONG_DATA_EXT_NO_PER;
 use crate::song_pool::SONG_POOL;
 use crate::{read_rwlock, write_rwlock};
 use rodio::Source;
