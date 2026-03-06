@@ -1,3 +1,4 @@
+use crate::content::song::song_data::SongData;
 use crate::content::song::Song;
 use crate::id_generator::Id;
 use crate::song_pool::SONG_POOL;
@@ -46,6 +47,10 @@ pub(super) struct SongList {
 }
 
 impl SongList {
+    const TITLE_INDEX: usize = 0;
+    const ALBUM_INDEX: usize = 1;
+    const ARTIST_INDEX: usize = 2;
+
     pub(super) fn new() -> Self {
         Self {
             songs_vec: Arc::new(RwLock::new(Vec::new())),
@@ -114,21 +119,39 @@ impl SongList {
             let a_song_data = a.get_song_data();
             let b_song_data = b.get_song_data();
 
-            let (sort_str_a, sort_str_b) = match sort_by.sort_by_variant {
-                SortByVariant::Title => (&a_song_data.title, &b_song_data.title),
-                SortByVariant::Artist => (
-                    &a_song_data.artist.artist_string,
-                    &b_song_data.artist.artist_string,
-                ),
-                SortByVariant::Album => (&a_song_data.album, &b_song_data.album),
+            let index = match sort_by.sort_by_variant {
+                SortByVariant::Title => Self::TITLE_INDEX,
+                SortByVariant::Artist => Self::ARTIST_INDEX,
+                SortByVariant::Album => Self::ALBUM_INDEX,
             };
 
+            let a_sort_strings = Self::get_sort_strings(&a_song_data, index);
+            let b_sort_strings = Self::get_sort_strings(&b_song_data, index);
+
             if !sort_by.inverted {
-                sort_str_a.cmp(sort_str_b)
+                a_sort_strings.cmp(&b_sort_strings)
             } else {
-                sort_str_b.cmp(sort_str_a)
+                b_sort_strings.cmp(&a_sort_strings)
             }
         });
+    }
+
+    fn get_sort_strings(song_data: &SongData, swap_index: usize) -> [&str; 3] {
+        let mut sort_strings = [""; 3];
+
+        sort_strings[Self::TITLE_INDEX] = &song_data.title;
+        sort_strings[Self::ALBUM_INDEX] = &song_data.album;
+        sort_strings[Self::ARTIST_INDEX] = &song_data.artist.artist_string;
+
+        let temp = sort_strings[swap_index];
+
+        for i in (1..=swap_index).rev() {
+            sort_strings[i] = sort_strings[i - 1];
+        }
+
+        sort_strings[0] = temp;
+
+        sort_strings
     }
 
     fn push_song0(

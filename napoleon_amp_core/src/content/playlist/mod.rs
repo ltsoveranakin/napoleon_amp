@@ -10,20 +10,19 @@ use crate::content::playlist::manager::MusicManager;
 use crate::content::playlist::song_list::{SongList, SongVec, SortBy, SortByVariant};
 use crate::content::song::song_data::SongData;
 use crate::content::song::Song;
-use crate::content::NamedPathLike;
+
 use crate::id_generator::{Id, SmallRngIdGenerator};
 use crate::paths::song::{song_audio_file_v2, songs_audio_dir_v2, songs_data_dir_v2};
 use crate::paths::SONG_DATA_EXT_NO_PER;
 use crate::song_pool::SONG_POOL;
 use crate::{read_rwlock, write_rwlock};
-use rodio::Source;
-use serbytes::prelude::SerBytes;
+
 use std::cell::{Cell, OnceCell, Ref, RefCell, RefMut};
 use std::collections::HashSet;
-use std::fmt::Display;
+
 use std::fs::File;
-use std::io::{Read, Write};
-use std::ops::{Deref, RangeInclusive};
+
+use std::ops::RangeInclusive;
 use std::path::PathBuf;
 use std::rc::Weak;
 use std::sync::{Arc, RwLock};
@@ -457,9 +456,7 @@ impl Playlist {
 
     pub fn sort_by_and_save(&self, sort_by: SortBy) {
         self.get_or_load_playlist_data_mut().sort_by = sort_by.into();
-        self.songs.borrow_mut().sort_songs(sort_by);
-
-        self.save_contents();
+        self.sort_songs_and_save();
     }
 
     fn sort_songs_and_save(&self) {

@@ -131,12 +131,12 @@ impl MusicManager {
                 let songs = songs_thread;
 
                 let mut audio_device_in_use = cpal::default_host().default_output_device();
-                let mut reinitialize_audio_to = None;
+                let mut audio_device_changed = false;
 
                 let mut is_playing = true;
 
                 loop {
-                    if let Some(reinitialize_pos) = reinitialize_audio_to {
+                    if audio_device_changed {
                         println!("Changing audio device, replacing sink");
 
                         audio_device_in_use = cpal::default_host().default_output_device();
@@ -155,7 +155,7 @@ impl MusicManager {
                             sink.try_seek(song_pos).ok();
                         }
 
-                        reinitialize_audio_to = None;
+                        audio_device_changed = false;
                     }
 
                     let sink = read_rwlock(&sink_arc);
@@ -260,12 +260,12 @@ impl MusicManager {
                             let audio_device_in_use = if let Some(ad) = &audio_device_in_use {
                                 ad
                             } else {
-                                reinitialize_audio_to = Some(Duration::ZERO);
+                                audio_device_changed = true;
                                 continue;
                             };
 
                             if just_polled_device.name() != audio_device_in_use.name() {
-                                reinitialize_audio_to = Some(Duration::ZERO);
+                                audio_device_changed = true;
                             }
                         }
                     }
