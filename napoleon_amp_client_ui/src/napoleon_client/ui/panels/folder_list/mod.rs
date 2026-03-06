@@ -2,14 +2,14 @@ use crate::napoleon_client::ui::helpers::scroll_area_styled;
 
 use crate::napoleon_client::ui::panels::playlist_panel::PlaylistPanel;
 use eframe::egui::{CursorIcon, Id, Modal, Popup, Response, ScrollArea, Ui};
+
 use napoleon_amp_core::content::folder::content::FolderContentVariant;
 use napoleon_amp_core::content::folder::Folder;
 use napoleon_amp_core::content::playlist::Playlist;
-use napoleon_amp_core::content::NamedPathLike;
 use napoleon_amp_core::discord_rpc::set_rpc_playlist;
 use napoleon_amp_core::instance::NapoleonInstance;
 use std::ffi::OsStr;
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
 
 enum CreateFolderContentDialogVariant {
     SubFolder,
@@ -70,11 +70,13 @@ impl FolderListModal {
 
                     match variant {
                         CreateFolderContentDialogVariant::SubFolder => {
-                            Folder::add_folder(&current_folder, name.clone());
+                            Folder::create_folder(&current_folder, name.clone())
+                                .expect("Err create folder");
                         }
 
                         CreateFolderContentDialogVariant::Playlist => {
-                            Folder::add_playlist(&current_folder, name.clone());
+                            Folder::create_playlist(&current_folder, name.clone())
+                                .expect("Err create playlist");
                         }
                     }
 
@@ -192,7 +194,7 @@ impl FolderList {
 
         if let Some(parent_folder) = &self.current_folder.parent {
             if ui.button("Back").clicked() {
-                let parent = parent_folder.upgrade().expect("TODO: ");
+                let parent = Weak::upgrade(parent_folder).expect("TODO: ");
                 self.current_folder = parent;
             }
         }
@@ -246,17 +248,16 @@ impl FolderList {
     ) {
         let mut delete_index = None;
 
-        for (current_index, folder_content) in
-            Folder::get_or_load_content(folder).iter().enumerate()
+        for (current_index, folder_content_variant) in
+            Folder::get_contents(folder).iter().enumerate()
         {
             ui.separator();
 
-            match &folder_content.variant {
+            match folder_content_variant {
                 FolderContentVariant::Playlist(playlist) => {
-                    let path_named_ref = playlist.get_path_named_ref();
-                    let playlist_name = path_named_ref.name();
+                    let playlist_name = playlist.get_name();
 
-                    let playlist_button = self.playlist_button(ui, playlist_name);
+                    let playlist_button = self.playlist_button(ui, &playlist_name);
 
                     if playlist_button.clicked() {
                         *next_playlist = Some(Rc::clone(playlist));
@@ -283,26 +284,29 @@ impl FolderList {
                             &mut delete_index,
                             "playlist",
                             playlist
-                                .get_path_named_ref()
-                                .path()
+                                .get_or_load_playlist_data()
+                                .get_data_path()
                                 .parent()
                                 .expect("File will always have parent directory"),
                         );
                     });
                 }
 
-                FolderContentVariant::SubFolder(folder) => {
+                FolderContentVariant::Folder(folder) => {
                     ui.horizontal(|ui| {
-                        let folder_item = ui.collapsing(folder.name(), |ui| {
-                            self.render_sub_folder_content(
-                                ui,
-                                folder,
-                                playlist_panel,
-                                next_playlist,
-                                next_folder,
-                                napoleon_instance,
-                            );
-                        });
+                        let folder_item = ui.collapsing(
+                            folder.get_folder_data().content_data.name.clone(),
+                            |ui| {
+                                self.render_sub_folder_content(
+                                    ui,
+                                    folder,
+                                    playlist_panel,
+                                    next_playlist,
+                                    next_folder,
+                                    napoleon_instance,
+                                );
+                            },
+                        );
 
                         if folder_item.header_response.middle_clicked() {
                             *next_folder = Some(Rc::clone(folder));
@@ -314,7 +318,7 @@ impl FolderList {
                                 current_index,
                                 &mut delete_index,
                                 "folder",
-                                folder.path(),
+                                folder.get_folder_data().get_folder_data_path(),
                             );
                         })
                     });
@@ -323,7 +327,7 @@ impl FolderList {
         }
 
         if let Some(index) = delete_index {
-            folder.delete_content(index);
+            folder.delete_content(index).ok();
         }
     }
 

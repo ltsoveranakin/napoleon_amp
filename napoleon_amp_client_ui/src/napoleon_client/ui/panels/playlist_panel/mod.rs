@@ -44,8 +44,14 @@ impl PlaylistPanel {
         napoleon_instance: &mut NapoleonInstance,
     ) {
         self.keystrokes_pressed(napoleon_instance, ctx);
-        if matches!(self.current_playlist.variant, PlaylistVariant::PlaylistFile) {
-            ui.heading(self.current_playlist.get_path_named_ref().name());
+        if matches!(self.current_playlist.variant, PlaylistVariant::Normal) {
+            ui.heading(
+                self.current_playlist
+                    .get_or_load_playlist_data()
+                    .content_data
+                    .name
+                    .clone(),
+            );
 
             ui.horizontal(|ui| {
                 #[cfg(not(target_os = "android"))]

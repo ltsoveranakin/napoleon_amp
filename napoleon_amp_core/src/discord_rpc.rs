@@ -1,3 +1,4 @@
+use crate::content::song::song_data::Artist;
 use crate::content::song::UNKNOWN_ARTIST_STR;
 use crate::{read_rwlock, write_rwlock};
 use discord_rich_presence::activity::{
@@ -17,7 +18,7 @@ static RPC_ACTION_TX: RwLock<Option<Sender<RPCAction>>> = RwLock::new(None);
 #[derive(Clone, Debug)]
 pub(super) struct SetSongData {
     pub(super) song_title: String,
-    pub(super) song_artist: String,
+    pub(super) song_artist: Artist,
     pub(super) song_duration: Option<Duration>,
 }
 
@@ -98,6 +99,8 @@ fn set_activity_to_song_data(activity: Activity, set_song_data: SetSongData) -> 
         song_duration,
     } = set_song_data;
 
+    let main_artist = song_artist.main_artist();
+
     let current_time = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .expect("Invalid time")
@@ -109,8 +112,11 @@ fn set_activity_to_song_data(activity: Activity, set_song_data: SetSongData) -> 
         timestamp = timestamp.end(current_time + song_duration.as_millis() as i64)
     }
 
-    let (state_string, details_prefix) = if song_artist != UNKNOWN_ARTIST_STR {
-        (format!("By {}", song_artist), format!("{} - ", song_artist))
+    let (state_string, details_prefix) = if main_artist != UNKNOWN_ARTIST_STR {
+        (
+            format!("By {}", song_artist.artist_string),
+            format!("{} - ", main_artist),
+        )
     } else {
         ("Jammin'".into(), String::new())
     };

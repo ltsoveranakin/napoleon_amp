@@ -5,10 +5,9 @@ use crate::content::folder::Folder;
 use crate::content::playlist::data::PlaybackMode;
 use crate::content::playlist::Playlist;
 use crate::content::song::Song;
-use crate::content::PathNamed;
 use crate::discord_rpc::discord_rpc_thread;
+use crate::id_generator::Id;
 use crate::instance::data::InstanceData;
-use crate::paths::folders_dir;
 use crate::read_rwlock;
 use rand::{rng, RngExt};
 use std::cell::LazyCell;
@@ -27,9 +26,11 @@ pub struct NapoleonInstance {
 
 impl NapoleonInstance {
     pub fn new() -> Self {
-        // fixup_needed().expect("fixup failed");
+        let base_folder = Rc::new(Folder::new(Id::ZERO, None));
+        println!("base folder data: {:?}", base_folder.get_folder_data());
         Self {
-            base_folder: Rc::new(Folder::new(PathNamed::new(folders_dir()), None)),
+            // TODO: initialize thru content_pool
+            base_folder,
             copied_songs: None,
             currently_playing_playlist: None,
             instance_data: LazyCell::new(InstanceData::init_self),

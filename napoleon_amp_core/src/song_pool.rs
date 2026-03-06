@@ -2,7 +2,7 @@ use crate::content::song::Song;
 use crate::id_generator::Id;
 
 use crate::paths::song::registered_songs_data_file_v2;
-use crate::{read_rwlock, write_rwlock};
+use crate::{read_rwlock, write_rwlock, ReadWrapper};
 use serbytes::prelude::SerBytes;
 use std::collections::HashMap;
 use std::io;
@@ -10,12 +10,11 @@ use std::sync::{Arc, LazyLock, RwLock};
 
 pub(super) static SONG_POOL: LazyLock<SongPool> = LazyLock::new(SongPool::new);
 
-pub(super) type WeakArc<T> = std::sync::Weak<T>;
+type WeakArc<T> = std::sync::Weak<T>;
 
 #[derive(SerBytes, Default)]
-struct RegisteredSongs {
-    // songs_set: HashSet<Id>,
-    name_map: HashMap<String, Id>,
+pub(crate) struct RegisteredSongs {
+    pub(crate) name_map: HashMap<String, Id>,
 }
 
 pub(super) struct SongPool {
@@ -58,10 +57,20 @@ impl SongPool {
         song
     }
 
-    pub(super) fn register_song(&self, song_id: Id, name: String) {
-        write_rwlock(&self.registered_songs)
-            .name_map
-            .insert(name, song_id);
+    pub(super) fn register_new_song(&self, song_id: Id, name: String) -> Result<(), ()> {
+        let name_map = &mut write_rwlock(&self.registered_songs).name_map;
+
+        if name_map.contains_key(&name) {
+            return Err(());
+        }
+
+        name_map.insert(name, song_id);
+
+        Ok(())
+    }
+
+    pub(crate) fn get_registered_songs(&self) -> ReadWrapper<'_, RegisteredSongs> {
+        read_rwlock(&self.registered_songs)
     }
 
     pub(super) fn save_registered_songs(&self) -> io::Result<()> {

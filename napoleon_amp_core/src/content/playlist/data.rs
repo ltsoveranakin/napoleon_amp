@@ -1,9 +1,11 @@
+use crate::content::folder::ContentData;
 use crate::content::playlist::song_list::SortBy;
 use crate::id_generator::Id;
-use serbytes::prelude::{
-    MayNotExistDataProvider, SerBytes,
-};
+use crate::paths::content_playlist_file;
+use serbytes::prelude::{MayNotExistDataProvider, SerBytes};
 use std::fmt::{Display, Formatter};
+use std::io;
+use std::path::PathBuf;
 
 const DEFAULT_VOLUME: f32 = 1.0;
 
@@ -31,25 +33,34 @@ impl MayNotExistDataProvider<f32> for VolumeDNEDataProvider {
         DEFAULT_VOLUME
     }
 }
+
+pub(crate) type PlaylistContentData = ContentData<Id>;
+
 #[derive(SerBytes, Debug)]
-pub(super) struct PlaylistData {
-    pub(super) song_ids: Vec<Id>,
+pub struct PlaylistData {
+    pub content_data: PlaylistContentData,
+    pub(crate) song_ids: Vec<Id>,
     pub(super) playback_mode: PlaybackMode,
     pub(super) volume: f32,
     pub(super) sort_by: SortBy,
 }
 
 impl PlaylistData {
-    pub(super) fn new_empty() -> Self {
-        Self::new_capacity(0)
-    }
-
-    pub(super) fn new_capacity(cap: usize) -> Self {
+    pub(crate) fn new(content_data: PlaylistContentData) -> Self {
         Self {
-            song_ids: Vec::with_capacity(cap),
+            content_data,
+            song_ids: Vec::new(),
             playback_mode: PlaybackMode::default(),
             volume: DEFAULT_VOLUME,
             sort_by: SortBy::default(),
         }
+    }
+
+    pub fn get_data_path(&self) -> PathBuf {
+        content_playlist_file(self.content_data.id)
+    }
+
+    pub(crate) fn save_data(&self) -> io::Result<()> {
+        self.write_to_file_path(self.get_data_path())
     }
 }

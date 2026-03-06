@@ -61,7 +61,8 @@ impl SongList {
         songs_vec.reserve_exact(song_id_list.len());
 
         for song_id in song_id_list {
-            Self::push_song0(*song_id, songs_set, &mut songs_vec, None);
+            Self::push_song0(*song_id, songs_set, &mut songs_vec, None)
+                .expect("Will not fail if original_name is none");
         }
     }
 
@@ -80,11 +81,11 @@ impl SongList {
         }
     }
 
-    pub(super) fn push_new_song(&mut self, song_id: Id, original_name: &str) {
+    pub(super) fn push_new_song(&mut self, song_id: Id, original_name: &str) -> Result<(), ()> {
         let songs_set = &mut self.songs_set;
         let mut songs_vec = write_rwlock(&self.songs_vec);
 
-        Self::push_song0(song_id, songs_set, &mut songs_vec, Some(original_name));
+        Self::push_song0(song_id, songs_set, &mut songs_vec, Some(original_name))
     }
 
     pub(super) fn remove_song_at(&mut self, index: usize) {
@@ -135,9 +136,9 @@ impl SongList {
         songs_set: &mut HashSet<Arc<Song>>,
         songs_vec: &mut Vec<Arc<Song>>,
         original_name: Option<&str>,
-    ) {
+    ) -> Result<(), ()> {
         if let Some(original_name) = original_name {
-            SONG_POOL.register_song(song_id, original_name.to_string());
+            SONG_POOL.register_new_song(song_id, original_name.to_string())?;
         }
 
         let song = SONG_POOL.get_song_by_id(song_id);
@@ -155,5 +156,7 @@ impl SongList {
             songs_set.insert(Arc::clone(&song));
             songs_vec.push(song);
         }
+
+        Ok(())
     }
 }

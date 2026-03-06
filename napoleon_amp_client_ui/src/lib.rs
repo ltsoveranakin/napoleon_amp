@@ -1,3 +1,5 @@
+#![deny(unused_must_use)]
+
 mod napoleon_client;
 
 pub use napoleon_amp_core::paths::*;

@@ -3,26 +3,29 @@ pub mod manager;
 mod queue;
 mod song_list;
 
+use crate::content::folder::content_pool::CONTENT_POOL;
+use crate::content::folder::Folder;
 use crate::content::playlist::data::{PlaybackMode, PlaylistData};
 use crate::content::playlist::manager::MusicManager;
 use crate::content::playlist::song_list::{SongList, SongVec, SortBy, SortByVariant};
 use crate::content::song::song_data::SongData;
 use crate::content::song::Song;
-use crate::content::{unwrap_inner_ref, unwrap_inner_ref_mut, NamedPathLike, PathNamed};
-use crate::id_generator::{Id, IdGenerator};
-use crate::paths::song::{song_audio_file_v2, songs_audio_dir_v2, songs_data_dir_v2, songs_dir_v1};
+use crate::content::NamedPathLike;
+use crate::id_generator::{Id, SmallRngIdGenerator};
+use crate::paths::song::{song_audio_file_v2, songs_audio_dir_v2, songs_data_dir_v2};
 use crate::paths::SONG_DATA_EXT_NO_PER;
 use crate::song_pool::SONG_POOL;
 use crate::{read_rwlock, write_rwlock};
 use rodio::Source;
 use serbytes::prelude::SerBytes;
-use std::cell::{Cell, Ref, RefCell, RefMut};
+use std::cell::{Cell, OnceCell, Ref, RefCell, RefMut};
 use std::collections::HashSet;
 use std::fmt::Display;
 use std::fs::File;
 use std::io::{Read, Write};
 use std::ops::{Deref, RangeInclusive};
 use std::path::PathBuf;
+use std::rc::Weak;
 use std::sync::{Arc, RwLock};
 use std::{fs, io};
 
@@ -30,10 +33,10 @@ use std::{fs, io};
 
 #[derive(Debug)]
 pub enum PlaylistVariant {
-    /// Will attempt to load all songs in the current folder
-    SongFolder,
-    /// Will attempt to load all songs in the supplied file
-    PlaylistFile,
+    /// Will attempt to load all songs that have been registered
+    AllSongs,
+    /// Will attempt to load all songs in the playlist data file that matches the current id
+    Normal,
 }
 
 #[derive(Clone, Debug)]
@@ -78,40 +81,38 @@ impl SelectedSongsVariant {
 
 #[derive(Debug)]
 pub struct Playlist {
-    path_named: RefCell<PathNamed>,
+    id: Id,
+    parent_folder: Option<Weak<Folder>>,
     songs: RefCell<SongList>,
     has_loaded_songs: Cell<bool>,
     music_manager: RefCell<Option<MusicManager>>,
     pub variant: PlaylistVariant,
     songs_filtered: SongVec,
     selected_songs: RefCell<SelectedSongsVariant>,
-    playlist_data: RefCell<Option<PlaylistData>>,
+    playlist_data: OnceCell<RefCell<PlaylistData>>,
 }
 
 impl Playlist {
-    fn new(path_named: PathNamed, variant: PlaylistVariant) -> Self {
+    fn new(id: Id, variant: PlaylistVariant, parent_folder: Option<Weak<Folder>>) -> Self {
         Self {
-            path_named: RefCell::new(path_named),
+            id,
+            parent_folder,
             songs: RefCell::new(SongList::new()),
             has_loaded_songs: Cell::new(false),
             music_manager: RefCell::new(None),
             variant,
             songs_filtered: Arc::new(RwLock::new(Vec::new())),
             selected_songs: RefCell::new(SelectedSongsVariant::None),
-            playlist_data: RefCell::new(None),
+            playlist_data: OnceCell::new(),
         }
     }
 
-    pub(super) fn new_file(path_named: PathNamed) -> Self {
-        Self::new(path_named, PlaylistVariant::PlaylistFile)
-    }
-
-    fn new_folder(path_named: PathNamed) -> Self {
-        Self::new(path_named, PlaylistVariant::SongFolder)
+    pub(super) fn new_file(id: Id, parent: Weak<Folder>) -> Self {
+        Self::new(id, PlaylistVariant::Normal, Some(parent))
     }
 
     pub fn all_songs() -> Self {
-        Self::new_folder(PathNamed::new(songs_dir_v1()))
+        Self::new(Id::ZERO, PlaylistVariant::AllSongs, None)
     }
 
     /// Gets the songs in the current playlist, with the filter if one is enabled
@@ -147,9 +148,9 @@ impl Playlist {
             let mut loaded_song_ids_backing = Vec::new();
 
             let song_ids = match self.variant {
-                PlaylistVariant::PlaylistFile => &playlist_data.song_ids,
+                PlaylistVariant::Normal => &playlist_data.song_ids,
 
-                PlaylistVariant::SongFolder => {
+                PlaylistVariant::AllSongs => {
                     fs::create_dir_all(songs_data_dir_v2()).expect("Create songs_data_dir_v2");
                     // TODO: preallocate loaded_song_file_names_backing
                     for song_dir in fs::read_dir(songs_data_dir_v2())
@@ -293,7 +294,7 @@ impl Playlist {
                 }
             }
 
-            let mut generator = IdGenerator::new();
+            let mut generator = SmallRngIdGenerator::new();
 
             for (i, original_song_path) in song_paths.iter().enumerate() {
                 if original_song_path.extension().unwrap() == SONG_DATA_EXT_NO_PER {
@@ -337,7 +338,9 @@ impl Playlist {
                     }
                 }
 
-                songs.push_new_song(song_id, &original_song_file_name);
+                songs
+                    .push_new_song(song_id, &original_song_file_name)
+                    .expect("Push new song");
             }
         }
 
@@ -360,12 +363,20 @@ impl Playlist {
         self.music_manager.borrow()
     }
 
-    pub fn get_path_named_ref(&self) -> Ref<'_, PathNamed> {
-        self.path_named.borrow()
+    // pub fn get_path_named_ref(&self) -> Ref<'_, PathNamed> {
+    //     self.path_named.borrow()
+    // }
+
+    pub fn get_id(&self) -> Id {
+        self.id
     }
 
     pub fn rename(&self, new_name: String) -> io::Result<()> {
-        self.path_named.borrow_mut().rename(new_name)
+        let mut pl_data = self.get_or_load_playlist_data_mut();
+
+        pl_data.content_data.name = new_name;
+
+        pl_data.save_data()
     }
 
     pub fn set_playback_mode(&self, playback_mode: PlaybackMode) {
@@ -547,49 +558,34 @@ impl Playlist {
         *self.selected_songs.borrow_mut() = selected_songs;
     }
 
-    fn get_or_load_playlist_data(&self) -> Ref<'_, PlaylistData> {
-        let playlist_data = self.playlist_data.borrow();
+    fn get_or_load_playlist_data_refcell(&self) -> &RefCell<PlaylistData> {
+        self.playlist_data.get_or_init(|| {
+            let playlist_data = CONTENT_POOL
+                .get_playlist_data(self.id)
+                .expect("Load playlist data");
+            // Expect above because cant create playlist data with an unknown id
 
-        if playlist_data.is_some() {
-            unwrap_inner_ref(playlist_data)
-        } else {
-            drop(playlist_data);
-
-            self.load_playlist_data_from_file();
-
-            unwrap_inner_ref(self.playlist_data.borrow())
-        }
+            RefCell::new(playlist_data)
+        })
     }
 
     fn get_or_load_playlist_data_mut(&self) -> RefMut<'_, PlaylistData> {
-        let playlist_data = self.playlist_data.borrow_mut();
-
-        if playlist_data.is_some() {
-            unwrap_inner_ref_mut(playlist_data)
-        } else {
-            drop(playlist_data);
-
-            self.load_playlist_data_from_file();
-
-            unwrap_inner_ref_mut(self.playlist_data.borrow_mut())
-        }
+        self.get_or_load_playlist_data_refcell().borrow_mut()
     }
 
-    fn load_playlist_data_from_file(&self) {
-        let playlist_data = if let Ok(file_buf) = fs::read(&self.path_named.borrow().path) {
-            PlaylistData::from_vec(file_buf).unwrap_or(PlaylistData::new_empty())
-        } else {
-            PlaylistData::new_empty()
-        };
+    pub fn get_or_load_playlist_data(&self) -> Ref<'_, PlaylistData> {
+        self.get_or_load_playlist_data_refcell().borrow()
+    }
 
-        self.playlist_data.replace(Some(playlist_data));
+    pub fn get_name(&self) -> Ref<'_, String> {
+        Ref::map(self.get_or_load_playlist_data(), |d| &d.content_data.name)
     }
 
     /// Saves the list of songs to the file at `self.path_named`
-    /// This does nothing if `self.variant` is [`PlaylistVariant::SongFolder`]
+    /// This does nothing if `self.variant` is [`PlaylistVariant::AllSongs`] or if this is the 'all songs' playlist
 
     fn save_contents(&self) {
-        if matches!(self.variant, PlaylistVariant::SongFolder) {
+        if matches!(self.variant, PlaylistVariant::AllSongs) || self.id == Id::ZERO {
             return;
         }
 
@@ -607,7 +603,7 @@ impl Playlist {
         }
 
         playlist_data
-            .write_to_file_path(&*self.path_named.borrow())
+            .save_data()
             .expect("Write playlist data to file");
     }
 }

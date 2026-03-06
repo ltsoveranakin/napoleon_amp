@@ -6,16 +6,22 @@ use std::fmt::{Display, Formatter, Write};
 use std::hash::{Hash, Hasher};
 use std::time::SystemTime;
 
-pub(super) struct IdGenerator {
+pub struct IdGenerator<R> {
     increment: u8,
-    rng: ThreadRng,
+    rng: R,
 }
 
-impl IdGenerator {
+pub type SmallRngIdGenerator = IdGenerator<SmallRng>;
+// pub type ThreadIdGenerator = IdGenerator<ThreadRng>;
+
+impl<R> IdGenerator<R>
+where
+    R: SeedableRng + RngExt,
+{
     pub(super) fn new() -> Self {
         Self {
             increment: 0,
-            rng: rand::rng(),
+            rng: rand::make_rng(),
         }
     }
 
@@ -32,7 +38,11 @@ impl IdGenerator {
         let data = self.rng.random();
 
         self.increment += 1;
-        self.increment = self.increment % 127;
+        self.increment = self.increment % 0x80;
+
+        if self.increment == 0 {
+            self.increment += 1;
+        }
 
         Id {
             header,
@@ -74,6 +84,12 @@ impl PartialEq for Id {
 impl Id {
     const BYTE_LEN_WITHOUT_HEADER: usize = 15;
     const BYTE_LEN_WITH_HEADER: usize = Self::BYTE_LEN_WITHOUT_HEADER + 1;
+    pub const ZERO: Self = Id {
+        header: 0,
+        increment: 0,
+        time: 0,
+        data: [0; 12],
+    };
 
     pub fn has_header(&self) -> bool {
         is_header(self.header)
@@ -191,6 +207,12 @@ impl SerBytes for Id {
     }
 }
 
+impl Default for Id {
+    fn default() -> Self {
+        Self::ZERO
+    }
+}
+
 const HEX_CHARS: [u8; 16] = *b"0123456789ABCDEF";
 
 fn to_hex_chars(byte: u8) -> [char; 2] {
@@ -248,11 +270,11 @@ impl Display for Id {
 
 #[cfg(test)]
 mod tests {
-    use crate::id_generator::{Id, IdGenerator};
+    use crate::id_generator::{Id, SmallRngIdGenerator};
 
     #[test]
     fn test_id_gen() {
-        let mut idgen = IdGenerator::new();
+        let mut idgen = SmallRngIdGenerator::new();
 
         for _ in 0..300 {
             println!("{}", idgen.generate_new_id());
@@ -261,7 +283,7 @@ mod tests {
 
     #[test]
     fn test_string() {
-        let mut idgen = IdGenerator::new();
+        let mut idgen = SmallRngIdGenerator::new();
 
         let id = idgen.generate_new_id();
 
