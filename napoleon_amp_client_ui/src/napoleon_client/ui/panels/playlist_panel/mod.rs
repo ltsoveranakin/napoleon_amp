@@ -348,7 +348,7 @@ impl PlaylistPanel {
                 .drag_stopped()
             {
                 let seek_pos = Duration::from_secs_f32(progress);
-                music_manager.try_seek(seek_pos).ok();
+                music_manager.try_seek(seek_pos).expect("failed to seek");
             }
 
             ctx.request_repaint();

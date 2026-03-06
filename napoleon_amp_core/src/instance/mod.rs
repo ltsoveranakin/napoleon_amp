@@ -26,11 +26,9 @@ pub struct NapoleonInstance {
 
 impl NapoleonInstance {
     pub fn new() -> Self {
-        let base_folder = Rc::new(Folder::new(Id::ZERO, None));
-        println!("base folder data: {:?}", base_folder.get_folder_data());
         Self {
             // TODO: initialize thru content_pool
-            base_folder,
+            base_folder: Rc::new(Folder::new(Id::ZERO, None)),
             copied_songs: None,
             currently_playing_playlist: None,
             instance_data: LazyCell::new(InstanceData::init_self),

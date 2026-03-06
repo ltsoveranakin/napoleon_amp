@@ -6,7 +6,7 @@ use crate::discord_rpc::{send_rpc_action, RPCAction, SetSongData};
 use crate::paths::song::song_audio_file_v2;
 use crate::{read_rwlock, write_rwlock, ReadWrapper};
 use rodio::cpal::traits::HostTrait;
-use rodio::source::{Buffered, SeekError};
+use rodio::source::SeekError;
 use rodio::{cpal, Decoder, DeviceTrait, OutputStream, OutputStreamBuilder, Sink, Source};
 use std::any::Any;
 use std::fmt::{Debug, Formatter};
@@ -131,12 +131,12 @@ impl MusicManager {
                 let songs = songs_thread;
 
                 let mut audio_device_in_use = cpal::default_host().default_output_device();
-                let mut change_audio_device = false;
+                let mut reinitialize_audio_to = None;
 
                 let mut is_playing = true;
 
                 loop {
-                    if change_audio_device {
+                    if let Some(reinitialize_pos) = reinitialize_audio_to {
                         println!("Changing audio device, replacing sink");
 
                         audio_device_in_use = cpal::default_host().default_output_device();
@@ -155,7 +155,7 @@ impl MusicManager {
                             sink.try_seek(song_pos).ok();
                         }
 
-                        change_audio_device = false;
+                        reinitialize_audio_to = None;
                     }
 
                     let sink = read_rwlock(&sink_arc);
@@ -260,12 +260,12 @@ impl MusicManager {
                             let audio_device_in_use = if let Some(ad) = &audio_device_in_use {
                                 ad
                             } else {
-                                change_audio_device = true;
+                                reinitialize_audio_to = Some(Duration::ZERO);
                                 continue;
                             };
 
                             if just_polled_device.name() != audio_device_in_use.name() {
-                                change_audio_device = true;
+                                reinitialize_audio_to = Some(Duration::ZERO);
                             }
                         }
                     }
@@ -376,11 +376,11 @@ fn create_sink(volume: f32) -> (Sink, OutputStream) {
     (sink, output_stream)
 }
 
-fn get_decoder_for_song(song: &Song) -> io::Result<Buffered<Decoder<BufReader<File>>>> {
+fn get_decoder_for_song(song: &Song) -> io::Result<Decoder<BufReader<File>>> {
     let file = File::open(song_audio_file_v2(&song.id))
         .expect(&format!("Unable to open song file for: {:?}", song.id));
 
     Decoder::try_from(file)
-        .map(|decoder| decoder.buffered())
+        .map(|decoder| decoder)
         .map_err(|_| ErrorKind::InvalidData.into())
 }
