@@ -114,7 +114,7 @@ fn set_activity_to_song_data(activity: Activity, set_song_data: SetSongData) -> 
 
     let (state_string, details_prefix) = if main_artist != UNKNOWN_ARTIST_STR {
         (
-            format!("By {}", song_artist.artist_string),
+            format!("By {}", song_artist.full_artist_string),
             format!("{} - ", main_artist),
         )
     } else {

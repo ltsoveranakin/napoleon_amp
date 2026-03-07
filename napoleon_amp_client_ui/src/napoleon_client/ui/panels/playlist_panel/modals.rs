@@ -174,7 +174,7 @@ impl PlaylistModals {
 
             ui.label("Artist:");
             ui.add(AutoCompleteTextEdit::new(
-                &mut editing_song_data.artist.artist_string,
+                &mut editing_song_data.artist.full_artist_string,
                 artist_list,
             ));
 

@@ -268,7 +268,7 @@ impl PlaylistPanel {
                                 });
 
                                 row.col(|ui| {
-                                    ui.label(&song_data.artist.artist_string);
+                                    ui.label(&song_data.artist.full_artist_string);
                                 });
 
                                 row.col(|ui| {

@@ -13,13 +13,14 @@ pub const MAX_RATING: u8 = 5;
 
 #[derive(SerBytes, Clone, Debug)]
 pub struct Artist {
-    pub artist_string: String,
+    /// The full artist string which includes all artists that contributed to the song, separated by slashes (/)
+    pub full_artist_string: String,
 }
 
 impl Artist {
     fn new(artist_string: impl Into<String>) -> Self {
         Self {
-            artist_string: artist_string.into(),
+            full_artist_string: artist_string.into(),
         }
     }
 
@@ -36,11 +37,11 @@ impl Artist {
     // }
 
     pub fn get_artist_list(&self) -> Vec<&str> {
-        self.artist_string.split("/").collect()
+        self.full_artist_string.split("/").collect()
     }
 
     pub fn main_artist(&self) -> &str {
-        self.artist_string
+        self.full_artist_string
             .split("/")
             .next()
             .unwrap_or(UNKNOWN_ARTIST_STR)

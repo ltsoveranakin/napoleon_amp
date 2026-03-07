@@ -209,12 +209,12 @@ impl Playlist {
 
                 ParsedSearchType::Album => &[&song_data.album],
 
-                ParsedSearchType::Artist => &[&song_data.artist.artist_string],
+                ParsedSearchType::Artist => &[&song_data.artist.full_artist_string],
 
                 ParsedSearchType::Any => &[
                     &song_data.title,
                     &song_data.album,
-                    &song_data.artist.artist_string,
+                    &song_data.artist.full_artist_string,
                 ],
             };
 
@@ -490,7 +490,7 @@ impl Playlist {
     }
 
     pub fn get_artist_list(&self) -> Vec<String> {
-        self.get_string_list(|song_data| &song_data.artist.artist_string)
+        self.get_string_list(|song_data| &song_data.artist.full_artist_string)
     }
 
     pub fn get_album_list(&self) -> Vec<String> {

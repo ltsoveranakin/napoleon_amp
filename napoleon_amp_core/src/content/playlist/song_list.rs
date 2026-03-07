@@ -136,31 +136,24 @@ impl SongList {
                 SortByVariant::Rating => Self::RATING_INDEX,
             };
 
-            let a_sort_props = Self::get_sort_properties(&a_song_data, index);
-            let b_sort_props = Self::get_sort_properties(&b_song_data, index);
-
-            // for i in 0..a_sort_props.len() {
-            //     let sort_prop_a = a_sort_props[i];
-            //     let sort_prop_b = b_sort_props[i];
-            //
-            //     sort_prop_a
-            // }
+            let a_sort_properties = Self::get_sort_properties(&a_song_data, index);
+            let b_sort_properties = Self::get_sort_properties(&b_song_data, index);
 
             if !sort_by.inverted {
-                a_sort_props.cmp(&b_sort_props)
+                a_sort_properties.cmp(&b_sort_properties)
             } else {
-                b_sort_props.cmp(&a_sort_props)
+                b_sort_properties.cmp(&a_sort_properties)
             }
         });
     }
 
-    fn get_sort_properties(song_data: &SongData, swap_index: usize) -> [SortableProperty; 4] {
+    fn get_sort_properties(song_data: &SongData, swap_index: usize) -> [SortableProperty<'_>; 4] {
         let mut sort_properties = [SortableProperty::U8(0); 4];
 
         sort_properties[Self::TITLE_INDEX] = SortableProperty::Str(&song_data.title);
         sort_properties[Self::ALBUM_INDEX] = SortableProperty::Str(&song_data.album);
         sort_properties[Self::ARTIST_INDEX] =
-            SortableProperty::Str(&song_data.artist.artist_string);
+            SortableProperty::Str(&song_data.artist.full_artist_string);
         sort_properties[Self::RATING_INDEX] = SortableProperty::U8(MAX_RATING - song_data.rating);
 
         let temp = sort_properties[swap_index];
