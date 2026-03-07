@@ -234,6 +234,16 @@ impl PlaylistPanel {
                                     }
 
                                     Popup::context_menu(&button_response).show(|ui| {
+                                        if let Some(music_manager) =
+                                            &*current_playlist.get_music_manager()
+                                        {
+                                            if ui.button("Queue Next").clicked() {
+                                                music_manager
+                                                    .queue_mut()
+                                                    .push_temporary_queue(song_index);
+                                            }
+                                        }
+
                                         ui.menu_button("Delete", |ui| {
                                             if ui.button("From this playlist").clicked() {
                                                 song_index_to_delete = Some(song_index);
@@ -348,7 +358,7 @@ impl PlaylistPanel {
                 .drag_stopped()
             {
                 let seek_pos = Duration::from_secs_f32(progress);
-                music_manager.try_seek(seek_pos).expect("failed to seek");
+                music_manager.try_seek(seek_pos).expect("Failed to seek");
             }
 
             ctx.request_repaint();

@@ -1,12 +1,21 @@
 use crate::content::playlist::PlaybackMode;
 use crate::content::song::Song;
 use rand::RngExt;
+use std::collections::VecDeque;
 use std::sync::Arc;
+
+#[derive(Clone, Debug)]
+enum IndexMode {
+    UseQueue,
+    Index(usize),
+}
 
 #[derive(Clone, Debug)]
 pub struct Queue {
     pub(super) indexes: Vec<usize>,
+
     index: usize,
+    temporary_queue: VecDeque<usize>,
 }
 
 impl Queue {
@@ -42,23 +51,48 @@ impl Queue {
         Self {
             indexes,
             index: start_index,
+            temporary_queue: VecDeque::new(),
         }
     }
 
-    pub fn current_queue(&self) -> &[usize] {
-        &self.indexes[self.index..]
+    pub fn current_queue(&self) -> [&[usize]; 3] {
+        let temporary_queue_slices = self.temporary_queue.as_slices();
+
+        [
+            temporary_queue_slices.0,
+            temporary_queue_slices.1,
+            &self.indexes,
+        ]
     }
 
-    pub(super) fn get_next_song_index(&self) -> usize {
-        self.indexes[self.index]
+    pub fn queue_length(queue_array: [&[usize]; 3]) -> usize {
+        let mut length = 0;
+
+        for arr in queue_array {
+            length += arr.len();
+        }
+
+        length
     }
 
-    pub(super) fn get_current_song_index(&self) -> usize {
-        self.indexes[self.get_wrapped_index(self.index as i32 - 1)]
+    pub fn push_temporary_queue(&mut self, index: usize) {
+        self.temporary_queue.push_back(index);
     }
+
+    pub(super) fn get_next_song_index(&mut self) -> usize {
+        self.temporary_queue
+            .pop_front()
+            .unwrap_or(self.indexes[self.index])
+    }
+
+    // pub(super) fn get_current_song_index(&self) -> usize {
+    //     self.indexes[self.get_wrapped_index(self.index as i32 - 1)]
+    // }
 
     pub(super) fn next(&mut self) {
-        self.index = self.get_wrapped_index(self.index as i32 + 1);
+        if self.temporary_queue.is_empty() {
+            self.index = self.get_wrapped_index(self.index as i32 + 1);
+        }
     }
 
     pub(super) fn previous(&mut self) {

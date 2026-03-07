@@ -4,7 +4,7 @@ use crate::content::song::Song;
 use crate::content::NamedPathLike;
 use crate::discord_rpc::{send_rpc_action, RPCAction, SetSongData};
 use crate::paths::song::song_audio_file_v2;
-use crate::{read_rwlock, write_rwlock, ReadWrapper};
+use crate::{read_rwlock, write_rwlock, ReadWrapper, WriteWrapper};
 use rodio::cpal::traits::HostTrait;
 use rodio::source::SeekError;
 use rodio::{cpal, Decoder, DeviceTrait, OutputStream, OutputStreamBuilder, Sink, Source};
@@ -211,7 +211,7 @@ impl MusicManager {
 
                     if sink.empty() {
                         let songs = read_rwlock(&songs);
-                        let song_index = read_rwlock(&queue).get_next_song_index();
+                        let song_index = write_rwlock(&queue).get_next_song_index();
 
                         let song = if let Some(song) = songs.get(song_index) {
                             song
@@ -290,6 +290,10 @@ impl MusicManager {
 
     pub fn queue(&self) -> ReadWrapper<'_, Queue> {
         read_rwlock(&self.queue)
+    }
+
+    pub fn queue_mut(&self) -> WriteWrapper<'_, Queue> {
+        write_rwlock(&self.queue)
     }
 
     pub(super) fn set_volume(&self, volume: f32) {

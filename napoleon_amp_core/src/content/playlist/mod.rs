@@ -1,6 +1,6 @@
 pub mod data;
 pub mod manager;
-mod queue;
+pub mod queue;
 mod song_list;
 
 use crate::content::folder::content_pool::CONTENT_POOL;

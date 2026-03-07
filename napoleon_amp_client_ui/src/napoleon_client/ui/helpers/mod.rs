@@ -45,18 +45,21 @@ where
     }
 }
 
-pub(crate) fn scroll_area_list<'list, N, A>(
+pub(crate) fn scroll_area_iter<'list, N, A, I>(
     ui: &mut Ui,
     scroll_area: ScrollArea,
-    list: &'list [N],
+    iterator: I,
+    iterator_length: usize,
     get_display: impl Fn(usize, &'list N) -> ScrollListDisplay<'list, A>,
     on_click: impl Fn(usize),
     on_double_click: impl Fn(usize),
 ) where
+    N: 'list,
     A: IntoAtoms<'list> + 'list,
+    I: IntoIterator<Item = &'list N>,
 {
     scroll_area_styled(ui, scroll_area, |ui| {
-        for (i, el) in list.iter().enumerate() {
+        for (i, el) in iterator.into_iter().enumerate() {
             let display = get_display(i, el);
 
             let button = Button::new(display.display_text)
@@ -74,47 +77,9 @@ pub(crate) fn scroll_area_list<'list, N, A>(
                 on_double_click(i);
             }
 
-            if i != list.len() - 1 {
+            if i != iterator_length - 1 {
                 ui.separator();
             }
         }
     });
 }
-
-pub(crate) fn scroll_area_named_list<N>(
-    ui: &mut Ui,
-    scroll_area: ScrollArea,
-    list: &[N],
-    is_selected: impl Fn(usize, &N) -> bool,
-    on_click: impl Fn(usize),
-    on_double_click: impl Fn(usize),
-) where
-    N: NamedPathLike,
-{
-    scroll_area_list(
-        ui,
-        scroll_area,
-        list,
-        |i, named| ScrollListDisplay::new(is_selected(i, named), named.name()),
-        on_click,
-        on_double_click,
-    );
-}
-
-// pub(crate) fn scroll_area_list<N>(
-//     ui: &mut Ui,
-//     get_display: impl Fn(&N) -> String,
-//     on_click: impl FnOnce(usize),
-// ) {
-//     default_scroll_area(ui, |ui| {
-//         for (i, el) in named_list.iter().enumerate() {
-//             let text = get_display(el);
-//
-//
-//
-//             if i != named_list.len() - 1 {
-//                 ui.separator();
-//             }
-//         }
-//     });
-// }
