@@ -171,7 +171,7 @@ impl SongList {
 
             if song_data.title.is_empty() {
                 song_data.title = original_name.unwrap_or("Unnamed Song").to_string();
-                song.set_song_data(song_data);
+                song.set_song_data_and_save(song_data);
             }
         }
 

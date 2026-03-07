@@ -166,6 +166,7 @@ impl PlaylistPanel {
                     .column(Column::remainder())
                     .column(Column::remainder())
                     .column(Column::remainder())
+                    .column(Column::remainder())
                     .header(20.0, |mut header| {
                         header.col(|ui| {
                             ui.heading("Title");
@@ -177,6 +178,10 @@ impl PlaylistPanel {
 
                         header.col(|ui| {
                             ui.heading("Album");
+                        });
+
+                        header.col(|ui| {
+                            ui.heading("Rating");
                         });
                     })
                     .body(|body| {
@@ -192,6 +197,7 @@ impl PlaylistPanel {
                                 let song_index = row.index();
                                 let song = &songs[song_index];
                                 let is_selected = selected_songs.is_selected(song_index);
+                                let song_data = song.get_song_data();
 
                                 row.col(|ui| {
                                     let mut button_text_color = DEFAULT_TEXT_COLOR;
@@ -212,8 +218,7 @@ impl PlaylistPanel {
                                     }
 
                                     let song_button_text =
-                                        RichText::new(&song.get_song_data().title)
-                                            .color(button_text_color);
+                                        RichText::new(&song_data.title).color(button_text_color);
 
                                     let button = Button::new(song_button_text)
                                         .selected(selected_songs.is_selected(song_index))
@@ -253,7 +258,7 @@ impl PlaylistPanel {
                                         if ui.button("Edit song data").clicked() {
                                             self.playlist_modal = PlaylistModals::EditSong {
                                                 song: Arc::clone(song),
-                                                editing_song_data: song.get_song_data().clone(),
+                                                editing_song_data: song_data.clone(),
                                                 artist_list: current_playlist.get_artist_list(),
                                                 album_list: current_playlist.get_album_list(),
                                             };
@@ -262,11 +267,51 @@ impl PlaylistPanel {
                                 });
 
                                 row.col(|ui| {
-                                    ui.label(&song.get_song_data().artist.artist_string);
+                                    ui.label(&song_data.artist.artist_string);
                                 });
 
                                 row.col(|ui| {
-                                    ui.label(&song.get_song_data().album);
+                                    ui.label(&song_data.album);
+                                });
+
+                                row.col(|ui| {
+                                    let mut update_rating = None;
+
+                                    ui.horizontal(|ui| {
+                                        ui.style_mut().spacing.item_spacing.x = 2.;
+
+                                        let mut rating = song_data.rating as i8;
+
+                                        for star_index in 0..5 {
+                                            let image_source = if rating > 0 {
+                                                rating -= 1;
+                                                include_image!(
+                                                "../../../../../../assets/sprites/star_full1.png"
+                                            )
+                                            } else {
+                                                include_image!(
+                                                "../../../../../../assets/sprites/star_empty3.png"
+                                            )
+                                            };
+
+                                            let star_button = ui.add(Image::new(image_source).sense(Sense::click()).max_size(Vec2::splat(10.)));
+
+                                            if star_button.clicked() {
+                                                update_rating = Some(star_index + 1);
+                                            }
+
+                                            if star_button.secondary_clicked() {
+                                                update_rating = Some(0);
+                                            }
+                                        }
+                                    });
+
+                                    if let Some(updated_rating) = update_rating {
+                                        drop(song_data);
+
+                                        song.get_song_data_mut().rating = updated_rating;
+                                        song.save_song_data();
+                                    }
                                 });
                             });
                         }

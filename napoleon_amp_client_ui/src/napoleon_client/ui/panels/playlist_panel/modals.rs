@@ -77,7 +77,7 @@ impl PlaylistModals {
                     editing_song_data,
                     ..
                 } => {
-                    song.set_song_data(editing_song_data);
+                    song.set_song_data_and_save(editing_song_data);
                 }
 
                 _ => {

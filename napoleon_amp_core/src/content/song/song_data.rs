@@ -1,6 +1,5 @@
 use crate::content::song::{Song, UNKNOWN_ALBUM_STR, UNKNOWN_ARTIST_STR};
 use serbytes::prelude::SerBytes;
-use std::collections::HashMap;
 use std::fs;
 use std::fs::File;
 use std::path::PathBuf;
@@ -10,15 +9,7 @@ use symphonia::core::meta::{MetadataOptions, StandardTagKey, Value};
 use symphonia::core::probe::Hint;
 use symphonia::default::get_probe;
 
-#[derive(SerBytes, Clone, Debug)]
-pub enum SongTagValue {
-    StringTag(String),
-}
-
-#[derive(SerBytes, Eq, PartialEq, Hash, Clone, Debug)]
-pub enum TagType {
-    Dynamic(String),
-}
+pub const MAX_RATING: u8 = 5;
 
 #[derive(SerBytes, Clone, Debug)]
 pub struct Artist {
@@ -61,8 +52,11 @@ pub struct SongData {
     pub artist: Artist,
     pub album: String,
     pub title: String,
-    pub custom_song_tags: HashMap<TagType, SongTagValue>,
+    pub custom_tags: Vec<String>,
     pub(crate) audio_file: String,
+    /// A rating of the song from 0 to 5
+    /// where 0 represents unrated and 1-5 represent a rating
+    pub rating: u8,
 }
 
 impl Default for SongData {
@@ -71,8 +65,9 @@ impl Default for SongData {
             artist: Artist::new(UNKNOWN_ARTIST_STR),
             album: UNKNOWN_ALBUM_STR.to_string(),
             title: String::new(),
-            custom_song_tags: HashMap::new(),
+            custom_tags: Vec::new(),
             audio_file: String::new().into(),
+            rating: 0,
         }
     }
 }

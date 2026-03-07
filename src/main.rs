@@ -34,7 +34,11 @@ fn main() {
     let _ = eframe::run_native(
         "Egui App",
         options,
-        Box::new(|_| Ok(Box::new(NapoleonClientApp::new()))),
+        Box::new(|creation_context| {
+            egui_extras::install_image_loaders(&creation_context.egui_ctx);
+
+            Ok(Box::new(NapoleonClientApp::new()))
+        }),
     );
 }
 

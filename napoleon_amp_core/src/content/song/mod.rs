@@ -40,7 +40,7 @@ impl Song {
         read_rwlock(song_data_lock)
     }
 
-    pub fn get_or_load_song_data_mut(&self) -> WriteWrapper<'_, SongData> {
+    pub fn get_song_data_mut(&self) -> WriteWrapper<'_, SongData> {
         let song_data_lock = self.get_song_data_rwlock();
 
         write_rwlock(song_data_lock)
@@ -68,12 +68,18 @@ impl Song {
         })
     }
 
-    pub fn set_song_data(&self, new_song_data: SongData) {
-        let mut song_data = self.get_or_load_song_data_mut();
+    pub fn set_song_data_and_save(&self, new_song_data: SongData) {
+        let mut song_data = self.get_song_data_mut();
 
         **song_data = new_song_data;
 
-        song_data
+        drop(song_data);
+
+        self.save_song_data()
+    }
+
+    pub fn save_song_data(&self) {
+        self.get_song_data()
             .write_to_file_path(&self.song_data_path)
             .expect("Write song data to file");
     }
