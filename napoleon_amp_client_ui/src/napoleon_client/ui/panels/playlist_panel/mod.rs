@@ -11,6 +11,7 @@ use crate::napoleon_client::ui::panels::queue_panel::QueuePanel;
 use egui_extras::{Column, TableBuilder};
 use napoleon_amp_core::content::playlist::manager::{MusicManager, SongStatus};
 use napoleon_amp_core::content::playlist::{Playlist, PlaylistVariant};
+use napoleon_amp_core::content::song::song_data::MAX_RATING;
 use napoleon_amp_core::content::NamedPathLike;
 use napoleon_amp_core::instance::NapoleonInstance;
 use napoleon_amp_core::read_rwlock;
@@ -282,7 +283,7 @@ impl PlaylistPanel {
 
                                         let mut rating = song_data.rating as i8;
 
-                                        for star_index in 0..5 {
+                                        for star_index in 0..MAX_RATING {
                                             let image_source = if rating > 0 {
                                                 rating -= 1;
                                                 include_image!(

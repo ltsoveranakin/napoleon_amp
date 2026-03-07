@@ -1,4 +1,4 @@
-use crate::content::song::song_data::SongData;
+use crate::content::song::song_data::{SongData, MAX_RATING};
 use crate::content::song::Song;
 use crate::id_generator::Id;
 use crate::song_pool::SONG_POOL;
@@ -16,6 +16,7 @@ pub enum SortByVariant {
     Title,
     Artist,
     Album,
+    Rating,
 }
 
 impl Display for SortByVariant {
@@ -26,6 +27,8 @@ impl Display for SortByVariant {
             Self::Artist => "Artist",
 
             Self::Album => "Album",
+
+            Self::Rating => "Rating",
         };
 
         f.write_str(display_str)
@@ -36,6 +39,12 @@ impl Display for SortByVariant {
 pub struct SortBy {
     pub sort_by_variant: SortByVariant,
     pub inverted: bool,
+}
+
+#[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+enum SortableProperty<'s> {
+    Str(&'s str),
+    U8(u8),
 }
 
 /// A list of songs that may at most contain one of each song
@@ -50,6 +59,7 @@ impl SongList {
     const TITLE_INDEX: usize = 0;
     const ALBUM_INDEX: usize = 1;
     const ARTIST_INDEX: usize = 2;
+    const RATING_INDEX: usize = 3;
 
     pub(super) fn new() -> Self {
         Self {
@@ -123,35 +133,45 @@ impl SongList {
                 SortByVariant::Title => Self::TITLE_INDEX,
                 SortByVariant::Artist => Self::ARTIST_INDEX,
                 SortByVariant::Album => Self::ALBUM_INDEX,
+                SortByVariant::Rating => Self::RATING_INDEX,
             };
 
-            let a_sort_strings = Self::get_sort_strings(&a_song_data, index);
-            let b_sort_strings = Self::get_sort_strings(&b_song_data, index);
+            let a_sort_props = Self::get_sort_properties(&a_song_data, index);
+            let b_sort_props = Self::get_sort_properties(&b_song_data, index);
+
+            // for i in 0..a_sort_props.len() {
+            //     let sort_prop_a = a_sort_props[i];
+            //     let sort_prop_b = b_sort_props[i];
+            //
+            //     sort_prop_a
+            // }
 
             if !sort_by.inverted {
-                a_sort_strings.cmp(&b_sort_strings)
+                a_sort_props.cmp(&b_sort_props)
             } else {
-                b_sort_strings.cmp(&a_sort_strings)
+                b_sort_props.cmp(&a_sort_props)
             }
         });
     }
 
-    fn get_sort_strings(song_data: &SongData, swap_index: usize) -> [&str; 3] {
-        let mut sort_strings = [""; 3];
+    fn get_sort_properties(song_data: &SongData, swap_index: usize) -> [SortableProperty; 4] {
+        let mut sort_properties = [SortableProperty::U8(0); 4];
 
-        sort_strings[Self::TITLE_INDEX] = &song_data.title;
-        sort_strings[Self::ALBUM_INDEX] = &song_data.album;
-        sort_strings[Self::ARTIST_INDEX] = &song_data.artist.artist_string;
+        sort_properties[Self::TITLE_INDEX] = SortableProperty::Str(&song_data.title);
+        sort_properties[Self::ALBUM_INDEX] = SortableProperty::Str(&song_data.album);
+        sort_properties[Self::ARTIST_INDEX] =
+            SortableProperty::Str(&song_data.artist.artist_string);
+        sort_properties[Self::RATING_INDEX] = SortableProperty::U8(MAX_RATING - song_data.rating);
 
-        let temp = sort_strings[swap_index];
+        let temp = sort_properties[swap_index];
 
         for i in (1..=swap_index).rev() {
-            sort_strings[i] = sort_strings[i - 1];
+            sort_properties[i] = sort_properties[i - 1];
         }
 
-        sort_strings[0] = temp;
+        sort_properties[0] = temp;
 
-        sort_strings
+        sort_properties
     }
 
     fn push_song0(

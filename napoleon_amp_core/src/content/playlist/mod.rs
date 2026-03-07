@@ -479,7 +479,9 @@ impl Playlist {
 
             SortByVariant::Artist => SortByVariant::Album,
 
-            SortByVariant::Album => SortByVariant::Title,
+            SortByVariant::Album => SortByVariant::Rating,
+
+            SortByVariant::Rating => SortByVariant::Title,
         };
 
         sort_by.sort_by_variant = next_sort_by;
