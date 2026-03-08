@@ -33,7 +33,7 @@ pub enum PlaylistVariant {
     /// Will attempt to load all songs that have been registered
     AllSongs,
     /// Will attempt to load all songs in the playlist data file that matches the current id
-    Normal,
+    Static,
 }
 
 #[derive(Clone, Debug)]
@@ -77,7 +77,7 @@ impl SelectedSongsVariant {
 }
 
 #[derive(Debug)]
-pub struct Playlist {
+pub struct StaticPlaylist {
     id: Id,
     songs: RefCell<SongList>,
     has_loaded_songs: Cell<bool>,
@@ -88,7 +88,7 @@ pub struct Playlist {
     playlist_data: OnceCell<RefCell<PlaylistData>>,
 }
 
-impl Playlist {
+impl StaticPlaylist {
     fn new(id: Id, variant: PlaylistVariant) -> Self {
         Self {
             id,
@@ -103,7 +103,7 @@ impl Playlist {
     }
 
     pub(super) fn new_file(id: Id) -> Self {
-        Self::new(id, PlaylistVariant::Normal)
+        Self::new(id, PlaylistVariant::Static)
     }
 
     pub fn all_songs() -> Self {
@@ -122,18 +122,6 @@ impl Playlist {
         }
     }
 
-    // fn get_or_load_songs_arc(&self) -> Arc<RwLock<Vec<Arc<Song>>>> {
-    //     let songs_filtered = read_rwlock(&self.songs_filtered);
-    //
-    //     if songs_filtered.is_empty() {
-    //         self.get_or_load_songs_unfiltered();
-    //
-    //         self.songs.borrow().songs_arc()
-    //     } else {
-    //         Arc::clone(&self.songs_filtered)
-    //     }
-    // }
-
     pub fn get_or_load_songs_unfiltered(&self) -> SongVec {
         if self.has_loaded_songs.get() {
             self.songs.borrow().songs_arc()
@@ -143,7 +131,7 @@ impl Playlist {
             let loaded_song_ids_backing;
 
             let (song_ids, should_sort) = match self.variant {
-                PlaylistVariant::Normal => (&playlist_data.song_ids, false),
+                PlaylistVariant::Static => (&playlist_data.song_ids, false),
 
                 PlaylistVariant::AllSongs => {
                     loaded_song_ids_backing = SONG_POOL

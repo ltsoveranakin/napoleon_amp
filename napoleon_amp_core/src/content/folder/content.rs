@@ -1,5 +1,5 @@
 use crate::content::folder::Folder;
-use crate::content::playlist::Playlist;
+use crate::content::playlist::StaticPlaylist;
 use std::rc::Rc;
 
 // use crate::content::folder::Folder;
@@ -9,7 +9,7 @@ use std::rc::Rc;
 #[derive(Debug)]
 pub enum FolderContentVariant {
     Folder(Rc<Folder>),
-    Playlist(Rc<Playlist>),
+    Playlist(Rc<StaticPlaylist>),
 }
 
 // #[derive(Debug)]

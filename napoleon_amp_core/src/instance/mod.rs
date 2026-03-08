@@ -3,7 +3,7 @@ mod fixup;
 
 use crate::content::folder::Folder;
 use crate::content::playlist::data::PlaybackMode;
-use crate::content::playlist::Playlist;
+use crate::content::playlist::StaticPlaylist;
 use crate::content::song::Song;
 use crate::discord_rpc::discord_rpc_thread;
 use crate::id_generator::Id;
@@ -19,7 +19,7 @@ use std::thread::JoinHandle;
 pub struct NapoleonInstance {
     base_folder: Rc<Folder>,
     copied_songs: Option<Vec<Arc<Song>>>,
-    currently_playing_playlist: Option<Rc<Playlist>>,
+    currently_playing_playlist: Option<Rc<StaticPlaylist>>,
     instance_data: LazyCell<InstanceData>,
     _discord_rpc_thread: Option<JoinHandle<()>>,
 }
@@ -46,7 +46,7 @@ impl NapoleonInstance {
         Rc::clone(&self.base_folder)
     }
 
-    pub fn copy_selected_songs(&mut self, playlist: &Playlist) {
+    pub fn copy_selected_songs(&mut self, playlist: &StaticPlaylist) {
         let song_vec = playlist.get_or_load_songs();
         let songs = read_rwlock(&song_vec);
         let selected_songs_variant = playlist.get_selected_songs_variant();
@@ -56,19 +56,19 @@ impl NapoleonInstance {
         self.copied_songs = Some(selected_songs);
     }
 
-    pub fn paste_copied_songs(&self, playlist: &Playlist) {
+    pub fn paste_copied_songs(&self, playlist: &StaticPlaylist) {
         if let Some(ref copied_songs) = self.copied_songs {
             playlist.import_existing_songs(copied_songs);
         }
     }
 
-    pub fn start_play_song(&mut self, playlist: Rc<Playlist>, song_index: usize) {
+    pub fn start_play_song(&mut self, playlist: Rc<StaticPlaylist>, song_index: usize) {
         self.stop_music();
         playlist.start_play_song(song_index);
         self.currently_playing_playlist = Some(playlist);
     }
 
-    pub fn start_play_playlist(&mut self, playlist: Rc<Playlist>) {
+    pub fn start_play_playlist(&mut self, playlist: Rc<StaticPlaylist>) {
         let songs_len = read_rwlock(&playlist.get_or_load_songs()).len();
         if songs_len == 0 {
             return;

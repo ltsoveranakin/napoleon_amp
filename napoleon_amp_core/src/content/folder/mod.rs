@@ -3,7 +3,7 @@ pub(crate) mod content_pool;
 
 use crate::content::folder::content::FolderContentVariant;
 use crate::content::folder::content_pool::CONTENT_POOL;
-use crate::content::playlist::Playlist;
+use crate::content::playlist::StaticPlaylist;
 use crate::content::NamedPathLike;
 use crate::id_generator::Id;
 use crate::paths::content_folder_file;
@@ -220,7 +220,7 @@ impl Folder {
             }
 
             FolderDataContentVariant::Playlist => {
-                FolderContentVariant::Playlist(Rc::new(Playlist::new_file(id)))
+                FolderContentVariant::Playlist(Rc::new(StaticPlaylist::new_file(id)))
             }
         }
     }

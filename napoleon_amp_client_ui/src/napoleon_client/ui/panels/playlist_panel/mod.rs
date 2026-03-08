@@ -8,7 +8,7 @@ use crate::napoleon_client::ui::panels::queue_panel::QueuePanel;
 use eframe::egui::*;
 use egui_extras::{Column, TableBuilder};
 use napoleon_amp_core::content::playlist::manager::{MusicManager, SongStatus};
-use napoleon_amp_core::content::playlist::{Playlist, PlaylistVariant};
+use napoleon_amp_core::content::playlist::{PlaylistVariant, StaticPlaylist};
 use napoleon_amp_core::content::song::song_data::MAX_RATING;
 use napoleon_amp_core::content::NamedPathLike;
 use napoleon_amp_core::instance::NapoleonInstance;
@@ -19,7 +19,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 pub(crate) struct PlaylistPanel {
-    pub(crate) current_playlist: Rc<Playlist>,
+    pub(crate) current_playlist: Rc<StaticPlaylist>,
     playlist_modal: PlaylistModals,
     delete_original_files: bool,
     filter_search_content: String,
@@ -27,7 +27,7 @@ pub(crate) struct PlaylistPanel {
 }
 
 impl PlaylistPanel {
-    pub(crate) fn new(current_playlist: Rc<Playlist>) -> Self {
+    pub(crate) fn new(current_playlist: Rc<StaticPlaylist>) -> Self {
         Self {
             current_playlist,
             playlist_modal: PlaylistModals::None,
@@ -44,7 +44,7 @@ impl PlaylistPanel {
         napoleon_instance: &mut NapoleonInstance,
     ) {
         self.keystrokes_pressed(napoleon_instance, ctx);
-        if matches!(self.current_playlist.variant, PlaylistVariant::Normal) {
+        if matches!(self.current_playlist.variant, PlaylistVariant::Static) {
             ui.heading(
                 self.current_playlist
                     .get_or_load_playlist_data()

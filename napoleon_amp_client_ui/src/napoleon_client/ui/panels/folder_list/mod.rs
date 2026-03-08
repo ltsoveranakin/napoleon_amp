@@ -8,7 +8,7 @@ use eframe::egui::{CursorIcon, Popup, Response, ScrollArea, Ui};
 use crate::napoleon_client::ui::panels::folder_list::modals::FolderListModals;
 use napoleon_amp_core::content::folder::content::FolderContentVariant;
 use napoleon_amp_core::content::folder::Folder;
-use napoleon_amp_core::content::playlist::Playlist;
+use napoleon_amp_core::content::playlist::StaticPlaylist;
 use napoleon_amp_core::discord_rpc::set_rpc_playlist;
 use napoleon_amp_core::instance::NapoleonInstance;
 use std::ffi::OsStr;
@@ -76,7 +76,7 @@ impl FolderList {
 
             if folder.parent.is_none() {
                 if self.playlist_button(ui, "All Songs").clicked() {
-                    next_playlist = Some(Rc::new(Playlist::all_songs()))
+                    next_playlist = Some(Rc::new(StaticPlaylist::all_songs()))
                 }
             }
 
@@ -106,7 +106,7 @@ impl FolderList {
         ui: &mut Ui,
         folder: &Rc<Folder>,
         playlist_panel: &mut Option<PlaylistPanel>,
-        next_playlist: &mut Option<Rc<Playlist>>,
+        next_playlist: &mut Option<Rc<StaticPlaylist>>,
         next_folder: &mut Option<Rc<Folder>>,
         napoleon_instance: &mut NapoleonInstance,
     ) -> Option<(Rc<Folder>, usize)> {
