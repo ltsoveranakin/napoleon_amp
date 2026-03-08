@@ -29,6 +29,22 @@ enum FolderListModal {
 }
 
 impl FolderListModal {
+    fn create_folder(current_folder: Rc<Folder>) -> Self {
+        Self::create(CreateFolderContentDialogVariant::SubFolder, current_folder)
+    }
+
+    fn create_playlist(current_folder: Rc<Folder>) -> Self {
+        Self::create(CreateFolderContentDialogVariant::Playlist, current_folder)
+    }
+
+    fn create(variant: CreateFolderContentDialogVariant, current_folder: Rc<Folder>) -> Self {
+        Self::CreateFolderContent {
+            variant,
+            name: String::new(),
+            current_folder,
+        }
+    }
+
     /// Returns true if modal should be closed
     fn render(&mut self, ui: &mut Ui) -> bool {
         match self {
@@ -152,9 +168,6 @@ impl FolderList {
     ) {
         self.render_current_modal(ui);
 
-        // self.render_new_content_modal(ui);
-        // self.render_change_name_modal(ui);
-
         self.render_header_buttons(ui);
 
         let current_folder = Rc::clone(&self.current_folder);
@@ -176,19 +189,15 @@ impl FolderList {
     fn render_header_buttons(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui| {
             if ui.button("New Folder").clicked() {
-                self.current_modal = Some(FolderListModal::CreateFolderContent {
-                    name: String::new(),
-                    variant: CreateFolderContentDialogVariant::SubFolder,
-                    current_folder: Rc::clone(&self.current_folder),
-                });
+                self.current_modal = Some(FolderListModal::create_folder(Rc::clone(
+                    &self.current_folder,
+                )))
             }
 
             if ui.button("New PlayList").clicked() {
-                self.current_modal = Some(FolderListModal::CreateFolderContent {
-                    name: String::new(),
-                    variant: CreateFolderContentDialogVariant::Playlist,
-                    current_folder: Rc::clone(&self.current_folder),
-                });
+                self.current_modal = Some(FolderListModal::create_playlist(Rc::clone(
+                    &self.current_folder,
+                )))
             }
         });
 
@@ -213,19 +222,20 @@ impl FolderList {
 
             if folder.parent.is_none() {
                 if self.playlist_button(ui, "All Songs").clicked() {
-                    ui.separator();
                     next_playlist = Some(Rc::new(Playlist::all_songs()))
                 }
             }
 
-            self.render_sub_folder_content(
+            if let Some((folder, index)) = self.render_sub_folder_content(
                 ui,
                 folder,
                 playlist_panel,
                 &mut next_playlist,
                 &mut next_folder,
                 napoleon_instance,
-            );
+            ) {
+                Folder::delete_content(&folder, index).expect("Failed delete folder content");
+            }
 
             if let Some(next_folder) = next_folder {
                 self.current_folder = next_folder;
@@ -245,7 +255,7 @@ impl FolderList {
         next_playlist: &mut Option<Rc<Playlist>>,
         next_folder: &mut Option<Rc<Folder>>,
         napoleon_instance: &mut NapoleonInstance,
-    ) {
+    ) -> Option<(Rc<Folder>, usize)> {
         let mut delete_index = None;
 
         for (current_index, folder_content_variant) in
@@ -278,26 +288,25 @@ impl FolderList {
                             });
                         }
 
-                        Self::shared_popup_ui(
+                        if Self::shared_popup_ui(
                             ui,
-                            current_index,
-                            &mut delete_index,
                             "playlist",
                             playlist
                                 .get_or_load_playlist_data()
                                 .get_data_path()
                                 .parent()
                                 .expect("File will always have parent directory"),
-                        );
+                        ) {
+                            delete_index = Some((Rc::clone(folder), current_index));
+                        }
                     });
                 }
 
                 FolderContentVariant::Folder(folder) => {
                     ui.horizontal(|ui| {
-                        let folder_item = ui.collapsing(
-                            folder.get_folder_data().content_data.name.clone(),
-                            |ui| {
-                                self.render_sub_folder_content(
+                        let folder_item =
+                            ui.collapsing(&folder.get_folder_data().content_data.name, |ui| {
+                                let delete_index_sub = self.render_sub_folder_content(
                                     ui,
                                     folder,
                                     playlist_panel,
@@ -305,39 +314,49 @@ impl FolderList {
                                     next_folder,
                                     napoleon_instance,
                                 );
-                            },
-                        );
+
+                                if delete_index_sub.is_some() {
+                                    delete_index = delete_index_sub;
+                                }
+                            });
 
                         if folder_item.header_response.middle_clicked() {
                             *next_folder = Some(Rc::clone(folder));
                         }
 
                         Popup::context_menu(&folder_item.header_response).show(|ui| {
-                            Self::shared_popup_ui(
+                            ui.menu_button("New", |ui| {
+                                if ui.button("Playlist").clicked() {
+                                    self.current_modal =
+                                        Some(FolderListModal::create_playlist(Rc::clone(folder)))
+                                }
+
+                                if ui.button("Folder").clicked() {
+                                    self.current_modal =
+                                        Some(FolderListModal::create_folder(Rc::clone(folder)))
+                                }
+                            });
+
+                            if Self::shared_popup_ui(
                                 ui,
-                                current_index,
-                                &mut delete_index,
                                 "folder",
                                 folder.get_folder_data().get_folder_data_path(),
-                            );
+                            ) {
+                                delete_index = Some((Rc::clone(folder), current_index));
+                            }
                         })
                     });
                 }
             }
         }
 
-        if let Some(index) = delete_index {
-            folder.delete_content(index).ok();
-        }
+        delete_index
     }
 
-    fn shared_popup_ui(
-        ui: &mut Ui,
-        index: usize,
-        delete_index: &mut Option<usize>,
-        variant_text: &str,
-        path: impl AsRef<OsStr>,
-    ) {
+    /// Shared popup UI between folders and playlists
+    ///
+    /// Returns true if the content should be deleted
+    fn shared_popup_ui(ui: &mut Ui, variant_text: &str, path: impl AsRef<OsStr>) -> bool {
         #[cfg(not(target_os = "android"))]
         if ui
             .button(format!("Open {} location", variant_text))
@@ -348,9 +367,7 @@ impl FolderList {
             }
         }
 
-        if ui.button(format!("Delete {}", variant_text)).clicked() {
-            *delete_index = Some(index);
-        }
+        ui.button(format!("Delete {}", variant_text)).clicked()
     }
 
     fn playlist_button(&mut self, ui: &mut Ui, label: &str) -> Response {

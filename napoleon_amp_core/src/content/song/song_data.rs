@@ -24,18 +24,6 @@ impl Artist {
         }
     }
 
-    /// Returns the artist string as it is, if there are multiple artists they will be separated by a "/"
-    ///
-    /// Ex. Artist0/Artist1/ArtistN
-
-    // pub fn fully_qualified_artist_string(&self) -> &String {
-    //     &self.artist_string
-    // }
-
-    // pub(crate) fn set_artist(&mut self, artist_string: impl Into<String>) {
-    //     self.artist_string = artist_string.into();
-    // }
-
     pub fn get_artist_list(&self) -> Vec<&str> {
         self.full_artist_string.split("/").collect()
     }

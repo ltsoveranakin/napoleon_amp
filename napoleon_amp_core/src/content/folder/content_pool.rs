@@ -34,6 +34,12 @@ impl ContentInner {
             HashSet::from_file_path(&self.index_data_path).unwrap_or_default()
         })
     }
+
+    fn save_index_data(&mut self) {
+        self.get_index_data()
+            .write_to_file_path(content_playlists_index_file())
+            .expect("Write index data to file");
+    }
 }
 
 pub(crate) struct ContentPool {
@@ -87,25 +93,19 @@ impl ContentPool {
             .contains(playlist_id)
     }
 
-    fn generate_unique_id(
-        &self,
-        content_inner: &RwLock<ContentInner>,
-        index_file_path: PathBuf,
-    ) -> Id {
-        let mut content_inner_mut = write_rwlock(content_inner);
+    pub(super) fn delete_playlist(&self, playlist_id: &Id) {
+        Self::delete_content(&mut self.playlists_mut(), playlist_id)
+    }
 
-        loop {
-            let id = content_inner_mut.id_generator.generate_new_id();
+    pub(super) fn delete_folder(&self, folder_id: &Id) {
+        Self::delete_content(&mut self.folders_mut(), folder_id)
+    }
 
-            let index_data = content_inner_mut.get_index_data();
+    fn delete_content(content_inner: &mut ContentInner, content_id: &Id) {
+        let index_data = content_inner.get_index_data();
 
-            if !index_data.contains(&id) {
-                index_data.insert(id);
-                index_data
-                    .write_to_file_path(index_file_path)
-                    .expect("Write index data to file");
-                return id;
-            }
+        if index_data.remove(content_id) {
+            content_inner.save_index_data();
         }
     }
 
@@ -114,7 +114,7 @@ impl ContentPool {
         playlist_name: String,
         parent_folder: Id,
     ) -> io::Result<Id> {
-        let id = self.generate_unique_id(&self.playlists, content_playlists_index_file());
+        let id = Self::generate_unique_id(&self.playlists);
 
         let playlist_data =
             PlaylistData::new(PlaylistContentData::new(id, playlist_name, parent_folder));
@@ -129,7 +129,7 @@ impl ContentPool {
         folder_name: String,
         parent_folder: Option<Id>,
     ) -> io::Result<Id> {
-        let id = self.generate_unique_id(&self.folders, content_folders_index_file());
+        let id = Self::generate_unique_id(&self.folders);
 
         let folder_data = FolderData::new(FolderContentData::new(id, folder_name, parent_folder));
 
@@ -144,5 +144,21 @@ impl ContentPool {
 
     fn folders_mut(&self) -> WriteWrapper<'_, ContentInner> {
         write_rwlock(&self.playlists)
+    }
+
+    fn generate_unique_id(content_inner: &RwLock<ContentInner>) -> Id {
+        let mut content_inner_mut = write_rwlock(content_inner);
+
+        loop {
+            let id = content_inner_mut.id_generator.generate_new_id();
+
+            let index_data = content_inner_mut.get_index_data();
+
+            if !index_data.contains(&id) {
+                index_data.insert(id);
+                content_inner_mut.save_index_data();
+                return id;
+            }
+        }
     }
 }

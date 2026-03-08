@@ -11,6 +11,7 @@ use serbytes::prelude::SerBytes;
 use std::cell::{OnceCell, Ref, RefCell, RefMut};
 use std::fmt::Debug;
 use std::io;
+use std::io::ErrorKind;
 use std::path::PathBuf;
 use std::rc::{Rc, Weak};
 
@@ -158,17 +159,23 @@ impl Folder {
         Ok(())
     }
 
-    pub fn delete_content(&self, content_index: usize) -> Result<(), ()> {
-        let folder_data_contents = &mut self.get_folder_data_mut().contents;
-        // if let Some(contents) = &mut *self.contents.borrow_mut() {
-        if content_index < folder_data_contents.len() {
-            folder_data_contents.remove(content_index);
+    pub fn delete_content(this: &Rc<Self>, content_index: usize) -> io::Result<()> {
+        let mut folder_data = this.get_folder_data_mut();
+        let folder_data_contents = &mut folder_data.contents;
 
-            Ok(())
+        if content_index < folder_data_contents.len() {
+            let content = folder_data_contents.remove(content_index);
+            Self::get_contents_mut(this).remove(content_index);
+
+            match content.variant {
+                FolderDataContentVariant::Playlist => CONTENT_POOL.delete_playlist(&content.id),
+                FolderDataContentVariant::Folder => CONTENT_POOL.delete_folder(&content.id),
+            }
+
+            folder_data.save_data()
         } else {
-            Err(())
+            Err(ErrorKind::InvalidInput.into())
         }
-        // }
     }
 
     fn get_folder_data_refcell(&self) -> &RefCell<FolderData> {
