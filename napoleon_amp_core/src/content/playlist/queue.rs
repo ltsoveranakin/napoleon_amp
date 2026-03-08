@@ -61,7 +61,7 @@ impl Queue {
         [
             temporary_queue_slices.0,
             temporary_queue_slices.1,
-            &self.indexes,
+            &self.indexes[self.index..],
         ]
     }
 
