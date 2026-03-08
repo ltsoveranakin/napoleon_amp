@@ -76,6 +76,11 @@ impl SelectedSongsVariant {
     }
 }
 
+trait Playlist {
+    fn get_songs(&self) -> SongVec;
+    fn get_songs_unfiltered(&self) -> SongVec;
+}
+
 #[derive(Debug)]
 pub struct StaticPlaylist {
     id: Id,
