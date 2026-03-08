@@ -1,8 +1,11 @@
+mod modals;
+
 use crate::napoleon_client::ui::helpers::scroll_area_styled;
 
 use crate::napoleon_client::ui::panels::playlist_panel::PlaylistPanel;
-use eframe::egui::{CursorIcon, Id, Modal, Popup, Response, ScrollArea, Ui};
+use eframe::egui::{CursorIcon, Popup, Response, ScrollArea, Ui};
 
+use crate::napoleon_client::ui::panels::folder_list::modals::FolderListModals;
 use napoleon_amp_core::content::folder::content::FolderContentVariant;
 use napoleon_amp_core::content::folder::Folder;
 use napoleon_amp_core::content::playlist::Playlist;
@@ -11,152 +14,16 @@ use napoleon_amp_core::instance::NapoleonInstance;
 use std::ffi::OsStr;
 use std::rc::{Rc, Weak};
 
-enum CreateFolderContentDialogVariant {
-    SubFolder,
-    Playlist,
-}
-
-enum FolderListModal {
-    CreateFolderContent {
-        variant: CreateFolderContentDialogVariant,
-        name: String,
-        current_folder: Rc<Folder>,
-    },
-    RenamePlaylist {
-        name: String,
-        playlist: Rc<Playlist>,
-    },
-}
-
-impl FolderListModal {
-    fn create_folder(current_folder: Rc<Folder>) -> Self {
-        Self::create(CreateFolderContentDialogVariant::SubFolder, current_folder)
-    }
-
-    fn create_playlist(current_folder: Rc<Folder>) -> Self {
-        Self::create(CreateFolderContentDialogVariant::Playlist, current_folder)
-    }
-
-    fn create(variant: CreateFolderContentDialogVariant, current_folder: Rc<Folder>) -> Self {
-        Self::CreateFolderContent {
-            variant,
-            name: String::new(),
-            current_folder,
-        }
-    }
-
-    /// Returns true if modal should be closed
-    fn render(&mut self, ui: &mut Ui) -> bool {
-        match self {
-            Self::CreateFolderContent {
-                variant,
-                name,
-                current_folder,
-            } => Self::render_create_folder_content(ui, variant, name, current_folder),
-            Self::RenamePlaylist { name, playlist } => Self::render_change_name(ui, name, playlist),
-        }
-    }
-
-    fn render_create_folder_content(
-        ui: &mut Ui,
-        variant: &CreateFolderContentDialogVariant,
-        name: &mut String,
-        current_folder: &Rc<Folder>,
-    ) -> bool {
-        let mut should_close = false;
-
-        let modal = Modal::new(Id::new("Create Content Modal")).show(ui.ctx(), |ui| {
-            ui.set_width(250.);
-
-            let heading = match variant {
-                CreateFolderContentDialogVariant::SubFolder => "folder",
-                CreateFolderContentDialogVariant::Playlist => "playlist",
-            };
-
-            ui.heading(format!("Create {}", heading));
-
-            ui.label("Name: ");
-            ui.text_edit_singleline(name);
-
-            ui.horizontal(|ui| {
-                if ui.button("Create").clicked() {
-                    if name.is_empty() {
-                        return;
-                    }
-
-                    match variant {
-                        CreateFolderContentDialogVariant::SubFolder => {
-                            Folder::create_folder(&current_folder, name.clone())
-                                .expect("Err create folder");
-                        }
-
-                        CreateFolderContentDialogVariant::Playlist => {
-                            Folder::create_playlist(&current_folder, name.clone())
-                                .expect("Err create playlist");
-                        }
-                    }
-
-                    should_close = true;
-                }
-
-                if ui.button("Cancel").clicked() {
-                    should_close = true;
-                }
-            });
-        });
-
-        if modal.should_close() {
-            should_close = true;
-        }
-        should_close
-    }
-
-    fn render_change_name(ui: &mut Ui, name: &mut String, playlist: &Playlist) -> bool {
-        let mut should_close = false;
-
-        let modal = Modal::new(Id::new("Create Content Modal")).show(ui.ctx(), |ui| {
-            ui.set_width(250.);
-
-            ui.heading("Rename Playlist");
-
-            ui.label("Name: ");
-            ui.text_edit_singleline(name);
-
-            ui.horizontal(|ui| {
-                if ui.button("Rename").clicked() {
-                    if name.is_empty() {
-                        return;
-                    }
-
-                    playlist.rename(name.clone()).expect("Rename playlist");
-
-                    should_close = true;
-                }
-
-                if ui.button("Cancel").clicked() {
-                    should_close = true;
-                }
-            });
-        });
-
-        if modal.should_close() {
-            should_close = true;
-        }
-
-        should_close
-    }
-}
-
 pub(crate) struct FolderList {
     pub(crate) current_folder: Rc<Folder>,
-    current_modal: Option<FolderListModal>,
+    current_modal: FolderListModals,
 }
 
 impl FolderList {
     pub(crate) fn new(current_folder: Rc<Folder>) -> Self {
         Self {
             current_folder,
-            current_modal: None,
+            current_modal: FolderListModals::None,
         }
     }
 
@@ -166,7 +33,7 @@ impl FolderList {
         playlist_panel: &mut Option<PlaylistPanel>,
         napoleon_instance: &mut NapoleonInstance,
     ) {
-        self.render_current_modal(ui);
+        self.current_modal.render(ui);
 
         self.render_header_buttons(ui);
 
@@ -175,29 +42,16 @@ impl FolderList {
         self.render_folder_content(ui, &current_folder, playlist_panel, napoleon_instance);
     }
 
-    fn render_current_modal(&mut self, ui: &mut Ui) {
-        let mut should_close = false;
-        if let Some(current_modal) = &mut self.current_modal {
-            should_close = current_modal.render(ui);
-        }
-
-        if should_close {
-            self.current_modal = None;
-        }
-    }
-
     fn render_header_buttons(&mut self, ui: &mut Ui) {
         ui.horizontal(|ui| {
             if ui.button("New Folder").clicked() {
-                self.current_modal = Some(FolderListModal::create_folder(Rc::clone(
-                    &self.current_folder,
-                )))
+                self.current_modal =
+                    FolderListModals::create_folder(Rc::clone(&self.current_folder))
             }
 
             if ui.button("New PlayList").clicked() {
-                self.current_modal = Some(FolderListModal::create_playlist(Rc::clone(
-                    &self.current_folder,
-                )))
+                self.current_modal =
+                    FolderListModals::create_playlist(Rc::clone(&self.current_folder))
             }
         });
 
@@ -282,10 +136,10 @@ impl FolderList {
 
                     Popup::context_menu(&playlist_button).show(|ui| {
                         if ui.button("Rename Playlist").clicked() {
-                            self.current_modal = Some(FolderListModal::RenamePlaylist {
+                            self.current_modal = FolderListModals::RenamePlaylist {
                                 name: String::new(),
                                 playlist: Rc::clone(playlist),
-                            });
+                            };
                         }
 
                         if Self::shared_popup_ui(
@@ -328,12 +182,12 @@ impl FolderList {
                             ui.menu_button("New", |ui| {
                                 if ui.button("Playlist").clicked() {
                                     self.current_modal =
-                                        Some(FolderListModal::create_playlist(Rc::clone(folder)))
+                                        FolderListModals::create_playlist(Rc::clone(folder))
                                 }
 
                                 if ui.button("Folder").clicked() {
                                     self.current_modal =
-                                        Some(FolderListModal::create_folder(Rc::clone(folder)))
+                                        FolderListModals::create_folder(Rc::clone(folder))
                                 }
                             });
 

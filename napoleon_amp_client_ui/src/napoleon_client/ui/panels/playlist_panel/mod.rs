@@ -163,7 +163,7 @@ impl PlaylistPanel {
                 ui.style_mut().wrap_mode = Some(TextWrapMode::Truncate);
                 ui.set_height_range(height_range);
 
-                TableBuilder::new(ui)
+                TableBuilder::new(ui).striped(true)
                     .column(Column::remainder())
                     .column(Column::remainder())
                     .column(Column::remainder())
