@@ -24,10 +24,6 @@ impl Artist {
         }
     }
 
-    pub fn get_artist_list(&self) -> Vec<&str> {
-        self.full_artist_string.split("/").collect()
-    }
-
     pub fn main_artist(&self) -> &str {
         self.full_artist_string
             .split("/")

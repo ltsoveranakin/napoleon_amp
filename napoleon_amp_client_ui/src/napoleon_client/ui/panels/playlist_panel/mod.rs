@@ -337,7 +337,11 @@ impl PlaylistPanel {
             let song_status = music_manager.get_song_status();
             let song_data = song_status.song().get_song_data();
 
-            ui.heading(&song_data.title);
+            ui.heading(format!("{} - [{}]", song_data.title, song_data.album));
+            ui.label(format!(
+                "By: {}",
+                song_data.artist.full_artist_string.replace("/", ",")
+            ));
 
             should_stop_music =
                 self.render_currently_playing_song_controls(ctx, ui, music_manager, &song_status);
