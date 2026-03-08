@@ -1,5 +1,5 @@
 use crate::napoleon_client::ui::helpers::scroll_area_styled;
-use crate::napoleon_client::ui::panels::playlist_panel::songs_plural;
+
 use eframe::egui::{Id, Modal, ScrollArea, Ui};
 use egui_autocomplete::AutoCompleteTextEdit;
 use napoleon_amp_core::content::playlist::Playlist;
@@ -101,7 +101,7 @@ impl PlaylistModals {
             ui.heading(format!(
                 "The following {} {} already exist, as such the files were not overwritten, nor deleted",
                 failed_count,
-                songs_plural(failed_count)
+               Self:: songs_plural(failed_count)
             ));
 
             scroll_area_styled(ui, ScrollArea::vertical().max_height(250.0), |ui| {
@@ -133,7 +133,11 @@ impl PlaylistModals {
 
             let count = songs_imported_paths.len();
 
-            ui.heading(format!("Importing {} new {}", count, songs_plural(count)));
+            ui.heading(format!(
+                "Importing {} new {}",
+                count,
+                Self::songs_plural(count)
+            ));
 
             ui.checkbox(delete_original_files, "Delete original files");
 
@@ -206,5 +210,9 @@ impl PlaylistModals {
         });
 
         (modal.inner.0 || modal.should_close(), modal.inner.1)
+    }
+
+    fn songs_plural(count: usize) -> &'static str {
+        if count == 1 { "song" } else { "songs" }
     }
 }

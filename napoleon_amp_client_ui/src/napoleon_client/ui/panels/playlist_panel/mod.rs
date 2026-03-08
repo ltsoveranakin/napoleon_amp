@@ -1,13 +1,11 @@
 mod modals;
 
-use eframe::egui::*;
-use std::ops::Deref;
-
 use crate::napoleon_client::colors::{
     Average, DEFAULT_TEXT_COLOR, SELECTED_TEXT_COLOR, SONG_PLAYING_TEXT_COLOR,
 };
 use crate::napoleon_client::ui::panels::playlist_panel::modals::PlaylistModals;
 use crate::napoleon_client::ui::panels::queue_panel::QueuePanel;
+use eframe::egui::*;
 use egui_extras::{Column, TableBuilder};
 use napoleon_amp_core::content::playlist::manager::{MusicManager, SongStatus};
 use napoleon_amp_core::content::playlist::{Playlist, PlaylistVariant};
@@ -15,6 +13,7 @@ use napoleon_amp_core::content::song::song_data::MAX_RATING;
 use napoleon_amp_core::content::NamedPathLike;
 use napoleon_amp_core::instance::NapoleonInstance;
 use napoleon_amp_core::read_rwlock;
+use std::ops::Deref;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Duration;
@@ -340,7 +339,7 @@ impl PlaylistPanel {
             ui.heading(format!("{} - [{}]", song_data.title, song_data.album));
             ui.label(format!(
                 "By: {}",
-                song_data.artist.full_artist_string.replace("/", ",")
+                song_data.artist.full_artist_string.replace("/", ", ")
             ));
 
             should_stop_music =
@@ -360,54 +359,64 @@ impl PlaylistPanel {
         song_status: &SongStatus,
     ) -> bool {
         let mut volume = (self.current_playlist.get_volume() * 100.) as i32;
-        let should_stop = ui
-            .horizontal(|ui| {
-                ui.label("Vol:");
+        let mut should_stop = false;
 
-                if ui.add(Slider::new(&mut volume, 0..=100)).drag_stopped() {
-                    self.current_playlist.set_volume(volume as f32 / 100.);
-                }
+        ui.horizontal(|ui| {
+            ui.label("Vol:");
 
-                if ui.button("Prev").clicked() {
-                    music_manager.previous();
-                }
+            if ui.add(Slider::new(&mut volume, 0..=100)).drag_stopped() {
+                self.current_playlist.set_volume(volume as f32 / 100.);
+            }
 
-                let toggle_playback_text = if music_manager.is_playing() {
-                    "Pause"
-                } else {
-                    "Play"
-                };
+            if ui.button("Prev").clicked() {
+                music_manager.previous();
+            }
 
-                if ui.button(toggle_playback_text).clicked() {
-                    music_manager.toggle_playback();
-                }
+            let toggle_playback_text = if music_manager.is_playing() {
+                "Pause"
+            } else {
+                "Play"
+            };
 
-                if ui.button("Next").clicked() {
-                    music_manager.next();
-                }
+            if ui.button(toggle_playback_text).clicked() {
+                music_manager.toggle_playback();
+            }
 
-                if ui.button("Stop").clicked() {
-                    true
-                } else {
-                    false
-                }
-            })
-            .inner;
+            if ui.button("Next").clicked() {
+                music_manager.next();
+            }
+
+            if ui.button("Stop").clicked() {
+                should_stop = true
+            }
+
+            if let Some(total_duration) = song_status.total_duration() {
+                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                    ui.label(format!(
+                        "{}/{}",
+                        Self::duration_to_str(music_manager.get_song_pos()),
+                        Self::duration_to_str(total_duration)
+                    ));
+                });
+            }
+        });
 
         if let Some(total_duration) = song_status.total_duration() {
             let pos = music_manager.get_song_pos();
-            let mut progress = pos.as_secs_f32();
+
+            let mut progress_f32 = pos.as_secs_f32();
 
             ui.spacing_mut().slider_width = ui.available_width();
 
             if ui
                 .add(
-                    Slider::new(&mut progress, 0f32..=total_duration.as_secs_f32())
-                        .show_value(false),
+                    Slider::new(&mut progress_f32, 0f32..=total_duration.as_secs_f32())
+                        .show_value(false)
+                        .trailing_fill(true),
                 )
                 .drag_stopped()
             {
-                let seek_pos = Duration::from_secs_f32(progress);
+                let seek_pos = Duration::from_secs_f32(progress_f32);
                 music_manager.try_seek(seek_pos).expect("Failed to seek");
             }
 
@@ -416,8 +425,13 @@ impl PlaylistPanel {
 
         should_stop
     }
-}
 
-fn songs_plural(count: usize) -> &'static str {
-    if count == 1 { "song" } else { "songs" }
+    fn duration_to_str(duration: Duration) -> String {
+        let secs = duration.as_secs();
+
+        let seconds = secs % 60;
+        let minutes = secs / 60;
+
+        format!("{:02}:{:02}", minutes, seconds)
+    }
 }
