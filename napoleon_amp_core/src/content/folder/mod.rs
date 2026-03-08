@@ -220,7 +220,7 @@ impl Folder {
             }
 
             FolderDataContentVariant::Playlist => {
-                FolderContentVariant::Playlist(Rc::new(Playlist::new_file(id, parent)))
+                FolderContentVariant::Playlist(Rc::new(Playlist::new_file(id)))
             }
         }
     }

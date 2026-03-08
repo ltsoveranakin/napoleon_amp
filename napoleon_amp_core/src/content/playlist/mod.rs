@@ -4,7 +4,6 @@ pub mod queue;
 mod song_list;
 
 use crate::content::folder::content_pool::CONTENT_POOL;
-use crate::content::folder::Folder;
 use crate::content::playlist::data::{PlaybackMode, PlaylistData};
 use crate::content::playlist::manager::MusicManager;
 use crate::content::playlist::song_list::{SongList, SongVec, SortBy, SortByVariant};
@@ -24,7 +23,6 @@ use std::fs::File;
 
 use std::ops::RangeInclusive;
 use std::path::PathBuf;
-use std::rc::Weak;
 use std::sync::{Arc, RwLock};
 use std::{fs, io};
 
@@ -81,7 +79,6 @@ impl SelectedSongsVariant {
 #[derive(Debug)]
 pub struct Playlist {
     id: Id,
-    parent_folder: Option<Weak<Folder>>,
     songs: RefCell<SongList>,
     has_loaded_songs: Cell<bool>,
     music_manager: RefCell<Option<MusicManager>>,
@@ -92,10 +89,9 @@ pub struct Playlist {
 }
 
 impl Playlist {
-    fn new(id: Id, variant: PlaylistVariant, parent_folder: Option<Weak<Folder>>) -> Self {
+    fn new(id: Id, variant: PlaylistVariant) -> Self {
         Self {
             id,
-            parent_folder,
             songs: RefCell::new(SongList::new()),
             has_loaded_songs: Cell::new(false),
             music_manager: RefCell::new(None),
@@ -106,12 +102,12 @@ impl Playlist {
         }
     }
 
-    pub(super) fn new_file(id: Id, parent: Weak<Folder>) -> Self {
-        Self::new(id, PlaylistVariant::Normal, Some(parent))
+    pub(super) fn new_file(id: Id) -> Self {
+        Self::new(id, PlaylistVariant::Normal)
     }
 
     pub fn all_songs() -> Self {
-        Self::new(Id::ZERO, PlaylistVariant::AllSongs, None)
+        Self::new(Id::ZERO, PlaylistVariant::AllSongs)
     }
 
     /// Gets the songs in the current playlist, with the filter if one is enabled
@@ -144,40 +140,30 @@ impl Playlist {
         } else {
             let playlist_data = self.get_or_load_playlist_data();
 
-            let mut loaded_song_ids_backing = Vec::new();
+            let loaded_song_ids_backing;
 
-            let song_ids = match self.variant {
-                PlaylistVariant::Normal => &playlist_data.song_ids,
+            let (song_ids, should_sort) = match self.variant {
+                PlaylistVariant::Normal => (&playlist_data.song_ids, false),
 
                 PlaylistVariant::AllSongs => {
-                    fs::create_dir_all(songs_data_dir_v2()).expect("Create songs_data_dir_v2");
-                    // TODO: preallocate loaded_song_file_names_backing
-                    for song_dir in fs::read_dir(songs_data_dir_v2())
-                        .expect("Song directory to exist")
-                        .flatten()
-                    {
-                        let mut song_file_path = song_dir.path();
+                    loaded_song_ids_backing = SONG_POOL
+                        .get_registered_songs()
+                        .name_map
+                        .values()
+                        .copied()
+                        .collect();
 
-                        song_file_path.set_extension("");
-
-                        let song_file_name = song_file_path
-                            .file_name()
-                            .expect("Get song file name")
-                            .to_str()
-                            .expect("Valid utf8 for song file");
-
-                        let id = Id::try_from_str(song_file_name).expect("Parse valid id");
-
-                        loaded_song_ids_backing.push(id);
-                    }
-
-                    &loaded_song_ids_backing
+                    (&loaded_song_ids_backing, true)
                 }
             };
 
             let mut songs = self.songs.borrow_mut();
 
             songs.push_songs(song_ids);
+
+            if should_sort {
+                songs.sort_songs(SortBy::default());
+            }
 
             self.has_loaded_songs.set(true);
 
