@@ -1,4 +1,5 @@
 use crate::napoleon_client::ui::helpers::{scroll_area_iter, ScrollListDisplay};
+use crate::napoleon_client::ui::panels::get_song_data_display_str;
 use eframe::egui::{ScrollArea, Ui};
 use napoleon_amp_core::content::playlist::manager::MusicManager;
 use napoleon_amp_core::content::playlist::queue::Queue;
@@ -33,7 +34,10 @@ impl QueuePanel {
             current_queue.iter().flat_map(|inner| inner.iter()),
             current_queue_length,
             |_, song_index| {
-                ScrollListDisplay::new(false, songs[*song_index].get_song_data().title.clone())
+                ScrollListDisplay::new(
+                    false,
+                    get_song_data_display_str(&songs[*song_index].get_song_data()),
+                )
             },
             |clicked_queue_index| {
                 music_manager.set_queue_index(clicked_queue_index);

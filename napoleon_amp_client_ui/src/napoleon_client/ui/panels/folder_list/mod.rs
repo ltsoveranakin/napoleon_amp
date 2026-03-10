@@ -6,12 +6,13 @@ use crate::napoleon_client::ui::panels::playlist_panel::PlaylistPanel;
 use eframe::egui::{CursorIcon, Popup, Response, ScrollArea, Ui};
 
 use crate::napoleon_client::ui::panels::folder_list::modals::FolderListModals;
+use crate::napoleon_client::ui::panels::open_location_button;
 use napoleon_amp_core::content::folder::content::FolderContentVariant;
 use napoleon_amp_core::content::folder::Folder;
 use napoleon_amp_core::content::playlist::Playlist;
 use napoleon_amp_core::discord_rpc::set_rpc_playlist;
 use napoleon_amp_core::instance::NapoleonInstance;
-use std::ffi::OsStr;
+use std::path::Path;
 use std::rc::{Rc, Weak};
 
 pub(crate) struct FolderList {
@@ -145,11 +146,7 @@ impl FolderList {
                         if Self::shared_popup_ui(
                             ui,
                             "playlist",
-                            playlist
-                                .get_or_load_playlist_data()
-                                .get_data_path()
-                                .parent()
-                                .expect("File will always have parent directory"),
+                            playlist.get_or_load_playlist_data().get_data_path(),
                         ) {
                             delete_index = Some((Rc::clone(folder), current_index));
                         }
@@ -210,16 +207,8 @@ impl FolderList {
     /// Shared popup UI between folders and playlists
     ///
     /// Returns true if the content should be deleted
-    fn shared_popup_ui(ui: &mut Ui, variant_text: &str, path: impl AsRef<OsStr>) -> bool {
-        #[cfg(not(target_os = "android"))]
-        if ui
-            .button(format!("Open {} location", variant_text))
-            .clicked()
-        {
-            if open::that_detached(path).is_err() {
-                todo!()
-            }
-        }
+    fn shared_popup_ui(ui: &mut Ui, variant_text: &str, path: impl AsRef<Path>) -> bool {
+        open_location_button(ui, variant_text, path);
 
         ui.button(format!("Delete {}", variant_text)).clicked()
     }

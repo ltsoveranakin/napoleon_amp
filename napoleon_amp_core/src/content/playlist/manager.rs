@@ -1,7 +1,6 @@
 use crate::content::playlist::queue::Queue;
 use crate::content::playlist::PlaybackMode;
 use crate::content::song::Song;
-use crate::content::NamedPathLike;
 use crate::discord_rpc::{send_rpc_action, RPCAction, SetSongData};
 use crate::paths::song::song_audio_file_v2;
 use crate::{read_rwlock, write_rwlock, ReadWrapper, WriteWrapper};

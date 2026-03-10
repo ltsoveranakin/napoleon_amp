@@ -2,7 +2,6 @@ mod custom_scroll_area;
 
 use eframe::egui::scroll_area::ScrollSource;
 use eframe::egui::{Button, IntoAtoms, ScrollArea, TextWrapMode, Ui};
-use napoleon_amp_core::content::NamedPathLike;
 use std::marker::PhantomData;
 
 pub(crate) fn scroll_area_styled(

@@ -3,6 +3,7 @@ mod modals;
 use crate::napoleon_client::colors::{
     Average, DEFAULT_TEXT_COLOR, SELECTED_TEXT_COLOR, SONG_PLAYING_TEXT_COLOR,
 };
+use crate::napoleon_client::ui::panels::get_song_data_display_str;
 use crate::napoleon_client::ui::panels::playlist_panel::modals::PlaylistModals;
 use crate::napoleon_client::ui::panels::queue_panel::QueuePanel;
 use eframe::egui::*;
@@ -10,13 +11,16 @@ use egui_extras::{Column, TableBuilder};
 use napoleon_amp_core::content::playlist::manager::{MusicManager, SongStatus};
 use napoleon_amp_core::content::playlist::{Playlist, PlaylistVariant};
 use napoleon_amp_core::content::song::song_data::MAX_RATING;
-use napoleon_amp_core::content::NamedPathLike;
+
 use napoleon_amp_core::instance::NapoleonInstance;
+use napoleon_amp_core::paths::show_file_in_explorer;
 use napoleon_amp_core::read_rwlock;
 use std::ops::Deref;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Duration;
+
+const CURRENT_PLAYING_HEIGHT: f32 = 120.;
 
 pub(crate) struct PlaylistPanel {
     pub(crate) current_playlist: Rc<Playlist>,
@@ -98,9 +102,11 @@ impl PlaylistPanel {
 
         self.render_modal(ui);
 
-        self.render_song_list(ui, napoleon_instance);
+        let current_playing_id = ui.make_persistent_id("currently_playing_display");
 
-        self.render_currently_playing(ctx, ui, napoleon_instance);
+        self.render_song_list(ui, napoleon_instance, current_playing_id);
+
+        self.render_currently_playing(ctx, ui, napoleon_instance, current_playing_id);
     }
 
     fn keystrokes_pressed(&self, napoleon_instance: &mut NapoleonInstance, ctx: &Context) {
@@ -147,13 +153,22 @@ impl PlaylistPanel {
             .render(ui, &self.current_playlist, &mut self.delete_original_files);
     }
 
-    fn render_song_list(&mut self, ui: &mut Ui, napoleon_instance: &mut NapoleonInstance) {
+    fn render_song_list(
+        &mut self,
+        ui: &mut Ui,
+        napoleon_instance: &mut NapoleonInstance,
+        current_playing_id: Id,
+    ) {
         let current_playlist = &self.current_playlist;
 
         ScrollArea::vertical().show(ui, |ui| {
             ui.scope(|ui| {
                 let height_range = if self.current_playlist.get_music_manager().is_some() {
-                    let height = ui.available_height() - 80.;
+                    let current_playing_height = ui.ctx().data(|d| {
+                        d.get_temp(current_playing_id).unwrap_or(80.)
+                    });
+
+                    let height = ui.available_height() - current_playing_height;
                     height..=height
                 } else {
                     0.0..=f32::INFINITY
@@ -263,6 +278,16 @@ impl PlaylistPanel {
                                                 album_list: current_playlist.get_album_list(),
                                             };
                                         }
+
+                                        ui.menu_button("Open song location", |ui| {
+                                            if ui.button("Audio file").clicked() {
+                                                show_file_in_explorer(&song.song_audio_path).expect("Error showing file in explorer")
+                                            }
+
+                                            if ui.button("Song data").clicked() {
+                                                show_file_in_explorer(&song.song_data_path).expect("Error showing file in explorer")
+                                            }
+                                        });
                                     });
                                 });
 
@@ -329,6 +354,7 @@ impl PlaylistPanel {
         ctx: &Context,
         ui: &mut Ui,
         napoleon_instance: &mut NapoleonInstance,
+        current_playing_id: Id,
     ) {
         let mut should_stop_music = false;
 
@@ -336,14 +362,26 @@ impl PlaylistPanel {
             let song_status = music_manager.get_song_status();
             let song_data = song_status.song().get_song_data();
 
-            ui.heading(format!("{} - [{}]", song_data.title, song_data.album));
-            ui.label(format!(
-                "By: {}",
-                song_data.artist.full_artist_string.replace("/", ", ")
-            ));
+            let height = ui
+                .scope(|ui| {
+                    ui.heading(get_song_data_display_str(&song_data));
+                    ui.label(format!(
+                        "By: {}",
+                        song_data.artist.full_artist_string.replace("/", ", ")
+                    ));
 
-            should_stop_music =
-                self.render_currently_playing_song_controls(ctx, ui, music_manager, &song_status);
+                    should_stop_music = self.render_currently_playing_song_controls(
+                        ctx,
+                        ui,
+                        music_manager,
+                        &song_status,
+                    );
+                })
+                .response
+                .rect
+                .height();
+
+            ctx.data_mut(|d| d.insert_temp(current_playing_id, height));
         }
 
         if should_stop_music {
@@ -364,7 +402,10 @@ impl PlaylistPanel {
         ui.horizontal(|ui| {
             ui.label("Vol:");
 
-            if ui.add(Slider::new(&mut volume, 0..=100)).drag_stopped() {
+            if ui
+                .add(Slider::new(&mut volume, 0..=100).trailing_fill(true))
+                .drag_stopped()
+            {
                 self.current_playlist.set_volume(volume as f32 / 100.);
             }
 

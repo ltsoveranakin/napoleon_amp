@@ -11,3 +11,4 @@ symphonia = { version = "0.5.4", features = ["mp3", "symphonia-bundle-mp3"] }
 rand = "0.10"
 discord-rich-presence = "1.1"
 chrono = "0.4.43"
+open = "5.3.3"

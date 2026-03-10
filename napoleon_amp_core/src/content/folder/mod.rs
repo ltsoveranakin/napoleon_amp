@@ -4,7 +4,6 @@ pub(crate) mod content_pool;
 use crate::content::folder::content::FolderContentVariant;
 use crate::content::folder::content_pool::CONTENT_POOL;
 use crate::content::playlist::Playlist;
-use crate::content::NamedPathLike;
 use crate::id_generator::Id;
 use crate::paths::content_folder_file;
 use serbytes::prelude::SerBytes;

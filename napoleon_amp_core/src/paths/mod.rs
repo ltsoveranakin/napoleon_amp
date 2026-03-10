@@ -2,7 +2,9 @@ pub(super) mod song;
 
 use crate::id_generator::Id;
 use chrono::{Datelike, Local, Timelike};
-use std::path::PathBuf;
+use std::io::ErrorKind;
+use std::path::{Path, PathBuf};
+use std::{fs, io};
 
 const DATA_EXT: &str = ".dnap";
 const INDEX_EXT: &str = ".inap";
@@ -66,4 +68,28 @@ pub fn crash_file_time_now() -> PathBuf {
         date_time.minute(),
         date_time.second()
     ))
+}
+
+pub fn show_file_in_explorer(path: impl AsRef<Path>) -> io::Result<()> {
+    let path_buf = fs::canonicalize(path)?;
+    let parent = path_buf.parent().ok_or(ErrorKind::InvalidFilename)?;
+    open::that_detached(parent)
+
+    // let path_str = path_buf.to_string_lossy();
+
+    // let path_str = if path_str.starts_with(r"\\?\") {
+    //     path_str.replace(r"\\?\", "")
+    // } else {
+    //     path_str.to_string()
+    // };
+    //
+    // // let arg = format!(r#"/select,"{}""#, path_str);
+    // // println!("arg: {}", arg);
+    // Command::new("explorer")
+    //     .arg(r#"/select,""#)
+    //     // .arg("/select,")
+    //     // .arg(format!("\"{}\"", path_str))
+    //     .spawn()?;
+
+    // Ok(())
 }

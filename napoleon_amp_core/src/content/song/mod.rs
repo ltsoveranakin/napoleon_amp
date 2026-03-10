@@ -16,8 +16,8 @@ pub static UNKNOWN_ALBUM_STR: &str = "Unknown Album";
 #[derive(Debug)]
 pub struct Song {
     pub(crate) id: Id,
-    pub(crate) song_audio_path: PathBuf,
-    pub(crate) song_data_path: PathBuf,
+    pub song_audio_path: PathBuf,
+    pub song_data_path: PathBuf,
     pub(super) song_data: OnceLock<RwLock<SongData>>,
 }
 
