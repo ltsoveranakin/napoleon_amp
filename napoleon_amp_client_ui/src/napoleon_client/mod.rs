@@ -7,6 +7,7 @@ use crate::napoleon_client::ui::panels::top_menu_bar::TopMenuBar;
 use eframe::egui::{CentralPanel, Context, MenuBar, SidePanel, TopBottomPanel};
 use eframe::{App, Frame};
 use napoleon_amp_core::instance::NapoleonInstance;
+use std::rc::Rc;
 
 pub struct NapoleonClientApp {
     core_instance: NapoleonInstance,
@@ -18,7 +19,7 @@ pub struct NapoleonClientApp {
 impl NapoleonClientApp {
     pub fn new() -> Self {
         let core_instance = NapoleonInstance::new();
-        let current_folder = core_instance.get_base_folder();
+        let current_folder = Rc::clone(core_instance.get_base_folder());
 
         Self {
             core_instance,

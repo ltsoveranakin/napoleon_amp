@@ -1,21 +1,21 @@
 mod custom_scroll_area;
 
-use eframe::egui::scroll_area::ScrollSource;
+use eframe::egui::scroll_area::{ScrollAreaOutput, ScrollSource};
 use eframe::egui::{Button, IntoAtoms, ScrollArea, TextWrapMode, Ui};
 use std::marker::PhantomData;
 
-pub(crate) fn scroll_area_styled(
+pub(crate) fn scroll_area_styled<O>(
     ui: &mut Ui,
     scroll_area: ScrollArea,
-    add_contents: impl FnOnce(&mut Ui),
-) {
+    add_contents: impl FnOnce(&mut Ui) -> O,
+) -> ScrollAreaOutput<O> {
     scroll_area
         .scroll_source(ScrollSource::MOUSE_WHEEL | ScrollSource::SCROLL_BAR)
         .show(ui, |ui| {
             ui.style_mut().wrap_mode = Some(TextWrapMode::Truncate);
 
-            add_contents(ui);
-        });
+            add_contents(ui)
+        })
 }
 
 // pub(crate) fn default_scroll_area(ui: &mut Ui, add_contents: impl FnOnce(&mut Ui)) {

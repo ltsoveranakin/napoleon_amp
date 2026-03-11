@@ -12,6 +12,7 @@ use napoleon_amp_core::content::playlist::manager::{MusicManager, SongStatus};
 use napoleon_amp_core::content::playlist::{Playlist, PlaylistVariant};
 use napoleon_amp_core::content::song::song_data::MAX_RATING;
 
+use crate::napoleon_client::ui::helpers::scroll_area_styled;
 use napoleon_amp_core::instance::NapoleonInstance;
 use napoleon_amp_core::paths::show_file_in_explorer;
 use napoleon_amp_core::read_rwlock;
@@ -161,7 +162,7 @@ impl PlaylistPanel {
     ) {
         let current_playlist = &self.current_playlist;
 
-        ScrollArea::vertical().show(ui, |ui| {
+        scroll_area_styled(ui, ScrollArea::vertical(), |ui| {
             ui.scope(|ui| {
                 let height_range = if self.current_playlist.get_music_manager().is_some() {
                     let current_playing_height = ui.ctx().data(|d| {

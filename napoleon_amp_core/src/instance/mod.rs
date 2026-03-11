@@ -42,8 +42,8 @@ impl NapoleonInstance {
         }
     }
 
-    pub fn get_base_folder(&self) -> Rc<Folder> {
-        Rc::clone(&self.base_folder)
+    pub fn get_base_folder(&self) -> &Rc<Folder> {
+        &self.base_folder
     }
 
     pub fn copy_selected_songs(&mut self, playlist: &Playlist) {
