@@ -6,7 +6,7 @@ use crate::content::folder::content_pool::CONTENT_POOL;
 use crate::content::playlist::Playlist;
 use crate::id_generator::Id;
 use crate::paths::content_folder_file;
-use serbytes::prelude::SerBytes;
+use serbytes::prelude::{MayNotExistOrDefault, SerBytes};
 use std::cell::{OnceCell, Ref, RefCell, RefMut};
 use std::fmt::Debug;
 use std::io;
@@ -45,6 +45,7 @@ pub type FolderContentData = ContentData<Option<Id>>;
 pub struct FolderData {
     pub content_data: FolderContentData,
     pub contents: Vec<ContentsListElements>,
+    pub expanded: MayNotExistOrDefault<bool>,
 }
 
 impl FolderData {
@@ -52,6 +53,7 @@ impl FolderData {
         Self {
             content_data,
             contents: Vec::new(),
+            expanded: true.into(),
         }
     }
 
@@ -63,12 +65,6 @@ impl FolderData {
         self.write_to_file_path(self.get_folder_data_path())
     }
 }
-
-// #[derive(SerBytes, Debug)]
-// struct PlaylistData {
-//     content_data: ContentData<Id>,
-//     contents: Vec<FolderDataContent>,
-// }
 
 #[derive(Debug)]
 pub struct Folder {
@@ -87,60 +83,6 @@ impl Folder {
             contents: OnceCell::new(),
         }
     }
-
-    // pub fn get_or_load_content(this: &Rc<Self>) -> Ref<'_, Vec<Rc<FolderContent>>> {
-    //     let contents = if this.contents.borrow().is_some() {
-    //         unwrap_inner_ref(this.contents.borrow())
-    //     } else {
-    //         let mut contents = vec![];
-    //         for dir in this
-    //             .path_named
-    //             .path
-    //             .read_dir()
-    //             .expect("Unable to read path directory")
-    //         {
-    //             if dir.is_err() {
-    //                 continue;
-    //             }
-    //
-    //             // Unwrapping, continues above if dir is err
-    //             let dir = dir.unwrap();
-    //
-    //             let content = if let Ok(file_type) = dir.file_type() {
-    //                 if file_type.is_dir() {
-    //                     let path_named = PathNamed::new(dir.path());
-    //                     let sub_folder = Folder::new(path_named, Some(Rc::downgrade(this)));
-    //
-    //                     Some(FolderContent::new(FolderContentVariant::SubFolder(
-    //                         Rc::new(sub_folder),
-    //                     )))
-    //                     // can be symlink, check if file to be safe
-    //                 } else if file_type.is_file() {
-    //                     let path_named = PathNamed::new(dir.path());
-    //                     let playlist = Playlist::new_file(path_named);
-    //
-    //                     Some(FolderContent::new(FolderContentVariant::Playlist(Rc::new(
-    //                         playlist,
-    //                     ))))
-    //                 } else {
-    //                     None
-    //                 }
-    //             } else {
-    //                 None
-    //             };
-    //
-    //             if let Some(content) = content {
-    //                 contents.push(Rc::new(content));
-    //             }
-    //         }
-    //
-    //         this.contents.replace(Some(contents));
-    //
-    //         unwrap_inner_ref(this.contents.borrow())
-    //     };
-    //
-    //     contents
-    // }
 
     pub fn create_folder(this: &Rc<Self>, folder_name: String) -> io::Result<()> {
         let folder_id = CONTENT_POOL.create_new_folder(folder_name, Some(this.folder_id))?;

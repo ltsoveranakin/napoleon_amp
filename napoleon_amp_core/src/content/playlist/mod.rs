@@ -122,18 +122,6 @@ impl Playlist {
         }
     }
 
-    // fn get_or_load_songs_arc(&self) -> Arc<RwLock<Vec<Arc<Song>>>> {
-    //     let songs_filtered = read_rwlock(&self.songs_filtered);
-    //
-    //     if songs_filtered.is_empty() {
-    //         self.get_or_load_songs_unfiltered();
-    //
-    //         self.songs.borrow().songs_arc()
-    //     } else {
-    //         Arc::clone(&self.songs_filtered)
-    //     }
-    // }
-
     pub fn get_or_load_songs_unfiltered(&self) -> SongVec {
         if self.has_loaded_songs.get() {
             self.songs.borrow().songs_arc()
@@ -197,10 +185,13 @@ impl Playlist {
 
                 ParsedSearchType::Artist => &[&song_data.artist.full_artist_string],
 
+                ParsedSearchType::UserTag => &[&song_data.user_tag.inner],
+
                 ParsedSearchType::Any => &[
                     &song_data.title,
                     &song_data.album,
                     &song_data.artist.full_artist_string,
+                    &song_data.user_tag.inner,
                 ],
             };
 
@@ -605,6 +596,7 @@ enum ParsedSearchType {
     Title,
     Artist,
     Album,
+    UserTag,
     Any,
 }
 
@@ -634,6 +626,8 @@ impl ParsedSearch {
                 "artist" => Some(ParsedSearchType::Artist),
 
                 "album" => Some(ParsedSearchType::Album),
+
+                "utag" => Some(ParsedSearchType::UserTag),
 
                 "any" => Some(ParsedSearchType::Any),
 
@@ -670,9 +664,3 @@ impl ParsedSearch {
         })
     }
 }
-
-// impl NamedPathLike for Playlist {
-//     fn get_path_named(&self) -> &PathNamed {
-//         &self.path_named
-//     }
-// }

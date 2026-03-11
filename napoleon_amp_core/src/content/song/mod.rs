@@ -46,7 +46,7 @@ impl Song {
         write_rwlock(song_data_lock)
     }
 
-    fn get_song_data_rwlock(&self) -> &RwLock<SongData> {
+    pub fn get_song_data_rwlock(&self) -> &RwLock<SongData> {
         self.song_data.get_or_init(|| {
             let mut song_data =
                 SongData::from_file_path(&self.song_data_path).unwrap_or_else(|_| {

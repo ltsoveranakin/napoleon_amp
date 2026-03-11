@@ -1,13 +1,16 @@
 use crate::content::song::{Song, UNKNOWN_ALBUM_STR, UNKNOWN_ARTIST_STR};
-use serbytes::prelude::SerBytes;
+use serbytes::prelude::{MayNotExistOrDefault, SerBytes};
 use std::fs;
 use std::fs::File;
 use std::path::PathBuf;
+use std::sync::LazyLock;
 use symphonia::core::formats::FormatOptions;
 use symphonia::core::io::{MediaSourceStream, MediaSourceStreamOptions};
 use symphonia::core::meta::{MetadataOptions, StandardTagKey, Value};
 use symphonia::core::probe::Hint;
 use symphonia::default::get_probe;
+
+static DEFAULT_SONG_DATA: LazyLock<SongData> = LazyLock::new(|| SongData::default());
 
 pub const MAX_RATING: u8 = 5;
 
@@ -32,6 +35,8 @@ impl Artist {
     }
 }
 
+/// Data stored for each song which has been registered, contains metadata which is commonly used
+
 #[derive(SerBytes, Clone, Debug)]
 pub struct SongData {
     pub artist: Artist,
@@ -42,6 +47,7 @@ pub struct SongData {
     /// A rating of the song from 0 to 5
     /// where 0 represents unrated and 1-5 represent a rating
     pub rating: u8,
+    pub user_tag: MayNotExistOrDefault<String>,
 }
 
 impl Default for SongData {
@@ -53,6 +59,7 @@ impl Default for SongData {
             custom_tags: Vec::new(),
             audio_file: String::new().into(),
             rating: 0,
+            user_tag: String::new().into(),
         }
     }
 }

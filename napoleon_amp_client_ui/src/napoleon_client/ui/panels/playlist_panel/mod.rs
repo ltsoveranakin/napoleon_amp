@@ -7,10 +7,10 @@ use crate::napoleon_client::ui::panels::get_song_data_display_str;
 use crate::napoleon_client::ui::panels::playlist_panel::modals::PlaylistModals;
 use crate::napoleon_client::ui::panels::queue_panel::QueuePanel;
 use eframe::egui::*;
-use egui_extras::{Column, TableBuilder};
+use egui_extras::{Column, TableBuilder, TableRow};
 use napoleon_amp_core::content::playlist::manager::{MusicManager, SongStatus};
 use napoleon_amp_core::content::playlist::{Playlist, PlaylistVariant};
-use napoleon_amp_core::content::song::song_data::MAX_RATING;
+use napoleon_amp_core::content::song::song_data::{SongData, MAX_RATING};
 
 use crate::napoleon_client::ui::helpers::scroll_area_styled;
 use napoleon_amp_core::instance::NapoleonInstance;
@@ -21,7 +21,22 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Duration;
 
-const CURRENT_PLAYING_HEIGHT: f32 = 120.;
+enum RowSongData<'s> {
+    Raw(SongData),
+    Ref(&'s mut SongData),
+}
+
+impl<'s> Deref for RowSongData<'s> {
+    type Target = SongData;
+
+    fn deref(&self) -> &Self::Target {
+        match self {
+            Self::Raw(song_data) => song_data,
+
+            Self::Ref(r) => r,
+        }
+    }
+}
 
 pub(crate) struct PlaylistPanel {
     pub(crate) current_playlist: Rc<Playlist>,
@@ -182,7 +197,7 @@ impl PlaylistPanel {
                     .column(Column::remainder())
                     .column(Column::remainder())
                     .column(Column::remainder())
-                    .column(Column::remainder())
+                    .column(Column::auto()).column(Column::remainder())
                     .header(20.0, |mut header| {
                         header.col(|ui| {
                             ui.heading("Title");
@@ -199,6 +214,10 @@ impl PlaylistPanel {
                         header.col(|ui| {
                             ui.heading("Rating");
                         });
+
+                        header.col(|ui| {
+                            ui.heading("User Tag");
+                        });
                     })
                     .body(|body| {
                         let mut song_index_to_delete = None;
@@ -213,7 +232,11 @@ impl PlaylistPanel {
                                 let song_index = row.index();
                                 let song = &songs[song_index];
                                 let is_selected = selected_songs.is_selected(song_index);
-                                let song_data = song.get_song_data();
+                                let mut song_data = song.get_song_data();
+                                // let mut song_data_write = song.get_song_data_rwlock().try_write();
+                                // let song_data_write_ref = song_data_write.as_mut();
+                                // 
+                                // let mut song_data
 
                                 row.col(|ui| {
                                     let mut button_text_color = DEFAULT_TEXT_COLOR;
@@ -255,9 +278,10 @@ impl PlaylistPanel {
                                     }
 
                                     Popup::context_menu(&button_response).show(|ui| {
-
+                                        if napoleon_instance.can_queue_song() {
                                             if ui.button("Queue Next").clicked() {
-                                                napoleon_instance.queue_song(Arc::clone(song));
+                                                napoleon_instance.try_queue_song(Arc::clone(song)).expect("Checked can queue song above");
+                                            }
                                         }
 
                                         ui.menu_button("Delete", |ui| {
@@ -295,7 +319,7 @@ impl PlaylistPanel {
                                     ui.label(&song_data.album);
                                 });
 
-                                row.col(|ui| {
+                                let song_data = Self::col_return(&mut row, |ui| {
                                     let mut update_rating = None;
 
                                     ui.horizontal(|ui| {
@@ -332,7 +356,15 @@ impl PlaylistPanel {
 
                                         song.get_song_data_mut().rating = updated_rating;
                                         song.save_song_data();
+
+                                        song.get_song_data()
+                                    } else {
+                                        song_data
                                     }
+                                });
+
+                                row.col(|ui| {
+                                    ui.label(&song_data.user_tag.inner);
                                 });
                             });
                         }
@@ -470,5 +502,15 @@ impl PlaylistPanel {
         let minutes = secs / 60;
 
         format!("{:02}:{:02}", minutes, seconds)
+    }
+
+    fn col_return<R>(row: &mut TableRow, add_content: impl FnOnce(&mut Ui) -> R) -> R {
+        let mut value = None;
+
+        row.col(|ui| {
+            value = Some(add_content(ui));
+        });
+
+        value.unwrap()
     }
 }

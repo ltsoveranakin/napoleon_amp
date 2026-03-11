@@ -188,6 +188,9 @@ impl PlaylistModals {
                 album_list,
             ));
 
+            ui.label("User Tag:");
+            ui.text_edit_singleline(&mut editing_song_data.user_tag.inner);
+
             let action = ui
                 .horizontal(|ui| {
                     if ui.button("Save").clicked() {
