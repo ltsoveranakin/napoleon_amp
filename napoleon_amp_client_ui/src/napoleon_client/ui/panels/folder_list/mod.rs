@@ -81,8 +81,11 @@ impl FolderList {
                 }
             }
 
+            let current_folder = Rc::clone(&self.current_folder);
+
             if let Some((folder, index)) = self.render_sub_folder_content(
                 ui,
+                &current_folder,
                 playlist_panel,
                 &mut next_playlist,
                 &mut next_folder,
@@ -104,6 +107,7 @@ impl FolderList {
     fn render_sub_folder_content(
         &mut self,
         ui: &mut Ui,
+        current_folder: &Rc<Folder>,
         playlist_panel: &mut Option<PlaylistPanel>,
         next_playlist: &mut Option<Rc<Playlist>>,
         next_folder: &mut Option<Rc<Folder>>,
@@ -111,7 +115,7 @@ impl FolderList {
     ) -> Option<(Rc<Folder>, usize)> {
         let mut delete_index = None;
 
-        let current_folder = Rc::clone(&self.current_folder);
+        // let current_folder = Rc::clone(&self.current_folder);
 
         for (current_index, folder_content_variant) in
             Folder::get_contents(&current_folder).iter().enumerate()
@@ -159,6 +163,7 @@ impl FolderList {
                             ui.collapsing(&folder.get_folder_data().content_data.name, |ui| {
                                 let delete_index_sub = self.render_sub_folder_content(
                                     ui,
+                                    folder,
                                     playlist_panel,
                                     next_playlist,
                                     next_folder,

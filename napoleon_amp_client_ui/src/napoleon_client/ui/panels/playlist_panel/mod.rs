@@ -255,14 +255,9 @@ impl PlaylistPanel {
                                     }
 
                                     Popup::context_menu(&button_response).show(|ui| {
-                                        if let Some(music_manager) =
-                                            &*current_playlist.get_music_manager()
-                                        {
+
                                             if ui.button("Queue Next").clicked() {
-                                                music_manager
-                                                    .queue_mut()
-                                                    .push_temporary_queue(song_index);
-                                            }
+                                                napoleon_instance.queue_song(Arc::clone(song));
                                         }
 
                                         ui.menu_button("Delete", |ui| {

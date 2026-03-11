@@ -1,4 +1,4 @@
-use crate::content::playlist::queue::Queue;
+use crate::content::playlist::queue::{Queue, QueueSong};
 use crate::content::playlist::PlaybackMode;
 use crate::content::song::Song;
 use crate::discord_rpc::{send_rpc_action, RPCAction, SetSongData};
@@ -210,20 +210,26 @@ impl MusicManager {
 
                     if sink.empty() {
                         let songs = read_rwlock(&songs);
-                        let song_index = write_rwlock(&queue).get_next_song_index();
+                        let next_song = write_rwlock(&queue).get_next_song();
 
-                        let song = if let Some(song) = songs.get(song_index) {
-                            song
-                        } else {
-                            write_rwlock(&queue).reset_queue();
-                            continue;
+                        let song = match next_song {
+                            QueueSong::Index(song_index) => {
+                                if let Some(song) = songs.get(song_index) {
+                                    Arc::clone(song)
+                                } else {
+                                    write_rwlock(&queue).reset_queue();
+                                    continue;
+                                }
+                            }
+
+                            QueueSong::Arc(song) => song,
                         };
 
                         // Skip if invalid file
-                        if let Ok(source) = get_decoder_for_song(song) {
+                        if let Ok(source) = get_decoder_for_song(&song) {
                             let mut song_status = write_rwlock(&song_status);
 
-                            song_status.song = song.clone();
+                            song_status.song = Arc::clone(&song);
 
                             let total_song_duration =
                                 if let Some(total_duration) = source.total_duration() {

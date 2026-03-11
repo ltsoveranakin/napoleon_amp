@@ -31,13 +31,14 @@ impl QueuePanel {
         scroll_area_iter(
             ui,
             ScrollArea::vertical(),
-            current_queue.iter().flat_map(|inner| inner.iter()),
+            current_queue
+                .0
+                .iter()
+                .chain(current_queue.1)
+                .chain(current_queue.2.iter().map(|song_index| &songs[*song_index])),
             current_queue_length,
-            |_, song_index| {
-                ScrollListDisplay::new(
-                    false,
-                    get_song_data_display_str(&songs[*song_index].get_song_data()),
-                )
+            |_, song| {
+                ScrollListDisplay::new(false, get_song_data_display_str(&song.get_song_data()))
             },
             |clicked_queue_index| {
                 music_manager.set_queue_index(clicked_queue_index);

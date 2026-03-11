@@ -88,4 +88,12 @@ impl NapoleonInstance {
             current_playing_playlist.stop_music();
         }
     }
+
+    pub fn queue_song(&self, song: Arc<Song>) {
+        if let Some(current_playing_playlist) = &self.currently_playing_playlist {
+            if let Some(manager) = &*current_playing_playlist.get_music_manager() {
+                manager.queue_mut().push_temporary_queue(song);
+            }
+        }
+    }
 }

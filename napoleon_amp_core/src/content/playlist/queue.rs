@@ -4,18 +4,47 @@ use rand::RngExt;
 use std::collections::VecDeque;
 use std::sync::Arc;
 
-#[derive(Clone, Debug)]
-enum IndexMode {
-    UseQueue,
-    Index(usize),
-}
+pub type CurrentQueue<'q> = (&'q [Arc<Song>], &'q [Arc<Song>], &'q [usize]);
+
+// enum CQIterOn {
+//     FirstSlice,
+//     SecondSlice,
+//     Indexes,
+// }
+//
+// struct CQIter<'q> {
+//     cq: CurrentQueue<'q>,
+//     on: CQIterOn,
+//     index: usize,
+// }
+//
+// impl<'q> Iterator for CQIter<'q> {
+//     type Item = QueueSongRef<'q>;
+//
+//     fn next(&mut self) -> Option<Self::Item> {
+//         match self.on {
+//             CQIterOn::FirstSlice => {
+//                 if self.cq.0
+//             },
+//         }
+//     }
+// }
 
 #[derive(Clone, Debug)]
 pub struct Queue {
     pub(super) indexes: Vec<usize>,
-
     index: usize,
-    temporary_queue: VecDeque<usize>,
+    temporary_queue: VecDeque<Arc<Song>>,
+}
+
+// pub enum QueueSongRef<'s> {
+//     Index(usize),
+//     Song(&'s Song),
+// }
+
+pub enum QueueSong {
+    Index(usize),
+    Arc(Arc<Song>),
 }
 
 impl Queue {
@@ -55,39 +84,30 @@ impl Queue {
         }
     }
 
-    pub fn current_queue(&self) -> [&[usize]; 3] {
+    pub fn current_queue(&self) -> CurrentQueue<'_> {
         let temporary_queue_slices = self.temporary_queue.as_slices();
 
-        [
+        (
             temporary_queue_slices.0,
             temporary_queue_slices.1,
             &self.indexes[self.index..],
-        ]
+        )
     }
 
-    pub fn queue_length(queue_array: [&[usize]; 3]) -> usize {
-        let mut length = 0;
-
-        for arr in queue_array {
-            length += arr.len();
-        }
-
-        length
+    pub fn queue_length(queue_array: CurrentQueue) -> usize {
+        queue_array.0.len() + queue_array.1.len() + queue_array.2.len()
     }
 
-    pub fn push_temporary_queue(&mut self, index: usize) {
-        self.temporary_queue.push_back(index);
+    pub(crate) fn push_temporary_queue(&mut self, song: Arc<Song>) {
+        self.temporary_queue.push_back(song);
     }
 
-    pub(super) fn get_next_song_index(&mut self) -> usize {
-        self.temporary_queue
-            .pop_front()
-            .unwrap_or(self.indexes[self.index])
+    pub(super) fn get_next_song(&mut self) -> QueueSong {
+        self.temporary_queue.pop_front().map_or_else(
+            || QueueSong::Index(self.indexes[self.index]),
+            |song| QueueSong::Arc(song),
+        )
     }
-
-    // pub(super) fn get_current_song_index(&self) -> usize {
-    //     self.indexes[self.get_wrapped_index(self.index as i32 - 1)]
-    // }
 
     pub(super) fn next(&mut self) {
         if self.temporary_queue.is_empty() {
