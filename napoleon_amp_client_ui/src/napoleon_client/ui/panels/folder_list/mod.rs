@@ -3,8 +3,9 @@ mod modals;
 use crate::napoleon_client::ui::helpers::scroll_area_styled;
 
 use crate::napoleon_client::ui::panels::playlist_panel::PlaylistPanel;
-use eframe::egui::{CursorIcon, Popup, Response, ScrollArea, Sense, Ui, UiBuilder};
+use eframe::egui::{Button, IntoAtoms, Popup, Response, RichText, ScrollArea, Sense, Ui, UiBuilder};
 
+use crate::napoleon_client::colors::SONG_PLAYING_TEXT_COLOR;
 use crate::napoleon_client::ui::panels::folder_list::modals::FolderListModals;
 use crate::napoleon_client::ui::panels::open_location_button;
 use napoleon_amp_core::content::folder::content::FolderContentVariant;
@@ -126,7 +127,18 @@ impl FolderList {
                 FolderContentVariant::Playlist(playlist) => {
                     let playlist_name = playlist.get_name();
 
-                    let playlist_button = self.playlist_button(ui, &playlist_name);
+                    let playlist_button = ui.scope(|ui| {
+                        let mut rt = RichText::new(&*playlist_name);
+
+                        if playlist.get_music_manager().is_some() {
+                            rt = rt.color(SONG_PLAYING_TEXT_COLOR);
+                        }
+
+                        let playlist_button = self.playlist_button(ui, rt);
+
+                        playlist_button
+                    }).inner;
+
 
                     if playlist_button.clicked() {
                         *next_playlist = Some(Rc::clone(playlist));
@@ -219,9 +231,10 @@ impl FolderList {
         ui.button(format!("Delete {}", variant_text)).clicked()
     }
 
-    fn playlist_button(&mut self, ui: &mut Ui, label: &str) -> Response {
-        let playlist_label = ui.label(label).on_hover_cursor(CursorIcon::PointingHand);
+    fn playlist_button<'a>(&mut self, ui: &mut Ui, label: impl IntoAtoms<'a>) -> Response {
+        let playlist_button = Button::new(label).frame(true)
+            .frame_when_inactive(false);
 
-        playlist_label
+        ui.add(playlist_button)
     }
 }

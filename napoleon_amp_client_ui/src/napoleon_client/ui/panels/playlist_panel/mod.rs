@@ -10,7 +10,7 @@ use eframe::egui::*;
 use egui_extras::{Column, TableBuilder, TableRow};
 use napoleon_amp_core::content::playlist::manager::{MusicManager, SongStatus};
 use napoleon_amp_core::content::playlist::{Playlist, PlaylistVariant};
-use napoleon_amp_core::content::song::song_data::{SongData, MAX_RATING};
+use napoleon_amp_core::content::song::song_data::MAX_RATING;
 
 use crate::napoleon_client::ui::helpers::scroll_area_styled;
 use napoleon_amp_core::instance::NapoleonInstance;
@@ -20,23 +20,6 @@ use std::ops::Deref;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Duration;
-
-enum RowSongData<'s> {
-    Raw(SongData),
-    Ref(&'s mut SongData),
-}
-
-impl<'s> Deref for RowSongData<'s> {
-    type Target = SongData;
-
-    fn deref(&self) -> &Self::Target {
-        match self {
-            Self::Raw(song_data) => song_data,
-
-            Self::Ref(r) => r,
-        }
-    }
-}
 
 pub(crate) struct PlaylistPanel {
     pub(crate) current_playlist: Rc<Playlist>,
@@ -197,7 +180,8 @@ impl PlaylistPanel {
                     .column(Column::remainder())
                     .column(Column::remainder())
                     .column(Column::remainder())
-                    .column(Column::auto()).column(Column::remainder())
+                    .column(Column::remainder())
+                    .column(Column::remainder())
                     .header(20.0, |mut header| {
                         header.col(|ui| {
                             ui.heading("Title");
@@ -232,11 +216,7 @@ impl PlaylistPanel {
                                 let song_index = row.index();
                                 let song = &songs[song_index];
                                 let is_selected = selected_songs.is_selected(song_index);
-                                let mut song_data = song.get_song_data();
-                                // let mut song_data_write = song.get_song_data_rwlock().try_write();
-                                // let song_data_write_ref = song_data_write.as_mut();
-                                // 
-                                // let mut song_data
+                                let song_data = song.get_song_data();
 
                                 row.col(|ui| {
                                     let mut button_text_color = DEFAULT_TEXT_COLOR;
@@ -501,7 +481,7 @@ impl PlaylistPanel {
         let seconds = secs % 60;
         let minutes = secs / 60;
 
-        format!("{:02}:{:02}", minutes, seconds)
+        format!("{}:{:02}", minutes, seconds)
     }
 
     fn col_return<R>(row: &mut TableRow, add_content: impl FnOnce(&mut Ui) -> R) -> R {

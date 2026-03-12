@@ -1,6 +1,6 @@
 mod modal;
 
-use crate::napoleon_client::ui::panels::top_menu_bar::modal::MenuModal;
+use crate::napoleon_client::ui::panels::top_menu_bar::modal::{MenuModal, MenuPage};
 use eframe::egui::Ui;
 
 pub(crate) struct TopMenuBar {
@@ -17,7 +17,7 @@ impl TopMenuBar {
 
         let mut should_close = false;
 
-        if let Some(menu_modal) = &self.menu_modal {
+        if let Some(menu_modal) = &mut self.menu_modal {
             should_close = menu_modal.render(ui);
         }
 
@@ -27,11 +27,13 @@ impl TopMenuBar {
     }
 
     fn render_menu_bar(&mut self, ui: &mut Ui) {
-        ui.menu_button("File", |_ui| {});
+        ui.menu_button("File", |ui| {
+            ui.label("Hi, this is here so it doesn't look weird :)");
+        });
 
         ui.menu_button("Edit", |ui| {
             if ui.button("Settings").clicked() {
-                self.menu_modal = Some(MenuModal::new());
+                self.menu_modal = Some(MenuModal::new(MenuPage::Settings));
             }
         });
     }
