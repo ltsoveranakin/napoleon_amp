@@ -104,18 +104,32 @@ impl Folder {
         let folder_data_contents = &mut folder_data.contents;
 
         if content_index < folder_data_contents.len() {
-            let content = folder_data_contents.remove(content_index);
-            Self::get_contents_mut(this).remove(content_index);
+            folder_data_contents.remove(content_index);
+            let content = Self::get_contents_mut(this).remove(content_index);
 
-            match content.variant {
-                FolderDataContentVariant::Playlist => CONTENT_POOL.delete_playlist(&content.id),
-                FolderDataContentVariant::Folder => CONTENT_POOL.delete_folder(&content.id),
+            match content {
+                FolderContentVariant::Playlist(playlist) => CONTENT_POOL.delete_playlist(&playlist.id),
+                FolderContentVariant::Folder(folder) => {
+                    Folder::delete_self(&folder)?;
+                }
             }
 
             folder_data.save_data(this.id)
         } else {
             Err(ErrorKind::InvalidInput.into())
         }
+    }
+
+    fn delete_self(this: &Rc<Self>) -> io::Result<()> {
+        let contents_len = Folder::get_contents(this).len();
+
+        for content_index in 0..contents_len {
+            Folder::delete_content(this, content_index)?;
+        }
+
+        CONTENT_POOL.delete_folder(&this.id);
+
+        Ok(())
     }
 
     fn get_folder_data_refcell(&self) -> &RefCell<FolderData> {
