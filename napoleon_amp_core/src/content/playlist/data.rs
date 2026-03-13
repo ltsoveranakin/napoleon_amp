@@ -1,8 +1,8 @@
 use crate::content::folder::ContentData;
 use crate::content::playlist::song_list::SortBy;
 use crate::id_generator::Id;
-use crate::paths::content_playlist_file;
-use serbytes::prelude::{MayNotExistDataProvider, SerBytes};
+use crate::paths::{content_playlist_song_list_file, content_playlist_user_data_file};
+use serbytes::prelude::SerBytes;
 use std::fmt::{Display, Formatter};
 use std::io;
 use std::path::PathBuf;
@@ -25,42 +25,46 @@ impl Display for PlaybackMode {
     }
 }
 
-#[derive(Debug)]
-pub(super) struct VolumeDNEDataProvider;
-
-impl MayNotExistDataProvider<f32> for VolumeDNEDataProvider {
-    fn get_data() -> f32 {
-        DEFAULT_VOLUME
-    }
-}
-
 pub(crate) type PlaylistContentData = ContentData<Id>;
 
 #[derive(SerBytes, Debug)]
-pub struct PlaylistData {
+pub struct PlaylistUserData {
     pub content_data: PlaylistContentData,
-    pub(crate) song_ids: Vec<Id>,
     pub(super) playback_mode: PlaybackMode,
     pub(super) volume: f32,
     pub(super) sort_by: SortBy,
 }
 
-impl PlaylistData {
+impl PlaylistUserData {
     pub(crate) fn new(content_data: PlaylistContentData) -> Self {
         Self {
             content_data,
-            song_ids: Vec::new(),
             playback_mode: PlaybackMode::default(),
             volume: DEFAULT_VOLUME,
             sort_by: SortBy::default(),
         }
     }
 
-    pub fn get_data_path(&self) -> PathBuf {
-        content_playlist_file(self.content_data.id)
+    pub fn get_data_path(id: Id) -> PathBuf {
+        content_playlist_user_data_file(id)
     }
 
-    pub(crate) fn save_data(&self) -> io::Result<()> {
-        self.write_to_file_path(self.get_data_path())
+    pub(crate) fn save_data(&self, id: Id) -> io::Result<()> {
+        self.write_to_file_path(Self::get_data_path(id))
+    }
+}
+
+#[derive(SerBytes, Debug)]
+pub struct PlaylistSongListData {
+    pub(crate) song_ids: Vec<Id>,
+}
+
+impl PlaylistSongListData {
+    pub fn get_data_path(id: Id) -> PathBuf {
+        content_playlist_song_list_file(id)
+    }
+
+    pub(crate) fn save_data(&self, id: Id) -> io::Result<()> {
+        self.write_to_file_path(Self::get_data_path(id))
     }
 }

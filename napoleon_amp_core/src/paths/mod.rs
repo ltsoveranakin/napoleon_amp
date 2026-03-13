@@ -9,6 +9,8 @@ use std::{fs, io};
 const DATA_EXT: &str = ".dnap";
 const INDEX_EXT: &str = ".inap";
 const FOLDER_EXT: &str = ".fnap";
+const PLAYLIST_EXT: &str = ".pnap";
+const PLAYLIST_SONG_LIST_EXT: &str = ".psnap";
 pub(crate) const SONG_DATA_EXT: &str = ".snap";
 pub(crate) const SONG_DATA_EXT_NO_PER: &str = "snap";
 
@@ -36,12 +38,24 @@ pub(crate) fn content_folder_file(id: Id) -> PathBuf {
     content_folder_path().join(format!("{}{}", id, FOLDER_EXT))
 }
 
-pub(crate) fn content_playlist_path() -> PathBuf {
+pub(crate) fn content_playlist_blanket_path() -> PathBuf {
     content_blanket_path().join("playlists/")
 }
 
-pub(crate) fn content_playlist_file(id: Id) -> PathBuf {
-    content_playlist_path().join(format!("{}{}", id, FOLDER_EXT))
+pub(crate) fn content_playlist_song_list_path() -> PathBuf {
+    content_playlist_blanket_path().join("song_list/")
+}
+
+pub(crate) fn content_playlist_user_data_path() -> PathBuf {
+    content_playlist_blanket_path().join("user_data/")
+}
+
+pub(crate) fn content_playlist_user_data_file(id: Id) -> PathBuf {
+    content_playlist_user_data_path().join(format!("{}{}", id, PLAYLIST_EXT))
+}
+
+pub(crate) fn content_playlist_song_list_file(id: Id) -> PathBuf {
+    content_playlist_song_list_path().join(format!("{}{}", id, PLAYLIST_SONG_LIST_EXT))
 }
 
 pub(crate) fn content_folders_index_file() -> PathBuf {

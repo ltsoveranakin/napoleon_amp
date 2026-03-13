@@ -9,7 +9,8 @@ use crate::napoleon_client::colors::SONG_PLAYING_TEXT_COLOR;
 use crate::napoleon_client::ui::panels::folder_list::modals::FolderListModals;
 use crate::napoleon_client::ui::panels::open_location_button;
 use napoleon_amp_core::content::folder::content::FolderContentVariant;
-use napoleon_amp_core::content::folder::Folder;
+use napoleon_amp_core::content::folder::{Folder, FolderData};
+use napoleon_amp_core::content::playlist::data::PlaylistUserData;
 use napoleon_amp_core::content::playlist::Playlist;
 use napoleon_amp_core::discord_rpc::set_rpc_playlist;
 use napoleon_amp_core::instance::NapoleonInstance;
@@ -78,7 +79,7 @@ impl FolderList {
 
             if self.current_folder.parent.is_none() {
                 if self.playlist_button(ui, "All Songs").clicked() {
-                    next_playlist = Some(Rc::new(Playlist::all_songs()))
+                    next_playlist = Some(napoleon_instance.get_all_songs_playlist())
                 }
             }
 
@@ -162,7 +163,7 @@ impl FolderList {
                         if Self::shared_popup_ui(
                             ui,
                             "playlist",
-                            playlist.get_or_load_playlist_data().get_data_path(),
+                            PlaylistUserData::get_data_path(playlist.id),
                         ) {
                             delete_index = Some((Rc::clone(&self.current_folder), current_index));
                         }
@@ -197,7 +198,8 @@ impl FolderList {
                             if Self::shared_popup_ui(
                                 ui,
                                 "folder",
-                                folder.get_folder_data().get_folder_data_path(),
+                                FolderData::get_folder_data_path(folder.id)
+                                ,
                             ) {
                                 delete_index = Some((Rc::clone(folder), current_index));
                             }

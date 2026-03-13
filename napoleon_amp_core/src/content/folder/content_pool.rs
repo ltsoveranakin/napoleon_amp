@@ -1,9 +1,7 @@
 use crate::content::folder::{FolderContentData, FolderData};
-use crate::content::playlist::data::{PlaylistContentData, PlaylistData};
+use crate::content::playlist::data::{PlaylistContentData, PlaylistSongListData, PlaylistUserData};
 use crate::id_generator::{Id, SmallRngIdGenerator};
-use crate::paths::{
-    content_folders_index_file, content_playlist_file, content_playlists_index_file,
-};
+use crate::paths::{content_folders_index_file, content_playlist_song_list_file, content_playlist_user_data_file, content_playlists_index_file};
 use crate::song_pool::SONG_POOL;
 use crate::{write_rwlock, WriteWrapper};
 use serbytes::prelude::{BBReadResult, ReadError, SerBytes};
@@ -55,25 +53,37 @@ impl ContentPool {
         }
     }
 
-    pub(crate) fn get_playlist_data(&self, playlist_id: Id) -> BBReadResult<PlaylistData> {
+    pub(crate) fn get_playlist_user_data(&self, playlist_id: Id) -> BBReadResult<PlaylistUserData> {
         if playlist_id == Id::ZERO {
-            // TODO: parent id should be option here or not option on folders
-            let mut data = PlaylistData::new(PlaylistContentData::new(
-                playlist_id,
+            let data = PlaylistUserData::new(PlaylistContentData::new(
                 "Base".to_string(),
                 Id::ZERO,
             ));
 
-            data.song_ids = SONG_POOL
-                .get_registered_songs()
-                .name_map
-                .values()
-                .copied()
-                .collect();
+            Ok(data)
+        } else if self.playlists_mut().get_index_data().contains(&playlist_id) {
+            PlaylistUserData::from_file_path(content_playlist_user_data_file(playlist_id))
+        } else {
+            Err(ReadError::new(
+                "Playlist doesn't exist in index".to_string(),
+            ))
+        }
+    }
+
+    pub(crate) fn get_playlist_song_list_data(&self, playlist_id: Id) -> BBReadResult<PlaylistSongListData> {
+        if playlist_id == Id::ZERO {
+            let data = PlaylistSongListData {
+                song_ids: SONG_POOL
+                    .get_registered_songs()
+                    .name_map
+                    .values()
+                    .copied()
+                    .collect()
+            };
 
             Ok(data)
         } else if self.playlists_mut().get_index_data().contains(&playlist_id) {
-            PlaylistData::from_file_path(content_playlist_file(playlist_id))
+            PlaylistSongListData::from_file_path(content_playlist_song_list_file(playlist_id))
         } else {
             Err(ReadError::new(
                 "Playlist doesn't exist in index".to_string(),
@@ -117,9 +127,9 @@ impl ContentPool {
         let id = Self::generate_unique_id(&self.playlists);
 
         let playlist_data =
-            PlaylistData::new(PlaylistContentData::new(id, playlist_name, parent_folder));
+            PlaylistUserData::new(PlaylistContentData::new(playlist_name, parent_folder));
 
-        playlist_data.save_data()?;
+        playlist_data.save_data(id)?;
 
         Ok(id)
     }
@@ -131,9 +141,9 @@ impl ContentPool {
     ) -> io::Result<Id> {
         let id = Self::generate_unique_id(&self.folders);
 
-        let folder_data = FolderData::new(FolderContentData::new(id, folder_name, parent_folder));
+        let folder_data = FolderData::new(FolderContentData::new(folder_name, parent_folder));
 
-        folder_data.save_data()?;
+        folder_data.save_data(id)?;
 
         Ok(id)
     }

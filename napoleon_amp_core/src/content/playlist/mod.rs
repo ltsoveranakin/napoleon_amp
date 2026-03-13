@@ -4,7 +4,7 @@ pub mod queue;
 mod song_list;
 
 use crate::content::folder::content_pool::CONTENT_POOL;
-use crate::content::playlist::data::{PlaybackMode, PlaylistData};
+use crate::content::playlist::data::{PlaybackMode, PlaylistContentData, PlaylistSongListData, PlaylistUserData};
 use crate::content::playlist::manager::MusicManager;
 use crate::content::playlist::song_list::{SongList, SongVec, SortBy, SortByVariant};
 use crate::content::song::song_data::SongData;
@@ -21,8 +21,11 @@ use std::collections::HashSet;
 
 use std::fs::File;
 
+use crate::content::folder::Folder;
+use serbytes::prelude::SerBytes;
 use std::ops::RangeInclusive;
 use std::path::PathBuf;
+use std::rc::{Rc, Weak};
 use std::sync::{Arc, RwLock};
 use std::{fs, io};
 
@@ -77,37 +80,46 @@ impl SelectedSongsVariant {
 }
 
 #[derive(Debug)]
-pub struct Playlist {
+pub(crate) struct PlaylistParent {
     id: Id,
+    parent: Weak<Folder>,
+}
+
+#[derive(Debug)]
+pub struct Playlist {
+    pub id: Id,
+    parent: PlaylistParent,
     songs: RefCell<SongList>,
     has_loaded_songs: Cell<bool>,
     music_manager: RefCell<Option<MusicManager>>,
     pub variant: PlaylistVariant,
     songs_filtered: SongVec,
     selected_songs: RefCell<SelectedSongsVariant>,
-    playlist_data: OnceCell<RefCell<PlaylistData>>,
+    playlist_user_data: OnceCell<RefCell<PlaylistUserData>>,
+    playlist_song_list_data: OnceCell<RefCell<PlaylistSongListData>>,
 }
 
 impl Playlist {
-    fn new(id: Id, variant: PlaylistVariant) -> Self {
+    pub(crate) fn new(id: Id, variant: PlaylistVariant, parent: &Rc<Folder>) -> Self {
         Self {
             id,
+            parent: PlaylistParent {
+                id: parent.id,
+                parent: Rc::downgrade(parent),
+            },
             songs: RefCell::new(SongList::new()),
             has_loaded_songs: Cell::new(false),
             music_manager: RefCell::new(None),
             variant,
             songs_filtered: Arc::new(RwLock::new(Vec::new())),
             selected_songs: RefCell::new(SelectedSongsVariant::None),
-            playlist_data: OnceCell::new(),
+            playlist_user_data: OnceCell::new(),
+            playlist_song_list_data: OnceCell::new(),
         }
     }
 
-    pub(super) fn new_file(id: Id) -> Self {
-        Self::new(id, PlaylistVariant::Normal)
-    }
-
-    pub fn all_songs() -> Self {
-        Self::new(Id::ZERO, PlaylistVariant::AllSongs)
+    pub(super) fn new_file(id: Id, parent: &Rc<Folder>) -> Self {
+        Self::new(id, PlaylistVariant::Normal, parent)
     }
 
     /// Gets the songs in the current playlist, with the filter if one is enabled
@@ -126,12 +138,12 @@ impl Playlist {
         if self.has_loaded_songs.get() {
             self.songs.borrow().songs_arc()
         } else {
-            let playlist_data = self.get_or_load_playlist_data();
+            let song_list_data = self.get_song_list_data();
 
             let loaded_song_ids_backing;
 
             let (song_ids, should_sort) = match self.variant {
-                PlaylistVariant::Normal => (&playlist_data.song_ids, false),
+                PlaylistVariant::Normal => (&song_list_data.song_ids, false),
 
                 PlaylistVariant::AllSongs => {
                     loaded_song_ids_backing = SONG_POOL
@@ -343,25 +355,21 @@ impl Playlist {
     //     self.path_named.borrow()
     // }
 
-    pub fn get_id(&self) -> Id {
-        self.id
-    }
-
     pub fn rename(&self, new_name: String) -> io::Result<()> {
-        let mut pl_data = self.get_or_load_playlist_data_mut();
+        let mut pl_data = self.get_or_load_user_data_mut();
 
         pl_data.content_data.name = new_name;
 
-        pl_data.save_data()
+        pl_data.save_data(self.id)
     }
 
     pub fn set_playback_mode(&self, playback_mode: PlaybackMode) {
         {
-            let mut playlist_data = self.get_or_load_playlist_data_mut();
+            let mut playlist_data = self.get_or_load_user_data_mut();
 
             playlist_data.playback_mode = playback_mode.into();
         }
-        self.save_contents();
+        self.save_user_datab();
     }
 
     pub fn next_playback_mode(&self) {
@@ -374,7 +382,7 @@ impl Playlist {
     }
 
     pub fn playback_mode(&self) -> PlaybackMode {
-        self.get_or_load_playlist_data().playback_mode
+        self.get_or_load_user_data().playback_mode
     }
 
     pub fn delete_song(&self, song_index: usize) {
@@ -404,7 +412,7 @@ impl Playlist {
             }
         }
 
-        self.save_contents();
+        self.save_song_list();
     }
 
     /// Returns `None` if music manager is `None` (no song is playing) otherwise returns the index
@@ -417,7 +425,7 @@ impl Playlist {
     }
 
     pub fn get_volume(&self) -> f32 {
-        self.get_or_load_playlist_data().volume
+        self.get_or_load_user_data().volume
     }
 
     pub fn set_volume(&self, mut volume: f32) {
@@ -426,30 +434,30 @@ impl Playlist {
             manager.set_volume(volume);
         }
 
-        self.get_or_load_playlist_data_mut().volume = volume;
+        self.get_or_load_user_data_mut().volume = volume;
 
-        self.save_contents();
+        self.save_user_datab();
     }
 
     pub fn sort_by_and_save(&self, sort_by: SortBy) {
-        self.get_or_load_playlist_data_mut().sort_by = sort_by.into();
+        self.get_or_load_user_data_mut().sort_by = sort_by.into();
         self.sort_songs_and_save();
     }
 
     fn sort_songs_and_save(&self) {
         self.songs
             .borrow_mut()
-            .sort_songs(self.get_or_load_playlist_data().sort_by);
+            .sort_songs(self.get_or_load_user_data().sort_by);
 
-        self.save_contents();
+        self.save_song_list();
     }
 
     pub fn get_sorting_by(&self) -> SortBy {
-        self.get_or_load_playlist_data().sort_by
+        self.get_or_load_user_data().sort_by
     }
 
     pub fn next_sorting_by(&self) {
-        let mut sort_by = self.get_or_load_playlist_data().sort_by;
+        let mut sort_by = self.get_or_load_user_data().sort_by;
 
         let next_sort_by = match sort_by.sort_by_variant {
             SortByVariant::Title => SortByVariant::Artist,
@@ -498,7 +506,7 @@ impl Playlist {
             current_handle.join().expect("Unwrap for panic in thread");
         }
 
-        let playlist_data = self.get_or_load_playlist_data();
+        let playlist_data = self.get_or_load_user_data();
 
         let music_manager = MusicManager::try_create(
             self.get_or_load_songs_unfiltered(),
@@ -534,33 +542,67 @@ impl Playlist {
         *self.selected_songs.borrow_mut() = selected_songs;
     }
 
-    fn get_or_load_playlist_data_refcell(&self) -> &RefCell<PlaylistData> {
-        self.playlist_data.get_or_init(|| {
+    fn get_or_load_user_data_refcell(&self) -> &RefCell<PlaylistUserData> {
+        self.playlist_user_data.get_or_init(|| {
             let playlist_data = CONTENT_POOL
-                .get_playlist_data(self.id)
-                .expect("Load playlist data");
-            // Expect above because cant create playlist data with an unknown id
+                .get_playlist_user_data(self.id)
+                .unwrap_or_else(|_| {
+                    PlaylistUserData::new(PlaylistContentData::new("Deleted Playlist".to_string(), self.parent.id))
+                });
 
             RefCell::new(playlist_data)
         })
     }
 
-    fn get_or_load_playlist_data_mut(&self) -> RefMut<'_, PlaylistData> {
-        self.get_or_load_playlist_data_refcell().borrow_mut()
+    fn get_or_load_user_data_mut(&self) -> RefMut<'_, PlaylistUserData> {
+        self.get_or_load_user_data_refcell().borrow_mut()
     }
 
-    pub fn get_or_load_playlist_data(&self) -> Ref<'_, PlaylistData> {
-        self.get_or_load_playlist_data_refcell().borrow()
+    pub fn get_or_load_user_data(&self) -> Ref<'_, PlaylistUserData> {
+        self.get_or_load_user_data_refcell().borrow()
     }
 
     pub fn get_name(&self) -> Ref<'_, String> {
-        Ref::map(self.get_or_load_playlist_data(), |d| &d.content_data.name)
+        Ref::map(self.get_or_load_user_data(), |d| &d.content_data.name)
+    }
+
+    fn get_song_list_data_refcell(&self) -> &RefCell<PlaylistSongListData> {
+        self.playlist_song_list_data.get_or_init(|| {
+            let song_list_data = CONTENT_POOL
+                .get_playlist_song_list_data(self.id)
+                .unwrap_or_else(|_| {
+                    PlaylistSongListData {
+                        song_ids: Vec::new()
+                    }
+                });
+
+            RefCell::new(song_list_data)
+        })
+    }
+
+    fn get_song_list_data(&self) -> Ref<'_, PlaylistSongListData> {
+        self.get_song_list_data_refcell().borrow()
+    }
+
+    fn get_song_list_mut(&self) -> RefMut<'_, PlaylistSongListData> {
+        self.get_song_list_data_refcell().borrow_mut()
     }
 
     /// Saves the list of songs to the file at `self.path_named`
     /// This does nothing if `self.variant` is [`PlaylistVariant::AllSongs`] or if this is the 'all songs' playlist
 
-    fn save_contents(&self) {
+    fn save_user_datab(&self) {
+        if matches!(self.variant, PlaylistVariant::AllSongs) || self.id == Id::ZERO {
+            return;
+        }
+
+        let playlist_data = self.get_or_load_user_data();
+        playlist_data
+            .save_data(self.id)
+            .expect("Write playlist user data to file");
+    }
+
+    fn save_song_list(&self) {
         if matches!(self.variant, PlaylistVariant::AllSongs) || self.id == Id::ZERO {
             return;
         }
@@ -569,18 +611,16 @@ impl Playlist {
 
         let songs = read_rwlock(&songs_unfiltered);
 
-        let mut playlist_data = self.get_or_load_playlist_data_mut();
+        let mut song_list = self.get_song_list_mut();
 
-        playlist_data.song_ids.clear();
-        playlist_data.song_ids.reserve(songs.len());
+        song_list.song_ids.clear();
+        song_list.song_ids.reserve(songs.len());
 
         for song in songs.iter() {
-            playlist_data.song_ids.push(song.id);
+            song_list.song_ids.push(song.id);
         }
 
-        playlist_data
-            .save_data()
-            .expect("Write playlist data to file");
+        song_list.save_data(self.id).expect("Write playlist song list data to file");
     }
 }
 
@@ -615,10 +655,10 @@ impl ParsedSearch {
                 not: false,
             })
         } else if let Some(Terms {
-            search_type,
-            search_value,
-            not,
-        }) = Self::try_get_terms(search_str)
+                               search_type,
+                               search_value,
+                               not,
+                           }) = Self::try_get_terms(search_str)
         {
             let parsed_search_type = match &*search_type {
                 "title" => Some(ParsedSearchType::Title),

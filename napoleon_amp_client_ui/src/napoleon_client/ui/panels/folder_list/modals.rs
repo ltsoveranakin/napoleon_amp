@@ -3,7 +3,7 @@ use napoleon_amp_core::content::folder::Folder;
 use napoleon_amp_core::content::playlist::Playlist;
 use std::rc::Rc;
 
-enum CreateFolderContentDialogVariant {
+pub(super) enum CreateFolderContentDialogVariant {
     SubFolder,
     Playlist,
 }
@@ -85,12 +85,12 @@ impl FolderListModals {
                     match variant {
                         CreateFolderContentDialogVariant::SubFolder => {
                             Folder::create_folder(&current_folder, name.clone())
-                                .expect("Err create folder");
+                                .expect("Error creating folder");
                         }
 
                         CreateFolderContentDialogVariant::Playlist => {
                             Folder::create_playlist(&current_folder, name.clone())
-                                .expect("Err create playlist");
+                                .expect("Error creating playlist");
                         }
                     }
 

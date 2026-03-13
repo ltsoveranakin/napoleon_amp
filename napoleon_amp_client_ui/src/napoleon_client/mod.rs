@@ -19,7 +19,7 @@ pub struct NapoleonClientApp {
 impl NapoleonClientApp {
     pub fn new() -> Self {
         let core_instance = NapoleonInstance::new();
-        let current_folder = Rc::clone(core_instance.get_base_folder());
+        let current_folder = Rc::clone(&core_instance.base_folder);
 
         Self {
             core_instance,

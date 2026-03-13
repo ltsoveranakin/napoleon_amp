@@ -22,14 +22,13 @@ pub enum FolderDataContentVariant {
 
 #[derive(SerBytes, Debug)]
 pub struct ContentData<P> {
-    pub id: Id,
     pub name: String,
     pub parent: P,
 }
 
 impl<P> ContentData<P> {
-    pub(super) fn new(id: Id, name: String, parent: P) -> Self {
-        Self { id, name, parent }
+    pub(super) fn new(name: String, parent: P) -> Self {
+        Self { name, parent }
     }
 }
 
@@ -57,18 +56,18 @@ impl FolderData {
         }
     }
 
-    pub fn get_folder_data_path(&self) -> PathBuf {
-        content_folder_file(self.content_data.id)
+    pub fn get_folder_data_path(id: Id) -> PathBuf {
+        content_folder_file(id)
     }
 
-    pub(crate) fn save_data(&self) -> io::Result<()> {
-        self.write_to_file_path(self.get_folder_data_path())
+    pub(crate) fn save_data(&self, id: Id) -> io::Result<()> {
+        self.write_to_file_path(Self::get_folder_data_path(id))
     }
 }
 
 #[derive(Debug)]
 pub struct Folder {
-    folder_id: Id,
+    pub id: Id,
     pub parent: Option<Weak<Folder>>,
     folder_data: OnceCell<RefCell<FolderData>>,
     contents: OnceCell<RefCell<Vec<FolderContentVariant>>>,
@@ -77,7 +76,7 @@ pub struct Folder {
 impl Folder {
     pub(crate) fn new(folder_id: Id, parent: Option<Weak<Folder>>) -> Self {
         Self {
-            folder_id,
+            id: folder_id,
             parent,
             folder_data: OnceCell::new(),
             contents: OnceCell::new(),
@@ -85,7 +84,7 @@ impl Folder {
     }
 
     pub fn create_folder(this: &Rc<Self>, folder_name: String) -> io::Result<()> {
-        let folder_id = CONTENT_POOL.create_new_folder(folder_name, Some(this.folder_id))?;
+        let folder_id = CONTENT_POOL.create_new_folder(folder_name, Some(this.id))?;
 
         Self::create_content(this, FolderDataContentVariant::Folder, folder_id);
 
@@ -93,7 +92,7 @@ impl Folder {
     }
 
     pub fn create_playlist(this: &Rc<Self>, playlist_name: String) -> io::Result<()> {
-        let playlist_id = CONTENT_POOL.create_new_playlist(playlist_name, this.folder_id)?;
+        let playlist_id = CONTENT_POOL.create_new_playlist(playlist_name, this.id)?;
 
         Self::create_content(this, FolderDataContentVariant::Playlist, playlist_id);
 
@@ -113,7 +112,7 @@ impl Folder {
                 FolderDataContentVariant::Folder => CONTENT_POOL.delete_folder(&content.id),
             }
 
-            folder_data.save_data()
+            folder_data.save_data(this.id)
         } else {
             Err(ErrorKind::InvalidInput.into())
         }
@@ -121,17 +120,16 @@ impl Folder {
 
     fn get_folder_data_refcell(&self) -> &RefCell<FolderData> {
         self.folder_data.get_or_init(|| {
-            let folder_path = content_folder_file(self.folder_id);
+            let folder_path = content_folder_file(self.id);
 
             let data = FolderData::from_file_path(folder_path).unwrap_or_else(|_| {
-                assert_eq!(self.folder_id, Id::ZERO, "Temp fix for base folder");
+                assert_eq!(self.id, Id::ZERO, "Temp fix for base folder");
                 let data = FolderData::new(FolderContentData::new(
-                    self.folder_id,
                     "Base".to_string(),
                     None,
                 ));
 
-                data.save_data().expect("write folder data to disk");
+                data.save_data(self.id).expect("write folder data to disk");
 
                 data
             });
@@ -161,7 +159,7 @@ impl Folder {
             }
 
             FolderDataContentVariant::Playlist => {
-                FolderContentVariant::Playlist(Rc::new(Playlist::new_file(id)))
+                FolderContentVariant::Playlist(Rc::new(Playlist::new_file(id, this)))
             }
         }
     }
@@ -189,17 +187,20 @@ impl Folder {
     }
 
     fn create_content(this: &Rc<Self>, variant: FolderDataContentVariant, id: Id) {
-        let mut folder_data = this.get_folder_data_mut();
-        let mut contents = Self::get_contents_mut(this);
+        {
+            let mut contents = Self::get_contents_mut(this);
 
-        contents.push(Self::get_folder_content_variant(this, variant, id));
+            contents.push(Self::get_folder_content_variant(this, variant, id));
+        }
+
+        let mut folder_data = this.get_folder_data_mut();
 
         folder_data
             .contents
             .push(ContentsListElements { id, variant });
 
         folder_data
-            .write_to_file_path(content_folder_file(this.folder_id))
+            .write_to_file_path(content_folder_file(this.id))
             .expect("Write folder data to file");
     }
 }

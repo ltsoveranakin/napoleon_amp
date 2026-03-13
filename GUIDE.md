@@ -35,7 +35,7 @@ any attribute that matches the query.
 In order to search by other attributes a custom search syntax can be used.
 
 To use the custom syntax, prefix the search with "$" and then the attribute name (available attributes are "title", "
-artist", "album", and "any").
+artist", "album", "tag", and "any").
 Followed by a colon and the filter term.
 
 To filter all tracks by "Daft Punk" the following query can be used:

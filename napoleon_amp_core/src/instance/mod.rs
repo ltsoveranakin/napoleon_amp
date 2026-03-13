@@ -3,7 +3,7 @@ mod fixup;
 
 use crate::content::folder::Folder;
 use crate::content::playlist::data::PlaybackMode;
-use crate::content::playlist::Playlist;
+use crate::content::playlist::{Playlist, PlaylistVariant};
 use crate::content::song::Song;
 use crate::discord_rpc::discord_rpc_thread;
 use crate::id_generator::Id;
@@ -11,13 +11,14 @@ use crate::instance::data::InstanceData;
 use crate::read_rwlock;
 use rand::{rng, RngExt};
 use std::cell::LazyCell;
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
 use std::sync::Arc;
 use std::thread;
 use std::thread::JoinHandle;
 
 pub struct NapoleonInstance {
-    base_folder: Rc<Folder>,
+    pub base_folder: Rc<Folder>,
+    all_songs: Weak<Playlist>,
     copied_songs: Option<Vec<Arc<Song>>>,
     currently_playing_playlist: Option<Rc<Playlist>>,
     instance_data: LazyCell<InstanceData>,
@@ -29,6 +30,7 @@ impl NapoleonInstance {
         Self {
             // TODO: initialize thru content_pool
             base_folder: Rc::new(Folder::new(Id::ZERO, None)),
+            all_songs: Weak::new(),
             copied_songs: None,
             currently_playing_playlist: None,
             instance_data: LazyCell::new(InstanceData::init_self),
@@ -40,10 +42,6 @@ impl NapoleonInstance {
                 }
             })),
         }
-    }
-
-    pub fn get_base_folder(&self) -> &Rc<Folder> {
-        &self.base_folder
     }
 
     pub fn copy_selected_songs(&mut self, playlist: &Playlist) {
@@ -104,5 +102,19 @@ impl NapoleonInstance {
             .push_temporary_queue(song);
 
         Ok(())
+    }
+
+    pub fn get_all_songs_playlist(&mut self) -> Rc<Playlist> {
+        let upgraded_opt = Weak::upgrade(&self.all_songs);
+
+        if let Some(upgraded) = upgraded_opt {
+            upgraded
+        } else {
+            let playlist = Rc::new(Playlist::new(Id::ZERO, PlaylistVariant::AllSongs, &self.base_folder));
+
+            self.all_songs = Rc::downgrade(&playlist);
+
+            playlist
+        }
     }
 }

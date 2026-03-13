@@ -50,7 +50,7 @@ impl PlaylistPanel {
         if matches!(self.current_playlist.variant, PlaylistVariant::Normal) {
             ui.heading(
                 self.current_playlist
-                    .get_or_load_playlist_data()
+                    .get_or_load_user_data()
                     .content_data
                     .name
                     .clone(),
