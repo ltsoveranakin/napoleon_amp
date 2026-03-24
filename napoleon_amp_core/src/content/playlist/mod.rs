@@ -507,19 +507,36 @@ impl Playlist {
 
         let playlist_data = self.get_or_load_user_data();
 
+        let actual_index =
+
+            if !read_rwlock(&self.songs_filtered).is_empty() {
+                let songs_vec = self.get_or_load_songs();
+                let songs = read_rwlock(&songs_vec);
+                let song_to_start_with = &songs[song_index];
+
+                let mut index = None;
+
+                for (i, song) in read_rwlock(&self.get_or_load_songs_unfiltered()).iter().enumerate() {
+                    if song == song_to_start_with {
+                        index = Some(i);
+                        break;
+                    }
+                }
+
+                index.expect("Song in filtered but now unfiltered (HOW???)")
+            } else {
+                song_index
+            };
+
         let music_manager = MusicManager::try_create(
             self.get_or_load_songs_unfiltered(),
-            song_index,
+            actual_index,
             playlist_data.volume,
             playlist_data.playback_mode,
         );
 
         self.music_manager.replace(music_manager);
     }
-
-    // pub(crate) fn start_play_playlist(&self, ) {
-    //
-    // }
 
     pub(crate) fn stop_music(&self) {
         if let Some(music_manager) = self.music_manager.take() {
