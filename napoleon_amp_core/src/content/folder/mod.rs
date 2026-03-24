@@ -2,15 +2,14 @@ pub mod content;
 pub(crate) mod content_pool;
 
 use crate::content::folder::content::FolderContentVariant;
-use crate::content::folder::content_pool::CONTENT_POOL;
+use crate::content::folder::content_pool::{RemoveAssociatedFileError, CONTENT_POOL};
 use crate::content::playlist::Playlist;
-use crate::id_generator::Id;
 use crate::paths::content_folder_file;
 use serbytes::prelude::{MayNotExistOrDefault, SerBytes};
+use simple_id::prelude::Id;
 use std::cell::{OnceCell, Ref, RefCell, RefMut};
 use std::fmt::Debug;
 use std::io;
-use std::io::ErrorKind;
 use std::path::PathBuf;
 use std::rc::{Rc, Weak};
 
@@ -66,6 +65,26 @@ impl FolderData {
 }
 
 #[derive(Debug)]
+pub enum DeleteContentError {
+    Io(io::Error),
+    RemoveAssoc(RemoveAssociatedFileError),
+    IndexOutOfBounds,
+
+}
+
+impl From<io::Error> for DeleteContentError {
+    fn from(value: io::Error) -> Self {
+        Self::Io(value)
+    }
+}
+
+impl From<RemoveAssociatedFileError> for DeleteContentError {
+    fn from(value: RemoveAssociatedFileError) -> Self {
+        Self::RemoveAssoc(value)
+    }
+}
+
+#[derive(Debug)]
 pub struct Folder {
     pub id: Id,
     pub parent: Option<Weak<Folder>>,
@@ -99,7 +118,7 @@ impl Folder {
         Ok(())
     }
 
-    pub fn delete_content(this: &Rc<Self>, content_index: usize) -> io::Result<()> {
+    pub fn delete_content(this: &Rc<Self>, content_index: usize) -> Result<(), DeleteContentError> {
         let mut folder_data = this.get_folder_data_mut();
         let folder_data_contents = &mut folder_data.contents;
 
@@ -108,26 +127,28 @@ impl Folder {
             let content = Self::get_contents_mut(this).remove(content_index);
 
             match content {
-                FolderContentVariant::Playlist(playlist) => CONTENT_POOL.delete_playlist(&playlist.id),
+                FolderContentVariant::Playlist(playlist) => CONTENT_POOL.delete_playlist(&playlist.id)?,
                 FolderContentVariant::Folder(folder) => {
                     Folder::delete_self(&folder)?;
                 }
             }
 
-            folder_data.save_data(this.id)
+            folder_data.save_data(this.id)?;
+
+            Ok(())
         } else {
-            Err(ErrorKind::InvalidInput.into())
+            Err(DeleteContentError::IndexOutOfBounds)
         }
     }
 
-    fn delete_self(this: &Rc<Self>) -> io::Result<()> {
+    fn delete_self(this: &Rc<Self>) -> Result<(), DeleteContentError> {
         let contents_len = Folder::get_contents(this).len();
 
-        for content_index in 0..contents_len {
+        for content_index in (0..contents_len).rev() {
             Folder::delete_content(this, content_index)?;
         }
 
-        CONTENT_POOL.delete_folder(&this.id);
+        CONTENT_POOL.delete_folder(&this.id)?;
 
         Ok(())
     }

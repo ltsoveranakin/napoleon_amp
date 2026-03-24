@@ -2,10 +2,10 @@ mod master;
 pub mod song_data;
 
 use crate::content::song::song_data::{get_song_data_from_song_file, SongData};
-use crate::id_generator::Id;
 use crate::paths::song::{song_audio_file_v2, song_data_file_v2};
 use crate::{read_rwlock, write_rwlock, ReadWrapper, WriteWrapper};
 use serbytes::prelude::SerBytes;
+use simple_id::prelude::Id;
 use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
 use std::sync::{OnceLock, RwLock};

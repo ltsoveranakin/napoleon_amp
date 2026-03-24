@@ -9,8 +9,6 @@ use crate::content::playlist::manager::MusicManager;
 use crate::content::playlist::song_list::{SongList, SongVec, SortBy, SortByVariant};
 use crate::content::song::song_data::SongData;
 use crate::content::song::Song;
-
-use crate::id_generator::{Id, SmallRngIdGenerator};
 use crate::paths::song::{song_audio_file_v2, songs_audio_dir_v2, songs_data_dir_v2};
 use crate::paths::SONG_DATA_EXT_NO_PER;
 use crate::song_pool::SONG_POOL;
@@ -23,6 +21,7 @@ use std::fs::File;
 
 use crate::content::folder::Folder;
 use serbytes::prelude::SerBytes;
+use simple_id::prelude::{Id, RandomDataProvider, SmallRngIdGenerator};
 use std::ops::RangeInclusive;
 use std::path::PathBuf;
 use std::rc::{Rc, Weak};
@@ -282,7 +281,7 @@ impl Playlist {
                 }
             }
 
-            let mut generator = SmallRngIdGenerator::new();
+            let mut generator = SmallRngIdGenerator::new(RandomDataProvider::new());
 
             for (i, original_song_path) in song_paths.iter().enumerate() {
                 if original_song_path.extension().unwrap() == SONG_DATA_EXT_NO_PER {

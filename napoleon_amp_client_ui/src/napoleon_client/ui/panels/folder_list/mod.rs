@@ -14,6 +14,7 @@ use napoleon_amp_core::content::playlist::data::PlaylistUserData;
 use napoleon_amp_core::content::playlist::Playlist;
 use napoleon_amp_core::discord_rpc::set_rpc_playlist;
 use napoleon_amp_core::instance::NapoleonInstance;
+use napoleon_amp_core::simple_id::prelude::Id;
 use std::path::Path;
 use std::rc::{Rc, Weak};
 
@@ -163,7 +164,7 @@ impl FolderList {
                         if Self::shared_popup_ui(
                             ui,
                             "playlist",
-                            PlaylistUserData::get_data_path(playlist.id),
+                            PlaylistUserData::get_data_path(playlist.id), playlist.id,
                         ) {
                             delete_index = Some((Rc::clone(&self.current_folder), current_index));
                         }
@@ -199,9 +200,9 @@ impl FolderList {
                                 ui,
                                 "folder",
                                 FolderData::get_folder_data_path(folder.id)
-                                ,
+                                , folder.id,
                             ) {
-                                delete_index = Some((Rc::clone(folder), current_index));
+                                delete_index = Some((Rc::clone(current_folder), current_index));
                             }
                         })
                     });
@@ -227,10 +228,15 @@ impl FolderList {
     /// Shared popup UI between folders and playlists
     ///
     /// Returns true if the content should be deleted
-    fn shared_popup_ui(ui: &mut Ui, variant_text: &str, path: impl AsRef<Path>) -> bool {
+    fn shared_popup_ui(ui: &mut Ui, variant_text: &str, path: impl AsRef<Path>, id: Id) -> bool {
         open_location_button(ui, variant_text, path);
 
-        ui.button(format!("Delete {}", variant_text)).clicked()
+
+        let delete_clicked = ui.button(format!("Delete {}", variant_text)).clicked();
+
+        ui.label(format!("({id})"));
+
+        delete_clicked
     }
 
     fn playlist_button<'a>(&mut self, ui: &mut Ui, label: impl IntoAtoms<'a>) -> Response {

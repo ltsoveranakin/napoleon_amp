@@ -1,9 +1,8 @@
 use crate::content::song::Song;
-use crate::id_generator::Id;
-
 use crate::paths::song::registered_songs_data_file_v2;
 use crate::{read_rwlock, write_rwlock, ReadWrapper};
 use serbytes::prelude::SerBytes;
+use simple_id::prelude::Id;
 use std::collections::HashMap;
 use std::io;
 use std::sync::{Arc, LazyLock, RwLock};

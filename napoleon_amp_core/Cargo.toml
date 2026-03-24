@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 dirs-next = "2.0"
 serbytes = { git = "https://github.com/ltsoveranakin/serbytes.git" }
+simple_id = { git = "https://github.com/ltsoveranakin/simple_id.git" }
 rodio = { version = "0.21", default-features = false, features = ["symphonia-all", "playback"] }
 symphonia = { version = "0.5.4", features = ["mp3", "symphonia-bundle-mp3"] }
 rand = "0.10"

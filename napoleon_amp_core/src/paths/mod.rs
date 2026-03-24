@@ -1,7 +1,7 @@
 pub(super) mod song;
 
-use crate::id_generator::Id;
 use chrono::{Datelike, Local, Timelike};
+use simple_id::prelude::Id;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::{fs, io};

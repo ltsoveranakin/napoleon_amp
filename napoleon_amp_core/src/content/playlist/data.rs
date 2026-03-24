@@ -1,8 +1,8 @@
 use crate::content::folder::ContentData;
 use crate::content::playlist::song_list::SortBy;
-use crate::id_generator::Id;
 use crate::paths::{content_playlist_song_list_file, content_playlist_user_data_file};
 use serbytes::prelude::SerBytes;
+use simple_id::prelude::Id;
 use std::fmt::{Display, Formatter};
 use std::io;
 use std::path::PathBuf;

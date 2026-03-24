@@ -1,9 +1,9 @@
 use crate::content::song::song_data::{SongData, MAX_RATING};
 use crate::content::song::Song;
-use crate::id_generator::Id;
 use crate::song_pool::SONG_POOL;
 use crate::{read_rwlock, write_rwlock, ReadWrapper};
 use serbytes::prelude::SerBytes;
+use simple_id::prelude::Id;
 use std::collections::HashSet;
 use std::fmt::{Display, Formatter};
 use std::sync::{Arc, RwLock};
