@@ -60,6 +60,10 @@ impl NapoleonInstance {
         }
     }
 
+    pub fn has_copied_songs(&self) -> bool {
+        self.copied_songs.is_some()
+    }
+
     pub fn start_play_song(&mut self, playlist: Rc<Playlist>, song_index: usize) {
         self.stop_music();
         playlist.start_play_song(song_index);

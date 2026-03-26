@@ -154,6 +154,12 @@ impl FolderList {
                     }
 
                     Popup::context_menu(&playlist_button).show(|ui| {
+                        if napoleon_instance.has_copied_songs() {
+                            if ui.button("Paste songs").clicked() {
+                                napoleon_instance.paste_copied_songs(playlist);
+                            }
+                        }
+
                         if ui.button("Rename Playlist").clicked() {
                             self.current_modal = FolderListModals::RenamePlaylist {
                                 name: String::new(),

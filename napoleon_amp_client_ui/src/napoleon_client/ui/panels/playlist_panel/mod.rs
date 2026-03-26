@@ -279,6 +279,10 @@ impl PlaylistPanel {
                                             };
                                         }
 
+                                        if ui.button("Copy selected").clicked() {
+                                            napoleon_instance.copy_selected_songs(current_playlist);
+                                        }
+
                                         ui.menu_button("Open song location", |ui| {
                                             if ui.button("Audio file").clicked() {
                                                 show_file_in_explorer(&song.song_audio_path).expect("Error showing file in explorer")
