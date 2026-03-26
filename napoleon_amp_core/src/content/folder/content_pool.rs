@@ -4,7 +4,7 @@ use crate::paths::{content_folder_file, content_folders_index_file, content_play
 use crate::song_pool::SONG_POOL;
 use crate::{write_rwlock, WriteWrapper};
 use serbytes::prelude::{BBReadResult, ReadError, SerBytes};
-use simple_id::prelude::{Id, RandomDataProvider, SmallRngIdGenerator};
+use simple_id::prelude::{Id, SmallRngIdGenerator};
 use std::collections::HashSet;
 use std::io::ErrorKind;
 use std::path::PathBuf;
@@ -29,7 +29,7 @@ impl ContentInner
     {
         Self {
             index_data_path: index_path,
-            id_generator: SmallRngIdGenerator::new(RandomDataProvider::new()),
+            id_generator: SmallRngIdGenerator::default(),
             index_data: None,
             provide_assoc_files: Box::new(provide_assoc_files),
         }

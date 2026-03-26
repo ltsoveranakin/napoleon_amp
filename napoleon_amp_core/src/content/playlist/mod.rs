@@ -21,7 +21,7 @@ use std::fs::File;
 
 use crate::content::folder::Folder;
 use serbytes::prelude::SerBytes;
-use simple_id::prelude::{Id, RandomDataProvider, SmallRngIdGenerator};
+use simple_id::prelude::{Id, SmallRngIdGenerator};
 use std::ops::RangeInclusive;
 use std::path::PathBuf;
 use std::rc::{Rc, Weak};
@@ -281,7 +281,7 @@ impl Playlist {
                 }
             }
 
-            let mut generator = SmallRngIdGenerator::new(RandomDataProvider::new());
+            let mut generator = SmallRngIdGenerator::default();
 
             for (i, original_song_path) in song_paths.iter().enumerate() {
                 if original_song_path.extension().unwrap() == SONG_DATA_EXT_NO_PER {
