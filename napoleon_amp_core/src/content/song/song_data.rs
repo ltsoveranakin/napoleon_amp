@@ -1,9 +1,10 @@
 use crate::content::song::{Song, UNKNOWN_ALBUM_STR, UNKNOWN_ARTIST_STR};
-use serbytes::prelude::{MayNotExistOrDefault, SerBytes};
+use serbytes::prelude::{BBReadResult, MayNotExistOrDefault, ReadError, SerBytes};
 use std::fs;
 use std::fs::File;
 use std::path::PathBuf;
 use std::sync::LazyLock;
+use std::time::Duration;
 use symphonia::core::formats::FormatOptions;
 use symphonia::core::io::{MediaSourceStream, MediaSourceStreamOptions};
 use symphonia::core::meta::{MetadataOptions, StandardTagKey, Value};
@@ -35,6 +36,17 @@ impl Artist {
     }
 }
 
+#[derive(SerBytes, Clone, Debug)]
+pub struct SongDataMeta {
+    pub length: u32,
+}
+
+impl Default for SongDataMeta {
+    fn default() -> Self {
+        Self { length: 0 }
+    }
+}
+
 /// Data stored for each song which has been registered, contains metadata which is commonly used
 
 #[derive(SerBytes, Clone, Debug)]
@@ -48,6 +60,7 @@ pub struct SongData {
     /// where 0 represents unrated and 1-5 represent a rating
     pub rating: u8,
     pub user_tag: MayNotExistOrDefault<String>,
+    pub meta: BBReadResult<SongDataMeta>,
 }
 
 impl Default for SongData {
@@ -60,6 +73,7 @@ impl Default for SongData {
             audio_file: String::new().into(),
             rating: 0,
             user_tag: String::new().into(),
+            meta: Err(ReadError::new(String::new())),
         }
     }
 }
@@ -86,6 +100,12 @@ pub(super) fn get_song_data_from_song_file_with_paths(
 
     let mss = MediaSourceStream::new(Box::new(song_file), mss_options);
 
+    if song_data.meta.is_err() {
+        song_data.meta = Ok(SongDataMeta::default());
+    }
+
+    let song_data_meta = song_data.meta.as_mut().unwrap();
+
     match get_probe().format(
         Hint::new().with_extension(&ext),
         mss,
@@ -93,6 +113,16 @@ pub(super) fn get_song_data_from_song_file_with_paths(
         &MetadataOptions::default(),
     ) {
         Ok(mut probe_result) => {
+            if let Some(track) = probe_result.format.default_track() {
+                let params = &track.codec_params;
+                if let (Some(sample_rate), Some(total_frames)) = (params.sample_rate, params.n_frames) {
+                    let duration_seconds = total_frames as f64 / sample_rate as f64;
+                    let duration = Duration::from_secs_f64(duration_seconds);
+                    song_data_meta.length = duration.as_secs() as u32;
+                }
+            }
+
+
             if let Some(meta) = probe_result.metadata.get() {
                 if let Some(meta_revision) = meta.current() {
                     for tag in meta_revision.tags() {

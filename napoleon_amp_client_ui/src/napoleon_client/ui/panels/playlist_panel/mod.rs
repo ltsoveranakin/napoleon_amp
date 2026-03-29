@@ -181,7 +181,7 @@ impl PlaylistPanel {
                     .column(Column::remainder())
                     .column(Column::remainder())
                     .column(Column::remainder())
-                    .column(Column::remainder())
+                    .column(Column::remainder()).column(Column::remainder())
                     .header(20.0, |mut header| {
                         header.col(|ui| {
                             ui.heading("Title");
@@ -201,6 +201,10 @@ impl PlaylistPanel {
 
                         header.col(|ui| {
                             ui.heading("User Tag");
+                        });
+
+                        header.col(|ui| {
+                            ui.heading("Length");
                         });
                     })
                     .body(|body| {
@@ -350,6 +354,10 @@ impl PlaylistPanel {
                                 row.col(|ui| {
                                     ui.label(&song_data.user_tag.inner);
                                 });
+
+                                row.col(|ui| {
+                                    ui.label(Self::secs_to_str(song_data.meta.as_ref().unwrap().length as u64));
+                                });
                             });
                         }
 
@@ -480,8 +488,10 @@ impl PlaylistPanel {
     }
 
     fn duration_to_str(duration: Duration) -> String {
-        let secs = duration.as_secs();
+        Self::secs_to_str(duration.as_secs())
+    }
 
+    fn secs_to_str(secs: u64) -> String {
         let seconds = secs % 60;
         let minutes = secs / 60;
 

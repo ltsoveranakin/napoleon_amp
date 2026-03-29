@@ -385,6 +385,10 @@ impl Playlist {
     }
 
     pub fn delete_song(&self, song_index: usize) {
+        if matches!(self.variant, PlaylistVariant::AllSongs) {
+            return;
+        }
+        
         {
             let mut song_list = self.songs.borrow_mut();
             let songs_filtered = read_rwlock(&self.songs_filtered);

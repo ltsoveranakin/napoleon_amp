@@ -67,8 +67,8 @@ impl ContentInner
 
 #[derive(Debug)]
 pub struct RemoveAssociatedFileError {
-    io_error: io::Error,
-    file_path: PathBuf,
+    pub io_error: io::Error,
+    pub file_path: PathBuf,
 }
 
 type RmAssocResult = Result<(), RemoveAssociatedFileError>;

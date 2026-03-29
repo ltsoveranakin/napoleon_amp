@@ -56,6 +56,14 @@ impl Song {
                     sd
                 });
 
+            if song_data.meta.is_err() {
+                let mut sd = SongData::default();
+
+                get_song_data_from_song_file(&self, &mut sd);
+
+                song_data.meta = sd.meta;
+            }
+
             if song_data.artist.full_artist_string.len() == 0 {
                 song_data.artist.full_artist_string = UNKNOWN_ARTIST_STR.to_string();
             }
