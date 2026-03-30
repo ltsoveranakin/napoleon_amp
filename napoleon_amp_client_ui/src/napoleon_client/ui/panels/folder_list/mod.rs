@@ -110,7 +110,7 @@ impl FolderList {
     fn render_sub_folder_content(
         &mut self,
         ui: &mut Ui,
-        current_folder: &Rc<Folder>,
+        current_sub_folder: &Rc<Folder>,
         playlist_panel: &mut Option<PlaylistPanel>,
         next_playlist: &mut Option<Rc<Playlist>>,
         next_folder: &mut Option<Rc<Folder>>,
@@ -121,7 +121,7 @@ impl FolderList {
         // let current_folder = Rc::clone(&self.current_folder);
 
         for (current_index, folder_content_variant) in
-            Folder::get_contents(&current_folder).iter().enumerate()
+            Folder::get_contents(&current_sub_folder).iter().enumerate()
         {
             ui.separator();
 
@@ -172,7 +172,7 @@ impl FolderList {
                             "playlist",
                             PlaylistUserData::get_data_path(playlist.id), playlist.id,
                         ) {
-                            delete_index = Some((Rc::clone(&self.current_folder), current_index));
+                            delete_index = Some((Rc::clone(current_sub_folder), current_index));
                         }
                     });
                 }
@@ -208,7 +208,7 @@ impl FolderList {
                                 FolderData::get_folder_data_path(folder.id)
                                 , folder.id,
                             ) {
-                                delete_index = Some((Rc::clone(current_folder), current_index));
+                                delete_index = Some((Rc::clone(current_sub_folder), current_index));
                             }
                         })
                     });

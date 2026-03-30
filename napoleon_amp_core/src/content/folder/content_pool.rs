@@ -37,7 +37,8 @@ impl ContentInner
 
     fn get_index_data(&mut self) -> &mut HashSet<Id> {
         self.index_data.get_or_insert_with(|| {
-            HashSet::from_file_path(&self.index_data_path).unwrap_or_default()
+            // TODO: remove this expect
+            HashSet::from_file_path(&self.index_data_path).expect("that one error with invalidating the playlist index data")
         })
     }
 

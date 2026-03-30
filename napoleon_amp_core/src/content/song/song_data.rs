@@ -122,7 +122,6 @@ pub(super) fn get_song_data_from_song_file_with_paths(
                 }
             }
 
-
             if let Some(meta) = probe_result.metadata.get() {
                 if let Some(meta_revision) = meta.current() {
                     for tag in meta_revision.tags() {
@@ -174,6 +173,5 @@ pub(super) fn get_song_data_from_song_file_with_paths(
         }
     }
 
-    // TODO: why is this here?
     fs::write(song_data_path, song_data.to_bb().buf()).expect("Clean write to song data file");
 }
