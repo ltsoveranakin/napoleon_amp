@@ -30,8 +30,12 @@ impl ContentInner
         }
     }
 
+    fn get_associated_files(&self, id: Id) -> Vec<PathBuf> {
+        (self.provide_assoc_files)(id)
+    }
+
     fn remove_file_assoc(&self, id: Id) -> Result<(), RemoveAssociatedFileError> {
-        for file_path in (self.provide_assoc_files)(id) {
+        for file_path in self.get_associated_files(id) {
             if let Err(io_error) =
                 fs::remove_file(&file_path) {
                 // Dont care if file doesnt exist... we're deleting it anyways lol
@@ -45,6 +49,16 @@ impl ContentInner
         }
 
         Ok(())
+    }
+
+    fn exists(&self, id: Id) -> bool {
+        for file_path in self.get_associated_files(id) {
+            if fs::exists(file_path).unwrap_or(false) {
+                return true;
+            }
+        }
+
+        false
     }
 }
 
@@ -68,7 +82,7 @@ impl ContentPool {
                 vec![content_folder_file(id)]
             })),
             playlists: RwLock::new(ContentInner::new(|id| {
-                vec![content_playlist_song_list_file(id), content_playlist_user_data_file(id)]
+                vec![content_playlist_user_data_file(id), content_playlist_song_list_file(id), ]
             })),
         }
     }
@@ -101,14 +115,6 @@ impl ContentPool {
         } else {
             PlaylistSongListData::from_file_path(content_playlist_song_list_file(playlist_id))
         }
-    }
-
-    pub(super) fn check_folder_exists(folder_id: Id) -> bool {
-        fs::exists(content_folder_file(folder_id)).unwrap_or(false)
-    }
-
-    pub(super) fn check_playlist_exists(playlist_id: Id) -> bool {
-        fs::exists(content_playlist_user_data_file(playlist_id)).unwrap_or(false)
     }
 
     pub(super) fn delete_playlist(&self, playlist_id: &Id) -> RmAssocResult {
@@ -168,7 +174,7 @@ impl ContentPool {
         loop {
             let id = content_inner_mut.id_generator.generate_new_id();
 
-            if !Self::check_folder_exists(id) {
+            if !content_inner_mut.exists(id) {
                 return id;
             }
         }
