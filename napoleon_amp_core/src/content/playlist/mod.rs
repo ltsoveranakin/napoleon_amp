@@ -96,6 +96,7 @@ pub struct Playlist {
     selected_songs: RefCell<SelectedSongsVariant>,
     playlist_user_data: OnceCell<RefCell<PlaylistUserData>>,
     playlist_song_list_data: OnceCell<RefCell<PlaylistSongListData>>,
+    total_length: RefCell<Option<u32>>,
 }
 
 impl Playlist {
@@ -114,6 +115,7 @@ impl Playlist {
             selected_songs: RefCell::new(SelectedSongsVariant::None),
             playlist_user_data: OnceCell::new(),
             playlist_song_list_data: OnceCell::new(),
+            total_length: RefCell::new(None),
         }
     }
 
@@ -388,7 +390,7 @@ impl Playlist {
         if matches!(self.variant, PlaylistVariant::AllSongs) {
             return;
         }
-        
+
         {
             let mut song_list = self.songs.borrow_mut();
             let songs_filtered = read_rwlock(&self.songs_filtered);
@@ -483,6 +485,18 @@ impl Playlist {
 
     pub fn get_album_list(&self) -> Vec<String> {
         self.get_string_list(|song_data| &song_data.album)
+    }
+
+    pub fn get_total_length(&self) -> u32 {
+        *self.total_length.borrow_mut().get_or_insert_with(|| {
+            let mut total_length = 0;
+
+            for song in read_rwlock(&self.get_or_load_songs_unfiltered()).iter() {
+                total_length += song.get_song_data().meta.as_ref().unwrap().length;
+            }
+
+            total_length
+        })
     }
 
     fn get_string_list(&self, f: impl Fn(&SongData) -> &String) -> Vec<String> {

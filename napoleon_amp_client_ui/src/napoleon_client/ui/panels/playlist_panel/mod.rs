@@ -47,48 +47,57 @@ impl PlaylistPanel {
         napoleon_instance: &mut NapoleonInstance,
     ) {
         self.keystrokes_pressed(napoleon_instance, ctx);
-        if matches!(self.current_playlist.variant, PlaylistVariant::Normal) {
-            ui.heading(
-                self.current_playlist
-                    .get_or_load_user_data()
-                    .content_data
-                    .name
-                    .clone(),
-            );
 
-            ui.horizontal(|ui| {
-                #[cfg(not(target_os = "android"))]
-                if ui.button("Add Songs").clicked() {
-                    if let Some(paths) = rfd::FileDialog::new().pick_files() {
-                        self.playlist_modal = PlaylistModals::SongsImported {
-                            paths,
-                            song_already_exists_indexes: None,
-                        };
-                    }
-                }
+        ui.horizontal(|ui| {
+            if matches!(self.current_playlist.variant, PlaylistVariant::Normal) {
+                ui.vertical(|ui| {
+                    ui.heading(
+                        self.current_playlist
+                            .get_or_load_user_data()
+                            .content_data
+                            .name
+                            .clone(),
+                    );
 
-                if ui
-                    .button(format!(
-                        "Playback Mode: {}",
-                        self.current_playlist.playback_mode()
-                    ))
-                    .clicked()
-                {
-                    self.current_playlist.next_playback_mode();
-                }
+                    ui.horizontal(|ui| {
+                        #[cfg(not(target_os = "android"))]
+                        if ui.button("Add Songs").clicked() {
+                            if let Some(paths) = rfd::FileDialog::new().pick_files() {
+                                self.playlist_modal = PlaylistModals::SongsImported {
+                                    paths,
+                                    song_already_exists_indexes: None,
+                                };
+                            }
+                        }
 
-                let sort_by = self.current_playlist.get_sorting_by();
+                        if ui
+                            .button(format!(
+                                "Playback Mode: {}",
+                                self.current_playlist.playback_mode()
+                            ))
+                            .clicked()
+                        {
+                            self.current_playlist.next_playback_mode();
+                        }
 
-                if ui
-                    .button(format!("Sort: {}", sort_by.sort_by_variant))
-                    .clicked()
-                {
-                    self.current_playlist.next_sorting_by();
-                }
+                        let sort_by = self.current_playlist.get_sorting_by();
+
+                        if ui
+                            .button(format!("Sort: {}", sort_by.sort_by_variant))
+                            .clicked()
+                        {
+                            self.current_playlist.next_sorting_by();
+                        }
+                    });
+                });
+            } else {
+                ui.heading("All Songs");
+            }
+
+            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                ui.label(format!("{} songs, {}", read_rwlock(&self.current_playlist.get_or_load_songs_unfiltered()).len(), Self::secs_to_str(self.current_playlist.get_total_length() as u64)))
             });
-        } else {
-            ui.heading("All Songs");
-        }
+        });
 
         if ui
             .text_edit_singleline(&mut self.filter_search_content)
@@ -98,6 +107,7 @@ impl PlaylistPanel {
 
             self.current_playlist.set_search_query_filter(search_text);
         }
+
 
         self.render_modal(ui);
 
@@ -493,9 +503,17 @@ impl PlaylistPanel {
 
     fn secs_to_str(secs: u64) -> String {
         let seconds = secs % 60;
-        let minutes = secs / 60;
+        let minutes_total = secs / 60;
+        let minutes = minutes_total % 60;
+        let hours = minutes_total / 60;
 
-        format!("{}:{:02}", minutes, seconds)
+        let hours_minutes_str = if hours != 0 {
+            format!("{hours}:{:02}", minutes)
+        } else {
+            minutes.to_string()
+        };
+
+        format!("{hours_minutes_str}:{:02}", seconds)
     }
 
     fn col_return<R>(row: &mut TableRow, add_content: impl FnOnce(&mut Ui) -> R) -> R {
