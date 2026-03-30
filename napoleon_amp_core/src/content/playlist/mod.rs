@@ -4,7 +4,7 @@ pub mod queue;
 mod song_list;
 
 use crate::content::folder::content_pool::CONTENT_POOL;
-use crate::content::playlist::data::{PlaybackMode, PlaylistContentData, PlaylistSongListData, PlaylistUserData};
+use crate::content::playlist::data::{PlaybackMode, PlaylistSongListData, PlaylistUserData};
 use crate::content::playlist::manager::MusicManager;
 use crate::content::playlist::song_list::{SongList, SongVec, SortBy, SortByVariant};
 use crate::content::song::song_data::SongData;
@@ -579,10 +579,10 @@ impl Playlist {
     fn get_or_load_user_data_refcell(&self) -> &RefCell<PlaylistUserData> {
         self.playlist_user_data.get_or_init(|| {
             let playlist_data = CONTENT_POOL
-                .get_playlist_user_data(self.id)
-                .unwrap_or_else(|_| {
-                    PlaylistUserData::new(PlaylistContentData::new("Deleted Playlist".to_string(), self.parent.id))
-                });
+                .get_playlist_user_data(self.id).expect("Playlist not found in index??");
+            // .unwrap_or_else(|e| {
+            //     // PlaylistUserData::new(PlaylistContentData::new("Deleted Playlist".to_string(), self.parent.id))
+            // });
 
             RefCell::new(playlist_data)
         })

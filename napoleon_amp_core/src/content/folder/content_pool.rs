@@ -1,11 +1,10 @@
 use crate::content::folder::{FolderContentData, FolderData};
 use crate::content::playlist::data::{PlaylistContentData, PlaylistSongListData, PlaylistUserData};
-use crate::paths::{content_folder_file, content_folders_index_file, content_playlist_song_list_file, content_playlist_user_data_file, content_playlists_index_file};
+use crate::paths::{content_folder_file, content_playlist_song_list_file, content_playlist_user_data_file};
 use crate::song_pool::SONG_POOL;
 use crate::{write_rwlock, WriteWrapper};
-use serbytes::prelude::{BBReadResult, ReadError, SerBytes};
+use serbytes::prelude::{BBReadResult, SerBytes};
 use simple_id::prelude::{Id, SmallRngIdGenerator};
-use std::collections::HashSet;
 use std::io::ErrorKind;
 use std::path::PathBuf;
 use std::sync::{LazyLock, RwLock};
@@ -14,38 +13,21 @@ use std::{fs, io};
 pub(crate) static CONTENT_POOL: LazyLock<ContentPool> = LazyLock::new(ContentPool::new);
 
 struct ContentInner {
-    index_data_path: PathBuf,
     id_generator: SmallRngIdGenerator,
-    index_data: Option<HashSet<Id>>,
     provide_assoc_files: Box<dyn Send + Sync + 'static + Fn(Id) -> Vec<PathBuf>>,
 }
 
 impl ContentInner
 
 {
-    fn new<F>(index_path: PathBuf, provide_assoc_files: F) -> Self
+    fn new<F>(provide_assoc_files: F) -> Self
     where
         F: Send + Sync + 'static + Fn(Id) -> Vec<PathBuf>,
     {
         Self {
-            index_data_path: index_path,
             id_generator: SmallRngIdGenerator::default(),
-            index_data: None,
             provide_assoc_files: Box::new(provide_assoc_files),
         }
-    }
-
-    fn get_index_data(&mut self) -> &mut HashSet<Id> {
-        self.index_data.get_or_insert_with(|| {
-            // TODO: remove this expect
-            HashSet::from_file_path(&self.index_data_path).expect("that one error with invalidating the playlist index data")
-        })
-    }
-
-    fn save_index_data(&mut self) {
-        self.get_index_data()
-            .write_to_file_path(content_playlists_index_file())
-            .expect("Write index data to file");
     }
 
     fn remove_file_assoc(&self, id: Id) -> Result<(), RemoveAssociatedFileError> {
@@ -82,10 +64,10 @@ pub(crate) struct ContentPool {
 impl ContentPool {
     fn new() -> Self {
         Self {
-            folders: RwLock::new(ContentInner::new(content_folders_index_file(), |id| {
+            folders: RwLock::new(ContentInner::new(|id| {
                 vec![content_folder_file(id)]
             })),
-            playlists: RwLock::new(ContentInner::new(content_playlists_index_file(), |id| {
+            playlists: RwLock::new(ContentInner::new(|id| {
                 vec![content_playlist_song_list_file(id), content_playlist_user_data_file(id)]
             })),
         }
@@ -99,12 +81,8 @@ impl ContentPool {
             ));
 
             Ok(data)
-        } else if self.playlists_mut().get_index_data().contains(&playlist_id) {
-            PlaylistUserData::from_file_path(content_playlist_user_data_file(playlist_id))
         } else {
-            Err(ReadError::new(
-                "Playlist doesn't exist in index".to_string(),
-            ))
+            PlaylistUserData::from_file_path(content_playlist_user_data_file(playlist_id))
         }
     }
 
@@ -120,25 +98,17 @@ impl ContentPool {
             };
 
             Ok(data)
-        } else if self.playlists_mut().get_index_data().contains(&playlist_id) {
-            PlaylistSongListData::from_file_path(content_playlist_song_list_file(playlist_id))
         } else {
-            Err(ReadError::new(
-                "Playlist doesn't exist in index".to_string(),
-            ))
+            PlaylistSongListData::from_file_path(content_playlist_song_list_file(playlist_id))
         }
     }
 
-    pub(super) fn check_folder_exists(&self, folder_id: &Id) -> bool {
-        write_rwlock(&self.folders)
-            .get_index_data()
-            .contains(folder_id)
+    pub(super) fn check_folder_exists(folder_id: Id) -> bool {
+        fs::exists(content_folder_file(folder_id)).unwrap_or(false)
     }
 
-    pub(super) fn check_playlist_exists(&self, playlist_id: &Id) -> bool {
-        write_rwlock(&self.playlists)
-            .get_index_data()
-            .contains(playlist_id)
+    pub(super) fn check_playlist_exists(playlist_id: Id) -> bool {
+        fs::exists(content_playlist_user_data_file(playlist_id)).unwrap_or(false)
     }
 
     pub(super) fn delete_playlist(&self, playlist_id: &Id) -> RmAssocResult {
@@ -150,12 +120,6 @@ impl ContentPool {
     }
 
     fn delete_content0(content_inner: &mut ContentInner, content_id: &Id) -> RmAssocResult {
-        let index_data = content_inner.get_index_data();
-
-        if index_data.remove(content_id) {
-            content_inner.save_index_data();
-        }
-
         content_inner.remove_file_assoc(*content_id)?;
 
         Ok(())
@@ -204,11 +168,7 @@ impl ContentPool {
         loop {
             let id = content_inner_mut.id_generator.generate_new_id();
 
-            let index_data = content_inner_mut.get_index_data();
-
-            if !index_data.contains(&id) {
-                index_data.insert(id);
-                content_inner_mut.save_index_data();
+            if !Self::check_folder_exists(id) {
                 return id;
             }
         }
