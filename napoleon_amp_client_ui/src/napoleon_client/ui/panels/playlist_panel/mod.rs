@@ -473,9 +473,9 @@ impl PlaylistPanel {
                 let seek_pos = Duration::from_secs_f32(progress_f32);
                 music_manager.try_seek(seek_pos).expect("Failed to seek");
             }
-
-            ctx.request_repaint();
         }
+
+        ctx.request_repaint();
 
         should_stop
     }

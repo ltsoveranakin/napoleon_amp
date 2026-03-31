@@ -57,6 +57,7 @@ impl Song {
                 });
 
             if song_data.meta.is_err() {
+                // meta is outdated
                 let mut sd = SongData::default();
 
                 get_song_data_from_song_file(&self, &mut sd);
