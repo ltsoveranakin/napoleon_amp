@@ -20,7 +20,6 @@ use std::collections::HashSet;
 use std::fs::File;
 
 use crate::content::folder::Folder;
-use serbytes::prelude::SerBytes;
 use simple_id::prelude::{Id, SmallRngIdGenerator};
 use std::ops::RangeInclusive;
 use std::path::PathBuf;
@@ -85,7 +84,7 @@ pub(crate) struct PlaylistParent {
 }
 
 #[derive(Debug)]
-pub struct Playlist {
+pub struct StandardPlaylist {
     pub id: Id,
     parent: PlaylistParent,
     songs: RefCell<SongList>,
@@ -99,7 +98,7 @@ pub struct Playlist {
     total_length: RefCell<Option<u32>>,
 }
 
-impl Playlist {
+impl StandardPlaylist {
     pub(crate) fn new(id: Id, variant: PlaylistVariant, parent: &Rc<Folder>) -> Self {
         Self {
             id,
@@ -658,13 +657,13 @@ impl Playlist {
     }
 }
 
-impl PartialEq for Playlist {
+impl PartialEq for StandardPlaylist {
     fn eq(&self, other: &Self) -> bool {
         self.id == other.id
     }
 }
 
-impl Eq for Playlist {}
+impl Eq for StandardPlaylist {}
 
 #[derive(Debug)]
 struct ParsedSearch {

@@ -11,7 +11,7 @@ use crate::napoleon_client::ui::panels::open_location_button;
 use napoleon_amp_core::content::folder::content::FolderContentVariant;
 use napoleon_amp_core::content::folder::{Folder, FolderData};
 use napoleon_amp_core::content::playlist::data::PlaylistUserData;
-use napoleon_amp_core::content::playlist::Playlist;
+use napoleon_amp_core::content::playlist::StandardPlaylist;
 use napoleon_amp_core::discord_rpc::set_rpc_playlist;
 use napoleon_amp_core::instance::NapoleonInstance;
 use napoleon_amp_core::simple_id::prelude::Id;
@@ -112,7 +112,7 @@ impl FolderList {
         ui: &mut Ui,
         current_sub_folder: &Rc<Folder>,
         playlist_panel: &mut Option<PlaylistPanel>,
-        next_playlist: &mut Option<Rc<Playlist>>,
+        next_playlist: &mut Option<Rc<StandardPlaylist>>,
         next_folder: &mut Option<Rc<Folder>>,
         napoleon_instance: &mut NapoleonInstance,
     ) -> Option<(Rc<Folder>, usize)> {
@@ -131,7 +131,7 @@ impl FolderList {
 
                     let playlist_button = ui.scope(|ui| {
                         let mut rt = RichText::new(&*playlist_name);
-                        
+
                         rt = rt.color(text_color(playlist_panel.as_ref().is_some_and(|playlist_panel| playlist_panel.current_playlist == *playlist), playlist.get_music_manager().is_some()));
 
                         let playlist_button = self.playlist_button(ui, rt);

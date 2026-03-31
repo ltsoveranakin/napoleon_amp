@@ -3,7 +3,7 @@ pub(crate) mod content_pool;
 
 use crate::content::folder::content::FolderContentVariant;
 use crate::content::folder::content_pool::{RemoveAssociatedFileError, CONTENT_POOL};
-use crate::content::playlist::Playlist;
+use crate::content::playlist::StandardPlaylist;
 use crate::paths::content_folder_file;
 use serbytes::prelude::{MayNotExistOrDefault, SerBytes};
 use simple_id::prelude::Id;
@@ -194,7 +194,7 @@ impl Folder {
             }
 
             FolderDataContentVariant::Playlist => {
-                FolderContentVariant::Playlist(Rc::new(Playlist::new_file(id, this)))
+                FolderContentVariant::Playlist(Rc::new(StandardPlaylist::new_file(id, this)))
             }
         }
     }

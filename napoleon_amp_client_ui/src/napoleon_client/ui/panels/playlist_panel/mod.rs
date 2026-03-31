@@ -7,7 +7,7 @@ use crate::napoleon_client::ui::panels::queue_panel::QueuePanel;
 use eframe::egui::*;
 use egui_extras::{Column, TableBuilder, TableRow};
 use napoleon_amp_core::content::playlist::manager::{MusicManager, SongStatus};
-use napoleon_amp_core::content::playlist::{Playlist, PlaylistVariant};
+use napoleon_amp_core::content::playlist::{PlaylistVariant, StandardPlaylist};
 use napoleon_amp_core::content::song::song_data::MAX_RATING;
 
 use crate::napoleon_client::ui::helpers::scroll_area_styled;
@@ -20,7 +20,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 pub(crate) struct PlaylistPanel {
-    pub(crate) current_playlist: Rc<Playlist>,
+    pub(crate) current_playlist: Rc<StandardPlaylist>,
     playlist_modal: PlaylistModals,
     delete_original_files: bool,
     filter_search_content: String,
@@ -28,7 +28,7 @@ pub(crate) struct PlaylistPanel {
 }
 
 impl PlaylistPanel {
-    pub(crate) fn new(current_playlist: Rc<Playlist>) -> Self {
+    pub(crate) fn new(current_playlist: Rc<StandardPlaylist>) -> Self {
         Self {
             current_playlist,
             playlist_modal: PlaylistModals::None,

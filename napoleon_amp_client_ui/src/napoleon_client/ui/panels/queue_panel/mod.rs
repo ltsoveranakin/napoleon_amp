@@ -3,7 +3,7 @@ use crate::napoleon_client::ui::panels::get_song_data_display_str;
 use eframe::egui::{ScrollArea, Ui};
 use napoleon_amp_core::content::playlist::manager::MusicManager;
 use napoleon_amp_core::content::playlist::queue::Queue;
-use napoleon_amp_core::content::playlist::Playlist;
+use napoleon_amp_core::content::playlist::StandardPlaylist;
 use napoleon_amp_core::read_rwlock;
 
 pub struct QueuePanel;
@@ -16,7 +16,7 @@ impl QueuePanel {
     pub(crate) fn render(
         &mut self,
         ui: &mut Ui,
-        current_playlist: &Playlist,
+        current_playlist: &StandardPlaylist,
         music_manager: &MusicManager,
     ) {
         ui.heading("Queued Songs:");
