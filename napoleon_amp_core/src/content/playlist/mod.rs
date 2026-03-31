@@ -658,6 +658,14 @@ impl Playlist {
     }
 }
 
+impl PartialEq for Playlist {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
+
+impl Eq for Playlist {}
+
 #[derive(Debug)]
 struct ParsedSearch {
     value_lower: String,

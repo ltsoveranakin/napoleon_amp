@@ -5,7 +5,7 @@ use crate::napoleon_client::ui::helpers::scroll_area_styled;
 use crate::napoleon_client::ui::panels::playlist_panel::PlaylistPanel;
 use eframe::egui::{Button, IntoAtoms, Popup, Response, RichText, ScrollArea, Sense, Ui, UiBuilder};
 
-use crate::napoleon_client::colors::SONG_PLAYING_TEXT_COLOR;
+use crate::napoleon_client::colors::text_color;
 use crate::napoleon_client::ui::panels::folder_list::modals::FolderListModals;
 use crate::napoleon_client::ui::panels::open_location_button;
 use napoleon_amp_core::content::folder::content::FolderContentVariant;
@@ -131,10 +131,8 @@ impl FolderList {
 
                     let playlist_button = ui.scope(|ui| {
                         let mut rt = RichText::new(&*playlist_name);
-
-                        if playlist.get_music_manager().is_some() {
-                            rt = rt.color(SONG_PLAYING_TEXT_COLOR);
-                        }
+                        
+                        rt = rt.color(text_color(playlist_panel.as_ref().is_some_and(|playlist_panel| playlist_panel.current_playlist == *playlist), playlist.get_music_manager().is_some()));
 
                         let playlist_button = self.playlist_button(ui, rt);
 

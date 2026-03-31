@@ -1,30 +1,18 @@
 use eframe::egui::Color32;
-use std::ops::Add;
 
 pub(crate) const DEFAULT_TEXT_COLOR: Color32 = Color32::PLACEHOLDER;
 
 pub(crate) const SELECTED_TEXT_COLOR: Color32 = Color32::from_rgb(67, 64, 237);
-pub(crate) const SONG_PLAYING_TEXT_COLOR: Color32 = Color32::from_rgb(222, 64, 2);
+pub(crate) const CURRENT_PLAYING_TEXT_COLOR: Color32 = Color32::from_rgb(222, 64, 2);
+pub(crate) const SELECTED_AND_CURRENT_PLAYING_COLOR: Color32 = average(SELECTED_TEXT_COLOR, CURRENT_PLAYING_TEXT_COLOR);
 
-pub(crate) trait Average {
-    fn average(self, other: Self) -> Self;
+static SEL_TEXT_COLORS: [Color32; 4] = [DEFAULT_TEXT_COLOR, SELECTED_TEXT_COLOR, CURRENT_PLAYING_TEXT_COLOR, SELECTED_AND_CURRENT_PLAYING_COLOR];
 
-    fn average_assign(&mut self, other: Self)
-    where
-        Self: Sized + Copy,
-    {
-        *self = self.average(other);
-    }
+
+const fn average(a: Color32, b: Color32) -> Color32 {
+    Color32::from_rgb((a.r().saturating_add(b.r())) / 2, (a.g().saturating_add(b.g())) / 2, (a.b().saturating_add(b.b())) / 2)
 }
 
-impl Average for Color32 {
-    fn average(self, other: Self) -> Self {
-        let mut col = self.add(other);
-
-        for i in 0..3 {
-            col[i] /= 2;
-        }
-
-        col
-    }
+pub(crate) fn text_color(is_selected: bool, is_currently_playing: bool) -> Color32 {
+    SEL_TEXT_COLORS[is_selected as usize + (is_currently_playing as usize * 2)]
 }

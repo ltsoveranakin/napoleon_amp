@@ -1,8 +1,6 @@
 mod modals;
 
-use crate::napoleon_client::colors::{
-    Average, DEFAULT_TEXT_COLOR, SELECTED_TEXT_COLOR, SONG_PLAYING_TEXT_COLOR,
-};
+use crate::napoleon_client::colors::text_color;
 use crate::napoleon_client::ui::panels::get_song_data_display_str;
 use crate::napoleon_client::ui::panels::playlist_panel::modals::PlaylistModals;
 use crate::napoleon_client::ui::panels::queue_panel::QueuePanel;
@@ -224,7 +222,7 @@ impl PlaylistPanel {
                             let song_vec = &*current_playlist.get_or_load_songs();
                             let songs = read_rwlock(&song_vec);
                             let selected_songs = current_playlist.get_selected_songs_variant();
-                            let current_playing_song = current_playlist.get_current_song_playing();
+                            let current_playing_song_opt = current_playlist.get_current_song_playing();
 
                             body.rows(20.0, songs.len(), |mut row| {
                                 let song_index = row.index();
@@ -233,22 +231,7 @@ impl PlaylistPanel {
                                 let song_data = song.get_song_data();
 
                                 row.col(|ui| {
-                                    let mut button_text_color = DEFAULT_TEXT_COLOR;
-
-                                    if is_selected {
-                                        button_text_color = SELECTED_TEXT_COLOR;
-                                    }
-
-                                    if let Some(current_playing_song) = &current_playing_song
-                                        && current_playing_song == song
-                                    {
-                                        if is_selected {
-                                            button_text_color
-                                                .average_assign(SONG_PLAYING_TEXT_COLOR);
-                                        } else {
-                                            button_text_color = SONG_PLAYING_TEXT_COLOR;
-                                        }
-                                    }
+                                    let button_text_color = text_color(is_selected, current_playing_song_opt.as_ref().is_some_and(|current_playing_song| current_playing_song == song));
 
                                     let song_button_text =
                                         RichText::new(&song_data.title).color(button_text_color);
