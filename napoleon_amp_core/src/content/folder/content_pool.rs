@@ -1,8 +1,10 @@
 use crate::content::folder::{FolderContentData, FolderData};
 use crate::content::playlist::data::{PlaylistContentData, PlaylistSongListData, PlaylistUserData};
-use crate::paths::{content_folder_file, content_playlist_song_list_file, content_playlist_user_data_file};
+use crate::paths::{
+    content_folder_file, content_playlist_song_list_file, content_playlist_user_data_file,
+};
 use crate::song_pool::SONG_POOL;
-use crate::{write_rwlock, WriteWrapper};
+use crate::{WriteWrapper, write_rwlock};
 use serbytes::prelude::{BBReadResult, SerBytes};
 use simple_id::prelude::{Id, SmallRngIdGenerator};
 use std::io::ErrorKind;
@@ -17,9 +19,7 @@ struct ContentInner {
     provide_assoc_files: Box<dyn Send + Sync + 'static + Fn(Id) -> Vec<PathBuf>>,
 }
 
-impl ContentInner
-
-{
+impl ContentInner {
     fn new<F>(provide_assoc_files: F) -> Self
     where
         F: Send + Sync + 'static + Fn(Id) -> Vec<PathBuf>,
@@ -36,8 +36,7 @@ impl ContentInner
 
     fn remove_file_assoc(&self, id: Id) -> Result<(), RemoveAssociatedFileError> {
         for file_path in self.get_associated_files(id) {
-            if let Err(io_error) =
-                fs::remove_file(&file_path) {
+            if let Err(io_error) = fs::remove_file(&file_path) {
                 // Dont care if file doesnt exist... we're deleting it anyways lol
                 if io_error.kind() != ErrorKind::NotFound {
                     return Err(RemoveAssociatedFileError {
@@ -78,21 +77,20 @@ pub(crate) struct ContentPool {
 impl ContentPool {
     fn new() -> Self {
         Self {
-            folders: RwLock::new(ContentInner::new(|id| {
-                vec![content_folder_file(id)]
-            })),
+            folders: RwLock::new(ContentInner::new(|id| vec![content_folder_file(id)])),
             playlists: RwLock::new(ContentInner::new(|id| {
-                vec![content_playlist_user_data_file(id), content_playlist_song_list_file(id), ]
+                vec![
+                    content_playlist_user_data_file(id),
+                    content_playlist_song_list_file(id),
+                ]
             })),
         }
     }
 
     pub(crate) fn get_playlist_user_data(&self, playlist_id: Id) -> BBReadResult<PlaylistUserData> {
         if playlist_id == Id::ZERO {
-            let data = PlaylistUserData::new(PlaylistContentData::new(
-                "Base".to_string(),
-                Id::ZERO,
-            ));
+            let data =
+                PlaylistUserData::new(PlaylistContentData::new("Base".to_string(), Id::ZERO));
 
             Ok(data)
         } else {
@@ -100,7 +98,10 @@ impl ContentPool {
         }
     }
 
-    pub(crate) fn get_playlist_song_list_data(&self, playlist_id: Id) -> BBReadResult<PlaylistSongListData> {
+    pub(crate) fn get_playlist_song_list_data(
+        &self,
+        playlist_id: Id,
+    ) -> BBReadResult<PlaylistSongListData> {
         if playlist_id == Id::ZERO {
             let data = PlaylistSongListData {
                 song_ids: SONG_POOL
@@ -108,7 +109,7 @@ impl ContentPool {
                     .name_map
                     .values()
                     .copied()
-                    .collect()
+                    .collect(),
             };
 
             Ok(data)
@@ -117,16 +118,16 @@ impl ContentPool {
         }
     }
 
-    pub(super) fn delete_playlist(&self, playlist_id: &Id) -> RmAssocResult {
+    pub(super) fn delete_playlist(&self, playlist_id: Id) -> RmAssocResult {
         Self::delete_content0(&mut self.playlists_mut(), playlist_id)
     }
 
-    pub(super) fn delete_folder(&self, folder_id: &Id) -> RmAssocResult {
+    pub(super) fn delete_folder(&self, folder_id: Id) -> RmAssocResult {
         Self::delete_content0(&mut self.folders_mut(), folder_id)
     }
 
-    fn delete_content0(content_inner: &mut ContentInner, content_id: &Id) -> RmAssocResult {
-        content_inner.remove_file_assoc(*content_id)?;
+    fn delete_content0(content_inner: &mut ContentInner, content_id: Id) -> RmAssocResult {
+        content_inner.remove_file_assoc(content_id)?;
 
         Ok(())
     }

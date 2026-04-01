@@ -1,6 +1,6 @@
 use eframe::egui::{Id, Modal, Ui};
 use napoleon_amp_core::content::folder::Folder;
-use napoleon_amp_core::content::playlist::StandardPlaylist;
+use napoleon_amp_core::content::playlist::PlaylistType;
 use std::rc::Rc;
 
 pub(super) enum CreateFolderContentDialogVariant {
@@ -16,7 +16,7 @@ pub(super) enum FolderListModals {
     },
     RenamePlaylist {
         name: String,
-        playlist: Rc<StandardPlaylist>,
+        playlist: Rc<PlaylistType>,
     },
     None,
 }
@@ -109,7 +109,7 @@ impl FolderListModals {
         should_close
     }
 
-    fn render_change_name(ui: &mut Ui, name: &mut String, playlist: &StandardPlaylist) -> bool {
+    fn render_change_name(ui: &mut Ui, name: &mut String, playlist: &PlaylistType) -> bool {
         let mut should_close = false;
 
         let modal = Modal::new(Id::new("Create Content Modal")).show(ui.ctx(), |ui| {

@@ -3,15 +3,17 @@ mod modals;
 use crate::napoleon_client::ui::helpers::scroll_area_styled;
 
 use crate::napoleon_client::ui::panels::playlist_panel::PlaylistPanel;
-use eframe::egui::{Button, IntoAtoms, Popup, Response, RichText, ScrollArea, Sense, Ui, UiBuilder};
+use eframe::egui::{
+    Button, IntoAtoms, Popup, Response, RichText, ScrollArea, Sense, Ui, UiBuilder,
+};
 
 use crate::napoleon_client::colors::text_color;
 use crate::napoleon_client::ui::panels::folder_list::modals::FolderListModals;
 use crate::napoleon_client::ui::panels::open_location_button;
 use napoleon_amp_core::content::folder::content::FolderContentVariant;
 use napoleon_amp_core::content::folder::{Folder, FolderData};
+use napoleon_amp_core::content::playlist::PlaylistType;
 use napoleon_amp_core::content::playlist::data::PlaylistUserData;
-use napoleon_amp_core::content::playlist::StandardPlaylist;
 use napoleon_amp_core::discord_rpc::set_rpc_playlist;
 use napoleon_amp_core::instance::NapoleonInstance;
 use napoleon_amp_core::simple_id::prelude::Id;
@@ -112,7 +114,7 @@ impl FolderList {
         ui: &mut Ui,
         current_sub_folder: &Rc<Folder>,
         playlist_panel: &mut Option<PlaylistPanel>,
-        next_playlist: &mut Option<Rc<StandardPlaylist>>,
+        next_playlist: &mut Option<Rc<PlaylistType>>,
         next_folder: &mut Option<Rc<Folder>>,
         napoleon_instance: &mut NapoleonInstance,
     ) -> Option<(Rc<Folder>, usize)> {
@@ -127,22 +129,28 @@ impl FolderList {
 
             match folder_content_variant {
                 FolderContentVariant::Playlist(playlist) => {
-                    let playlist_name = playlist.get_name();
+                    let playlist_name = &playlist.get_user_data().content_data.name;
 
-                    let playlist_button = ui.scope(|ui| {
-                        let mut rt = RichText::new(&*playlist_name);
+                    let playlist_button = ui
+                        .scope(|ui| {
+                            let mut rt = RichText::new(playlist_name);
 
-                        rt = rt.color(text_color(playlist_panel.as_ref().is_some_and(|playlist_panel| playlist_panel.current_playlist == *playlist), playlist.get_music_manager().is_some()));
+                            rt = rt.color(text_color(
+                                playlist_panel.as_ref().is_some_and(|playlist_panel| {
+                                    playlist_panel.current_playlist == *playlist
+                                }),
+                                playlist.get_music_manager().is_some(),
+                            ));
 
-                        let playlist_button = self.playlist_button(ui, rt);
+                            let playlist_button = self.playlist_button(ui, rt);
 
-                        playlist_button
-                    }).inner;
-
+                            playlist_button
+                        })
+                        .inner;
 
                     if playlist_button.clicked() {
                         *next_playlist = Some(Rc::clone(playlist));
-                        set_rpc_playlist(playlist_name.to_string());
+                        set_rpc_playlist(playlist_name.clone());
                     }
 
                     if playlist_button.double_clicked() {
@@ -168,7 +176,8 @@ impl FolderList {
                         if Self::shared_popup_ui(
                             ui,
                             "playlist",
-                            PlaylistUserData::get_data_path(playlist.id), playlist.id,
+                            PlaylistUserData::get_data_path(playlist.id()),
+                            playlist.id(),
                         ) {
                             delete_index = Some((Rc::clone(current_sub_folder), current_index));
                         }
@@ -203,8 +212,8 @@ impl FolderList {
                             if Self::shared_popup_ui(
                                 ui,
                                 "folder",
-                                FolderData::get_folder_data_path(folder.id)
-                                , folder.id,
+                                FolderData::get_folder_data_path(folder.id),
+                                folder.id,
                             ) {
                                 delete_index = Some((Rc::clone(current_sub_folder), current_index));
                             }
@@ -235,7 +244,6 @@ impl FolderList {
     fn shared_popup_ui(ui: &mut Ui, variant_text: &str, path: impl AsRef<Path>, id: Id) -> bool {
         open_location_button(ui, variant_text, path);
 
-
         let delete_clicked = ui.button(format!("Delete {}", variant_text)).clicked();
 
         ui.label(format!("({id})"));
@@ -244,8 +252,7 @@ impl FolderList {
     }
 
     fn playlist_button<'a>(&mut self, ui: &mut Ui, label: impl IntoAtoms<'a>) -> Response {
-        let playlist_button = Button::new(label).frame(true)
-            .frame_when_inactive(false);
+        let playlist_button = Button::new(label).frame(true).frame_when_inactive(false);
 
         ui.add(playlist_button)
     }

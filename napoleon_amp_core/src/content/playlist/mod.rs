@@ -1,28 +1,127 @@
 pub mod data;
 pub mod manager;
+pub mod playlists;
 pub mod queue;
 mod song_list;
-pub mod playlists;
-
-pub use playlists::*;
-
-use crate::content::playlist::data::PlaybackMode;
-use crate::content::song::Song;
 
 use crate::content::folder::Folder;
+use crate::content::playlist::data::{PlaybackMode, PlaylistUserData};
+use crate::content::playlist::manager::MusicManager;
+use crate::content::playlist::song_list::SongVec;
+use crate::content::song::Song;
+use crate::content::song::song_data::SongData;
+use crate::read_rwlock;
+pub use playlists::*;
 use simple_id::prelude::Id;
-use std::ops::RangeInclusive;
+use std::cell::{Ref, RefCell, RefMut};
+use std::collections::HashSet;
+use std::io;
+use std::ops::{Deref, RangeInclusive};
+use std::path::PathBuf;
 use std::rc::Weak;
 use std::sync::Arc;
 
-/// The type of playlist this will attempt to load songs from
+struct SharedPlaylistData {}
 
-#[derive(Debug)]
-pub enum PlaylistVariant {
-    /// Will attempt to load all songs that have been registered
-    AllSongs,
-    /// Will attempt to load all songs in the playlist data file that matches the current id
-    Normal,
+pub trait Playlist {
+    fn id(&self) -> Id;
+
+    /// Gets the songs in the current playlist, with the filter if one is enabled
+    fn get_song_vec(&self) -> SongVec;
+
+    fn get_song_vec_unfiltered(&self) -> SongVec;
+
+    fn get_user_data_ref_cell(&self) -> &RefCell<PlaylistUserData>;
+
+    fn get_user_data(&self) -> Ref<'_, PlaylistUserData> {
+        self.get_user_data_ref_cell().borrow()
+    }
+
+    fn get_user_data_mut(&self) -> RefMut<'_, PlaylistUserData> {
+        self.get_user_data_ref_cell().borrow_mut()
+    }
+
+    fn start_play_song(&self, song_index: usize);
+
+    fn stop_music(&self);
+
+    fn get_music_manager(&self) -> Ref<'_, Option<MusicManager>>;
+
+    fn set_volume(&self, volume: f32);
+
+    fn get_volume(&self) -> f32 {
+        self.get_user_data().volume
+    }
+
+    fn delete_song(&self, index: usize);
+
+    fn get_string_list(&self, filter: &dyn Fn(&SongData) -> &String) -> Vec<String> {
+        let mut string_set = HashSet::new();
+
+        for song in read_rwlock(&self.get_song_vec()).iter() {
+            let song_data = song.get_song_data();
+            let string_ref = filter(&song_data);
+
+            if !string_set.contains(string_ref) {
+                string_set.insert(string_ref.clone());
+            }
+        }
+
+        string_set.into_iter().collect()
+    }
+
+    fn get_artist_list(&self) -> Vec<String> {
+        self.get_string_list(&|song_data| &song_data.artist.full_artist_string)
+    }
+
+    fn get_album_list(&self) -> Vec<String> {
+        self.get_string_list(&|song_data| &song_data.album)
+    }
+
+    fn select_all(&self);
+
+    fn import_existing_songs(&self, new_songs: &[Arc<Song>]);
+
+    fn get_selected_songs(&self) -> SelectedSongsVariant;
+
+    fn get_total_song_duration(&self) -> u32;
+
+    fn import_songs(&self, song_paths: &[PathBuf], delete_original: bool)
+    -> Result<(), Vec<usize>>;
+
+    fn set_search_query_filter(&self, search_str: &str);
+
+    /// Returns `None` if music manager is `None` (no song is playing) otherwise returns the index
+    /// of the next song that will be played (with respect to the queue)
+
+    fn get_current_song_playing(&self) -> Option<Arc<Song>>;
+
+    fn select_single(&self, index: usize);
+
+    fn rename(&self, new_name: String) -> io::Result<()>;
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum PlaylistType {
+    Standard(StandardPlaylist),
+}
+
+impl PartialEq for dyn Playlist {
+    fn eq(&self, other: &Self) -> bool {
+        self.id() == other.id()
+    }
+}
+
+impl Eq for dyn Playlist {}
+
+impl Deref for PlaylistType {
+    type Target = dyn Playlist;
+
+    fn deref(&self) -> &Self::Target {
+        match self {
+            Self::Standard(standard_playlist) => standard_playlist,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -71,7 +170,6 @@ pub(crate) struct PlaylistParent {
     parent: Weak<Folder>,
 }
 
-
 #[derive(Debug)]
 struct ParsedSearch {
     value_lower: String,
@@ -103,10 +201,10 @@ impl ParsedSearch {
                 not: false,
             })
         } else if let Some(Terms {
-                               search_type,
-                               search_value,
-                               not,
-                           }) = Self::try_get_terms(search_str)
+            search_type,
+            search_value,
+            not,
+        }) = Self::try_get_terms(search_str)
         {
             let parsed_search_type = match &*search_type {
                 "title" => Some(ParsedSearchType::Title),
