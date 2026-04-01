@@ -2,9 +2,9 @@ use crate::napoleon_client::ui::helpers::scroll_area_styled;
 
 use eframe::egui::{Id, Modal, ScrollArea, Ui};
 use egui_autocomplete::AutoCompleteTextEdit;
-use napoleon_amp_core::content::playlist::Playlist;
-use napoleon_amp_core::content::song::song_data::SongData;
+use napoleon_amp_core::content::playlist::PlaylistType;
 use napoleon_amp_core::content::song::Song;
+use napoleon_amp_core::content::song::song_data::SongData;
 use std::mem;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -27,7 +27,7 @@ impl PlaylistModals {
     pub(super) fn render(
         &mut self,
         ui: &mut Ui,
-        current_playlist: &Playlist,
+        current_playlist: &PlaylistType,
         delete_original_files: &mut bool,
     ) {
         let mut clear_modals = false;
@@ -101,7 +101,7 @@ impl PlaylistModals {
             ui.heading(format!(
                 "The following {} {} already exist, as such the files were not overwritten, nor deleted",
                 failed_count,
-               Self:: songs_plural(failed_count)
+                Self::songs_plural(failed_count)
             ));
 
             scroll_area_styled(ui, ScrollArea::vertical().max_height(250.0), |ui| {
@@ -125,7 +125,7 @@ impl PlaylistModals {
         ui: &mut Ui,
         songs_imported_paths: &Vec<PathBuf>,
         song_already_exists_indexes_vec: &mut Option<Vec<usize>>,
-        current_playlist: &Playlist,
+        current_playlist: &PlaylistType,
         delete_original_files: &mut bool,
     ) -> bool {
         let modal = Modal::new(Id::new("Import Songs Modal")).show(ui.ctx(), |ui| {

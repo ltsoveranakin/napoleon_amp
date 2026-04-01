@@ -6,21 +6,21 @@ use crate::napoleon_client::ui::panels::playlist_panel::modals::PlaylistModals;
 use crate::napoleon_client::ui::panels::queue_panel::QueuePanel;
 use eframe::egui::*;
 use egui_extras::{Column, TableBuilder, TableRow};
+use napoleon_amp_core::content::playlist::PlaylistType;
 use napoleon_amp_core::content::playlist::manager::{MusicManager, SongStatus};
-use napoleon_amp_core::content::playlist::{Playlist, PlaylistVariant};
 use napoleon_amp_core::content::song::song_data::MAX_RATING;
 
 use crate::napoleon_client::ui::helpers::scroll_area_styled;
 use napoleon_amp_core::instance::NapoleonInstance;
 use napoleon_amp_core::paths::show_file_in_explorer;
-use napoleon_amp_core::read_rwlock;
+use napoleon_amp_core::{Next, read_rwlock};
 use std::ops::Deref;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Duration;
 
 pub(crate) struct PlaylistPanel {
-    pub(crate) current_playlist: Rc<Playlist>,
+    pub(crate) current_playlist: Rc<PlaylistType>,
     playlist_modal: PlaylistModals,
     delete_original_files: bool,
     filter_search_content: String,
@@ -28,7 +28,7 @@ pub(crate) struct PlaylistPanel {
 }
 
 impl PlaylistPanel {
-    pub(crate) fn new(current_playlist: Rc<Playlist>) -> Self {
+    pub(crate) fn new(current_playlist: Rc<PlaylistType>) -> Self {
         Self {
             current_playlist,
             playlist_modal: PlaylistModals::None,
@@ -47,11 +47,11 @@ impl PlaylistPanel {
         self.keystrokes_pressed(napoleon_instance, ctx);
 
         ui.horizontal(|ui| {
-            if matches!(self.current_playlist.variant, PlaylistVariant::Normal) {
+            if matches!(*self.current_playlist, PlaylistType::Standard(_)) {
                 ui.vertical(|ui| {
                     ui.heading(
                         self.current_playlist
-                            .get_or_load_user_data()
+                            .get_user_data()
                             .content_data
                             .name
                             .clone(),
@@ -71,20 +71,27 @@ impl PlaylistPanel {
                         if ui
                             .button(format!(
                                 "Playback Mode: {}",
-                                self.current_playlist.playback_mode()
+                                self.current_playlist.get_user_data().playback_mode
                             ))
                             .clicked()
                         {
-                            self.current_playlist.next_playback_mode();
+                            self.current_playlist
+                                .get_user_data_mut()
+                                .playback_mode
+                                .assign_next();
                         }
 
-                        let sort_by = self.current_playlist.get_sorting_by();
+                        let sort_by = self.current_playlist.get_user_data().sort_by;
 
                         if ui
                             .button(format!("Sort: {}", sort_by.sort_by_variant))
                             .clicked()
                         {
-                            self.current_playlist.next_sorting_by();
+                            self.current_playlist
+                                .get_user_data_mut()
+                                .sort_by
+                                .sort_by_variant
+                                .assign_next();
                         }
                     });
                 });
@@ -93,7 +100,11 @@ impl PlaylistPanel {
             }
 
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                ui.label(format!("{} songs, {}", read_rwlock(&self.current_playlist.get_or_load_songs_unfiltered()).len(), Self::secs_to_str(self.current_playlist.get_total_length() as u64)))
+                ui.label(format!(
+                    "{} songs, {}",
+                    read_rwlock(&self.current_playlist.get_song_vec_unfiltered()).len(),
+                    Self::secs_to_str(self.current_playlist.get_total_song_duration() as u64)
+                ))
             });
         });
 
@@ -105,7 +116,6 @@ impl PlaylistPanel {
 
             self.current_playlist.set_search_query_filter(search_text);
         }
-
 
         self.render_modal(ui);
 
@@ -219,9 +229,9 @@ impl PlaylistPanel {
                         let mut song_index_to_delete = None;
 
                         {
-                            let song_vec = &*current_playlist.get_or_load_songs();
+                            let song_vec = &*current_playlist.get_song_vec();
                             let songs = read_rwlock(&song_vec);
-                            let selected_songs = current_playlist.get_selected_songs_variant();
+                            let selected_songs = current_playlist.get_selected_songs();
                             let current_playing_song_opt = current_playlist.get_current_song_playing();
 
                             body.rows(20.0, songs.len(), |mut row| {

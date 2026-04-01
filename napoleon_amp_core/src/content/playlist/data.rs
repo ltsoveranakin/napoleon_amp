@@ -1,3 +1,4 @@
+use crate::Next;
 use crate::content::folder::ContentData;
 use crate::content::playlist::song_list::SortBy;
 use crate::paths::{content_playlist_song_list_file, content_playlist_user_data_file};
@@ -16,6 +17,15 @@ pub enum PlaybackMode {
     Shuffle,
 }
 
+impl Next for PlaybackMode {
+    fn get_next(&self) -> Self {
+        match self {
+            PlaybackMode::Sequential => PlaybackMode::Shuffle,
+            PlaybackMode::Shuffle => PlaybackMode::Sequential,
+        }
+    }
+}
+
 impl Display for PlaybackMode {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -25,19 +35,26 @@ impl Display for PlaybackMode {
     }
 }
 
+#[derive(SerBytes, Debug)]
+enum PlaylistTypeData {
+    Standard,
+}
+
 pub(crate) type PlaylistContentData = ContentData<Id>;
 
 #[derive(SerBytes, Debug)]
 pub struct PlaylistUserData {
+    pub playlist_type_data: PlaylistTypeData,
     pub content_data: PlaylistContentData,
-    pub(super) playback_mode: PlaybackMode,
-    pub(super) volume: f32,
-    pub(super) sort_by: SortBy,
+    pub playback_mode: PlaybackMode,
+    pub volume: f32,
+    pub sort_by: SortBy,
 }
 
 impl PlaylistUserData {
     pub(crate) fn new(content_data: PlaylistContentData) -> Self {
         Self {
+            playlist_type_data: PlaylistTypeData::Standard,
             content_data,
             playback_mode: PlaybackMode::default(),
             volume: DEFAULT_VOLUME,

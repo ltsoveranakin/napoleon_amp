@@ -2,8 +2,8 @@ pub mod content;
 pub(crate) mod content_pool;
 
 use crate::content::folder::content::FolderContentVariant;
-use crate::content::folder::content_pool::{RemoveAssociatedFileError, CONTENT_POOL};
-use crate::content::playlist::Playlist;
+use crate::content::folder::content_pool::{CONTENT_POOL, RemoveAssociatedFileError};
+use crate::content::playlist::{PlaylistType, StandardPlaylist};
 use crate::paths::content_folder_file;
 use serbytes::prelude::{MayNotExistOrDefault, SerBytes};
 use simple_id::prelude::Id;
@@ -69,7 +69,6 @@ pub enum DeleteContentError {
     Io(io::Error),
     RemoveAssoc(RemoveAssociatedFileError),
     IndexOutOfBounds,
-
 }
 
 impl From<io::Error> for DeleteContentError {
@@ -127,7 +126,9 @@ impl Folder {
             let content = Self::get_contents_mut(this).remove(content_index);
 
             match content {
-                FolderContentVariant::Playlist(playlist) => CONTENT_POOL.delete_playlist(&playlist.id)?,
+                FolderContentVariant::Playlist(playlist) => {
+                    CONTENT_POOL.delete_playlist(playlist.id())?
+                }
                 FolderContentVariant::Folder(folder) => {
                     Folder::delete_self(&folder)?;
                 }
@@ -148,7 +149,7 @@ impl Folder {
             Folder::delete_content(this, content_index)?;
         }
 
-        CONTENT_POOL.delete_folder(&this.id)?;
+        CONTENT_POOL.delete_folder(this.id)?;
 
         Ok(())
     }
@@ -159,10 +160,7 @@ impl Folder {
 
             let data = FolderData::from_file_path(folder_path).unwrap_or_else(|_| {
                 assert_eq!(self.id, Id::ZERO, "Temp fix for base folder");
-                let data = FolderData::new(FolderContentData::new(
-                    "Base".to_string(),
-                    None,
-                ));
+                let data = FolderData::new(FolderContentData::new("Base".to_string(), None));
 
                 data.save_data(self.id).expect("write folder data to disk");
 
@@ -193,9 +191,9 @@ impl Folder {
                 FolderContentVariant::Folder(Rc::new(Folder::new(id, Some(parent))))
             }
 
-            FolderDataContentVariant::Playlist => {
-                FolderContentVariant::Playlist(Rc::new(Playlist::new_file(id, this)))
-            }
+            FolderDataContentVariant::Playlist => FolderContentVariant::Playlist(Rc::new(
+                PlaylistType::Standard(StandardPlaylist::new_file(id, this)),
+            )),
         }
     }
 

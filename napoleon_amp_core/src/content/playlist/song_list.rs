@@ -1,7 +1,7 @@
-use crate::content::song::song_data::{SongData, MAX_RATING};
 use crate::content::song::Song;
+use crate::content::song::song_data::{MAX_RATING, SongData};
 use crate::song_pool::SONG_POOL;
-use crate::{read_rwlock, write_rwlock, ReadWrapper};
+use crate::{Next, ReadWrapper, read_rwlock, write_rwlock};
 use serbytes::prelude::SerBytes;
 use simple_id::prelude::Id;
 use std::collections::HashSet;
@@ -17,6 +17,20 @@ pub enum SortByVariant {
     Artist,
     Album,
     Rating,
+}
+
+impl Next for SortByVariant {
+    fn get_next(&self) -> Self {
+        match self {
+            SortByVariant::Title => SortByVariant::Artist,
+
+            SortByVariant::Artist => SortByVariant::Album,
+
+            SortByVariant::Album => SortByVariant::Rating,
+
+            SortByVariant::Rating => SortByVariant::Title,
+        }
+    }
 }
 
 impl Display for SortByVariant {

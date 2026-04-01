@@ -3,12 +3,12 @@ mod fixup;
 
 use crate::content::folder::Folder;
 use crate::content::playlist::data::PlaybackMode;
-use crate::content::playlist::{Playlist, PlaylistVariant};
+use crate::content::playlist::{Playlist, PlaylistType, StandardPlaylist, StandardPlaylistVariant};
 use crate::content::song::Song;
 use crate::discord_rpc::discord_rpc_thread;
 use crate::instance::data::InstanceData;
 use crate::read_rwlock;
-use rand::{rng, RngExt};
+use rand::{RngExt, rng};
 use simple_id::prelude::Id;
 use std::cell::LazyCell;
 use std::rc::{Rc, Weak};
@@ -18,9 +18,9 @@ use std::thread::JoinHandle;
 
 pub struct NapoleonInstance {
     pub base_folder: Rc<Folder>,
-    all_songs: Weak<Playlist>,
+    all_songs: Weak<PlaylistType>,
     copied_songs: Option<Vec<Arc<Song>>>,
-    currently_playing_playlist: Option<Rc<Playlist>>,
+    currently_playing_playlist: Option<Rc<PlaylistType>>,
     instance_data: LazyCell<InstanceData>,
     _discord_rpc_thread: Option<JoinHandle<()>>,
 }
@@ -44,17 +44,17 @@ impl NapoleonInstance {
         }
     }
 
-    pub fn copy_selected_songs(&mut self, playlist: &Playlist) {
-        let song_vec = playlist.get_or_load_songs();
+    pub fn copy_selected_songs(&mut self, playlist: &PlaylistType) {
+        let song_vec = playlist.get_song_vec();
         let songs = read_rwlock(&song_vec);
-        let selected_songs_variant = playlist.get_selected_songs_variant();
+        let selected_songs_variant = playlist.get_selected_songs();
 
         let selected_songs = selected_songs_variant.get_selected_songs(&*songs).to_vec();
 
         self.copied_songs = Some(selected_songs);
     }
 
-    pub fn paste_copied_songs(&self, playlist: &Playlist) {
+    pub fn paste_copied_songs(&self, playlist: &PlaylistType) {
         if let Some(ref copied_songs) = self.copied_songs {
             playlist.import_existing_songs(copied_songs);
         }
@@ -64,19 +64,19 @@ impl NapoleonInstance {
         self.copied_songs.is_some()
     }
 
-    pub fn start_play_song(&mut self, playlist: Rc<Playlist>, song_index: usize) {
+    pub fn start_play_song(&mut self, playlist: Rc<PlaylistType>, song_index: usize) {
         self.stop_music();
         playlist.start_play_song(song_index);
         self.currently_playing_playlist = Some(playlist);
     }
 
-    pub fn start_play_playlist(&mut self, playlist: Rc<Playlist>) {
-        let songs_len = read_rwlock(&playlist.get_or_load_songs()).len();
+    pub fn start_play_playlist(&mut self, playlist: Rc<PlaylistType>) {
+        let songs_len = read_rwlock(&playlist.get_song_vec()).len();
         if songs_len == 0 {
             return;
         }
 
-        let song_index = match playlist.playback_mode() {
+        let song_index = match playlist.get_user_data().playback_mode {
             PlaybackMode::Sequential => 0,
 
             PlaybackMode::Shuffle => rng().random_range(0..songs_len),
@@ -108,13 +108,17 @@ impl NapoleonInstance {
         Ok(())
     }
 
-    pub fn get_all_songs_playlist(&mut self) -> Rc<Playlist> {
+    pub fn get_all_songs_playlist(&mut self) -> Rc<PlaylistType> {
         let upgraded_opt = Weak::upgrade(&self.all_songs);
 
         if let Some(upgraded) = upgraded_opt {
             upgraded
         } else {
-            let playlist = Rc::new(Playlist::new(Id::ZERO, PlaylistVariant::AllSongs, &self.base_folder));
+            let playlist = Rc::new(PlaylistType::Standard(StandardPlaylist::new(
+                Id::ZERO,
+                StandardPlaylistVariant::AllSongs,
+                &self.base_folder,
+            )));
 
             self.all_songs = Rc::downgrade(&playlist);
 

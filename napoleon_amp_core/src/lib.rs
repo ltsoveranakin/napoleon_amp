@@ -102,3 +102,14 @@ pub fn read_rwlock<T>(rw_lock: &RwLock<T>) -> ReadWrapper<'_, T> {
 
     ReadWrapper::new(r)
 }
+
+pub trait Next {
+    fn get_next(&self) -> Self;
+
+    fn assign_next(&mut self)
+    where
+        Self: Sized,
+    {
+        *self = self.get_next();
+    }
+}
