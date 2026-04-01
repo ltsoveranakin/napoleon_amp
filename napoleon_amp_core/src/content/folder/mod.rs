@@ -101,29 +101,29 @@ impl Folder {
         }
     }
 
-    pub fn create_folder(this: &Rc<Self>, folder_name: String) -> io::Result<()> {
-        let folder_id = CONTENT_POOL.create_new_folder(folder_name, Some(this.id))?;
+    pub fn create_folder(self: &Rc<Self>, folder_name: String) -> io::Result<()> {
+        let folder_id = CONTENT_POOL.create_new_folder(folder_name, Some(self.id))?;
 
-        Self::create_content(this, FolderDataContentVariant::Folder, folder_id);
-
-        Ok(())
-    }
-
-    pub fn create_playlist(this: &Rc<Self>, playlist_name: String) -> io::Result<()> {
-        let playlist_id = CONTENT_POOL.create_new_playlist(playlist_name, this.id)?;
-
-        Self::create_content(this, FolderDataContentVariant::Playlist, playlist_id);
+        self.create_content(FolderDataContentVariant::Folder, folder_id);
 
         Ok(())
     }
 
-    pub fn delete_content(this: &Rc<Self>, content_index: usize) -> Result<(), DeleteContentError> {
-        let mut folder_data = this.get_folder_data_mut();
+    pub fn create_playlist(self: &Rc<Self>, playlist_name: String) -> io::Result<()> {
+        let playlist_id = CONTENT_POOL.create_new_playlist(playlist_name, self.id)?;
+
+        self.create_content(FolderDataContentVariant::Playlist, playlist_id);
+
+        Ok(())
+    }
+
+    pub fn delete_content(self: &Rc<Self>, content_index: usize) -> Result<(), DeleteContentError> {
+        let mut folder_data = self.get_folder_data_mut();
         let folder_data_contents = &mut folder_data.contents;
 
         if content_index < folder_data_contents.len() {
             folder_data_contents.remove(content_index);
-            let content = Self::get_contents_mut(this).remove(content_index);
+            let content = self.get_contents_mut().remove(content_index);
 
             match content {
                 FolderContentVariant::Playlist(playlist) => {
@@ -134,7 +134,7 @@ impl Folder {
                 }
             }
 
-            folder_data.save_data(this.id)?;
+            folder_data.save_data(self.id)?;
 
             Ok(())
         } else {
@@ -142,14 +142,14 @@ impl Folder {
         }
     }
 
-    fn delete_self(this: &Rc<Self>) -> Result<(), DeleteContentError> {
-        let contents_len = Folder::get_contents(this).len();
+    fn delete_self(self: &Rc<Self>) -> Result<(), DeleteContentError> {
+        let contents_len = self.get_contents().len();
 
         for content_index in (0..contents_len).rev() {
-            Folder::delete_content(this, content_index)?;
+            self.delete_content(content_index)?;
         }
 
-        CONTENT_POOL.delete_folder(this.id)?;
+        CONTENT_POOL.delete_folder(self.id)?;
 
         Ok(())
     }
@@ -180,11 +180,11 @@ impl Folder {
     }
 
     fn get_folder_content_variant(
-        this: &Rc<Self>,
+        self: &Rc<Self>,
         variant: FolderDataContentVariant,
         id: Id,
     ) -> FolderContentVariant {
-        let parent = Rc::downgrade(this);
+        let parent = Rc::downgrade(self);
 
         match variant {
             FolderDataContentVariant::Folder => {
@@ -192,48 +192,48 @@ impl Folder {
             }
 
             FolderDataContentVariant::Playlist => FolderContentVariant::Playlist(Rc::new(
-                PlaylistType::Standard(StandardPlaylist::new_file(id, this)),
+                PlaylistType::Standard(StandardPlaylist::new_file(id, self)),
             )),
         }
     }
 
-    fn get_contents_refcell(this: &Rc<Self>) -> &RefCell<Vec<FolderContentVariant>> {
-        this.contents.get_or_init(|| {
-            let data_contents = &this.get_folder_data().contents;
+    fn get_contents_refcell(self: &Rc<Self>) -> &RefCell<Vec<FolderContentVariant>> {
+        self.contents.get_or_init(|| {
+            let data_contents = &self.get_folder_data().contents;
 
             let mut contents = Vec::with_capacity(data_contents.len());
 
             for ContentsListElements { id, variant } in data_contents {
-                contents.push(Self::get_folder_content_variant(this, *variant, *id));
+                contents.push(self.get_folder_content_variant(*variant, *id));
             }
 
             RefCell::new(contents)
         })
     }
 
-    pub fn get_contents(this: &Rc<Self>) -> Ref<'_, Vec<FolderContentVariant>> {
-        Self::get_contents_refcell(this).borrow()
+    pub fn get_contents(self: &Rc<Self>) -> Ref<'_, Vec<FolderContentVariant>> {
+        self.get_contents_refcell().borrow()
     }
 
-    fn get_contents_mut(this: &Rc<Self>) -> RefMut<'_, Vec<FolderContentVariant>> {
-        Self::get_contents_refcell(this).borrow_mut()
+    fn get_contents_mut(self: &Rc<Self>) -> RefMut<'_, Vec<FolderContentVariant>> {
+        self.get_contents_refcell().borrow_mut()
     }
 
-    fn create_content(this: &Rc<Self>, variant: FolderDataContentVariant, id: Id) {
+    fn create_content(self: &Rc<Self>, variant: FolderDataContentVariant, id: Id) {
         {
-            let mut contents = Self::get_contents_mut(this);
+            let mut contents = self.get_contents_mut();
 
-            contents.push(Self::get_folder_content_variant(this, variant, id));
+            contents.push(self.get_folder_content_variant(variant, id));
         }
 
-        let mut folder_data = this.get_folder_data_mut();
+        let mut folder_data = self.get_folder_data_mut();
 
         folder_data
             .contents
             .push(ContentsListElements { id, variant });
 
         folder_data
-            .write_to_file_path(content_folder_file(this.id))
+            .write_to_file_path(content_folder_file(self.id))
             .expect("Write folder data to file");
     }
 }
