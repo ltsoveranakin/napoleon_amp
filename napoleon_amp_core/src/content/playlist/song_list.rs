@@ -4,6 +4,7 @@ use crate::song_pool::SONG_POOL;
 use crate::{Next, ReadWrapper, read_rwlock, write_rwlock};
 use serbytes::prelude::SerBytes;
 use simple_id::prelude::Id;
+use std::cmp::Ordering;
 use std::collections::HashSet;
 use std::fmt::{Display, Formatter};
 use std::sync::{Arc, RwLock};
@@ -60,11 +61,49 @@ pub struct SortBy {
     pub inverted: bool,
 }
 
-#[derive(Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[derive(Copy, Clone, Eq, PartialEq, PartialOrd)]
 enum SortableProperty<'s> {
     Str(&'s str),
-    U8(u8),
-    U32(u32),
+    Int(u32),
+}
+
+impl<'s> Ord for SortableProperty<'s> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match self {
+            Self::Str(self_str) => match other {
+                Self::Str(other_str) => {
+                    let mut other_chars = other_str.chars();
+                    for self_char in self_str.chars() {
+                        let Some(other_char) = other_chars.next() else {
+                            return Ordering::Greater;
+                        };
+
+                        let ord = self_char
+                            .to_ascii_lowercase()
+                            .cmp(&other_char.to_ascii_lowercase());
+
+                        if ord != Ordering::Equal {
+                            return ord;
+                        }
+                    }
+
+                    if other_chars.next().is_some() {
+                        return Ordering::Less;
+                    }
+
+                    Ordering::Equal
+                }
+
+                _ => unreachable!(),
+            },
+
+            Self::Int(self_int) => match other {
+                Self::Int(other_int) => self_int.cmp(other_int),
+
+                _ => unreachable!(),
+            },
+        }
+    }
 }
 
 /// A list of songs that may at most contain one of each song
@@ -170,15 +209,16 @@ impl SongList {
     }
 
     fn get_sort_properties(song_data: &SongData, swap_index: usize) -> [SortableProperty<'_>; 5] {
-        let mut sort_properties = [SortableProperty::U8(0); 5];
+        let mut sort_properties = [SortableProperty::Int(0); 5];
 
         sort_properties[Self::TITLE_INDEX] = SortableProperty::Str(&song_data.title);
         sort_properties[Self::ALBUM_INDEX] = SortableProperty::Str(&song_data.album);
         sort_properties[Self::ARTIST_INDEX] =
             SortableProperty::Str(&song_data.artist.full_artist_string);
-        sort_properties[Self::RATING_INDEX] = SortableProperty::U8(MAX_RATING - song_data.rating);
+        sort_properties[Self::RATING_INDEX] =
+            SortableProperty::Int(MAX_RATING - song_data.rating as u32);
         sort_properties[Self::LENGTH_INDEX] =
-            SortableProperty::U32(song_data.meta.as_ref().unwrap().length);
+            SortableProperty::Int(song_data.meta.as_ref().unwrap().length);
 
         let temp = sort_properties[swap_index];
 

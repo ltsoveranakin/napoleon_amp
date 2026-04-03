@@ -13,7 +13,7 @@ use symphonia::default::get_probe;
 
 static DEFAULT_SONG_DATA: LazyLock<SongData> = LazyLock::new(|| SongData::default());
 
-pub const MAX_RATING: u8 = 5;
+pub const MAX_RATING: u32 = 5;
 
 #[derive(SerBytes, Clone, Debug)]
 pub struct Artist {

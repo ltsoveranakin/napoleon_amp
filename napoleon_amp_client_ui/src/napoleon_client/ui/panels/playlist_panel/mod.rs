@@ -356,7 +356,7 @@ impl PlaylistPanel {
                                     if let Some(updated_rating) = update_rating {
                                         drop(song_data);
 
-                                        song.get_song_data_mut().rating = updated_rating;
+                                        song.get_song_data_mut().rating = updated_rating as u8;
                                         song.save_song_data();
 
                                         song.get_song_data()
