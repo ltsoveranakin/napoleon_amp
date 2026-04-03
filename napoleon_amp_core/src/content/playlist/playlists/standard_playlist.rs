@@ -45,6 +45,7 @@ pub struct StandardPlaylist {
     playlist_user_data: OnceCell<RefCell<PlaylistUserData>>,
     playlist_song_list_data: OnceCell<RefCell<PlaylistSongListData>>,
     total_length: RefCell<Option<u32>>,
+    current_search_str: RefCell<String>,
 }
 
 impl StandardPlaylist {
@@ -64,6 +65,7 @@ impl StandardPlaylist {
             playlist_user_data: OnceCell::new(),
             playlist_song_list_data: OnceCell::new(),
             total_length: RefCell::new(None),
+            current_search_str: RefCell::new(String::new()),
         }
     }
 
@@ -218,9 +220,7 @@ impl Playlist for StandardPlaylist {
     }
 
     fn get_song_vec(&self) -> SongVec {
-        let songs_filtered = read_rwlock(&self.songs_filtered);
-
-        if songs_filtered.is_empty() {
+        if self.current_search_str.borrow().is_empty() {
             self.get_song_vec_unfiltered()
         } else {
             Arc::clone(&self.songs_filtered)
@@ -495,12 +495,14 @@ impl Playlist for StandardPlaylist {
     fn set_search_query_filter(&self, search_str: &str) {
         self.set_selected_songs(SelectedSongsVariant::None);
 
-        let mut filtered_songs = write_rwlock(&self.songs_filtered);
-        filtered_songs.clear();
+        *self.current_search_str.borrow_mut() = search_str.to_string();
 
         if search_str.is_empty() {
             return;
         }
+
+        let mut filtered_songs = write_rwlock(&self.songs_filtered);
+        filtered_songs.clear();
 
         let parsed_search = if let Some(parsed_search) = ParsedSearch::parse_search_str(search_str)
         {
