@@ -102,7 +102,7 @@ impl StandardPlaylist {
 
             playlist_data.playback_mode = playback_mode.into();
         }
-        self.save_user_datab();
+        self.save_user_data();
     }
 
     pub fn playback_mode(&self) -> PlaybackMode {
@@ -144,7 +144,7 @@ impl StandardPlaylist {
     /// Saves the list of songs to the file at `self.path_named`
     /// This does nothing if `self.variant` is [`StandardPlaylistVariant::AllSongs`] or if this is the 'all songs' playlist
 
-    fn save_user_datab(&self) {
+    fn save_user_data(&self) {
         if matches!(self.variant, StandardPlaylistVariant::AllSongs) || self.id == Id::ZERO {
             return;
         }
@@ -269,7 +269,7 @@ impl Playlist for StandardPlaylist {
 
         self.get_user_data_mut().volume = volume;
 
-        self.save_user_datab();
+        self.save_user_data();
     }
 
     fn delete_song(&self, song_index: usize) {

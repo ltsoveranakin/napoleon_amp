@@ -17,6 +17,7 @@ pub enum SortByVariant {
     Artist,
     Album,
     Rating,
+    Length,
 }
 
 impl Next for SortByVariant {
@@ -28,7 +29,9 @@ impl Next for SortByVariant {
 
             SortByVariant::Album => SortByVariant::Rating,
 
-            SortByVariant::Rating => SortByVariant::Title,
+            SortByVariant::Rating => SortByVariant::Length,
+
+            SortByVariant::Length => SortByVariant::Title,
         }
     }
 }
@@ -43,6 +46,8 @@ impl Display for SortByVariant {
             Self::Album => "Album",
 
             Self::Rating => "Rating",
+
+            Self::Length => "Length",
         };
 
         f.write_str(display_str)
@@ -59,6 +64,7 @@ pub struct SortBy {
 enum SortableProperty<'s> {
     Str(&'s str),
     U8(u8),
+    U32(u32),
 }
 
 /// A list of songs that may at most contain one of each song
@@ -74,6 +80,7 @@ impl SongList {
     const ALBUM_INDEX: usize = 1;
     const ARTIST_INDEX: usize = 2;
     const RATING_INDEX: usize = 3;
+    const LENGTH_INDEX: usize = 4;
 
     pub(super) fn new() -> Self {
         Self {
@@ -148,6 +155,7 @@ impl SongList {
                 SortByVariant::Artist => Self::ARTIST_INDEX,
                 SortByVariant::Album => Self::ALBUM_INDEX,
                 SortByVariant::Rating => Self::RATING_INDEX,
+                SortByVariant::Length => Self::LENGTH_INDEX,
             };
 
             let a_sort_properties = Self::get_sort_properties(&a_song_data, index);
@@ -161,14 +169,16 @@ impl SongList {
         });
     }
 
-    fn get_sort_properties(song_data: &SongData, swap_index: usize) -> [SortableProperty<'_>; 4] {
-        let mut sort_properties = [SortableProperty::U8(0); 4];
+    fn get_sort_properties(song_data: &SongData, swap_index: usize) -> [SortableProperty<'_>; 5] {
+        let mut sort_properties = [SortableProperty::U8(0); 5];
 
         sort_properties[Self::TITLE_INDEX] = SortableProperty::Str(&song_data.title);
         sort_properties[Self::ALBUM_INDEX] = SortableProperty::Str(&song_data.album);
         sort_properties[Self::ARTIST_INDEX] =
             SortableProperty::Str(&song_data.artist.full_artist_string);
         sort_properties[Self::RATING_INDEX] = SortableProperty::U8(MAX_RATING - song_data.rating);
+        sort_properties[Self::LENGTH_INDEX] =
+            SortableProperty::U32(song_data.meta.as_ref().unwrap().length);
 
         let temp = sort_properties[swap_index];
 
