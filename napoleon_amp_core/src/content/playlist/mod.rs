@@ -16,12 +16,39 @@ use simple_id::prelude::Id;
 use std::cell::{Ref, RefCell, RefMut};
 use std::collections::HashSet;
 use std::io;
-use std::ops::{Deref, RangeInclusive};
+use std::ops::{Deref, DerefMut, RangeInclusive};
 use std::path::PathBuf;
 use std::rc::Weak;
 use std::sync::Arc;
 
 struct SharedPlaylistData {}
+
+type MutDataSaverInner<'a> = RefMut<'a, PlaylistUserData>;
+
+pub struct MutDataSaver<'a> {
+    inner: MutDataSaverInner<'a>,
+    id: Id,
+}
+
+impl<'a> Drop for MutDataSaver<'a> {
+    fn drop(&mut self) {
+        let _ = self.inner.save_data(self.id);
+    }
+}
+
+impl<'a> Deref for MutDataSaver<'a> {
+    type Target = MutDataSaverInner<'a>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
+}
+
+impl<'a> DerefMut for MutDataSaver<'a> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
+    }
+}
 
 pub trait Playlist {
     fn id(&self) -> Id;
@@ -37,8 +64,11 @@ pub trait Playlist {
         self.get_user_data_ref_cell().borrow()
     }
 
-    fn get_user_data_mut(&self) -> RefMut<'_, PlaylistUserData> {
-        self.get_user_data_ref_cell().borrow_mut()
+    fn get_user_data_mut(&self) -> MutDataSaver<'_> {
+        MutDataSaver {
+            inner: self.get_user_data_ref_cell().borrow_mut(),
+            id: self.id(),
+        }
     }
 
     fn start_play_song(&self, song_index: usize);
@@ -99,6 +129,8 @@ pub trait Playlist {
     fn select_single(&self, index: usize);
 
     fn rename(&self, new_name: String) -> io::Result<()>;
+
+    fn sort_songs(&self);
 }
 
 #[derive(Debug, Eq, PartialEq)]

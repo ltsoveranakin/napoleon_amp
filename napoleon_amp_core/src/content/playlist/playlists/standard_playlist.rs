@@ -4,7 +4,7 @@ use crate::content::playlist::data::{
     PlaybackMode, PlaylistContentData, PlaylistSongListData, PlaylistUserData,
 };
 use crate::content::playlist::manager::MusicManager;
-use crate::content::playlist::song_list::{SongList, SongVec, SortBy, SortByVariant};
+use crate::content::playlist::song_list::{SongList, SongVec, SortBy};
 use crate::content::playlist::{
     ParsedSearch, ParsedSearchType, Playlist, PlaylistParent, SelectedSongsVariant,
 };
@@ -111,41 +111,6 @@ impl StandardPlaylist {
 
     pub fn get_volume(&self) -> f32 {
         self.get_user_data().volume
-    }
-
-    pub fn sort_by_and_save(&self, sort_by: SortBy) {
-        self.get_user_data_mut().sort_by = sort_by.into();
-        self.sort_songs_and_save();
-    }
-
-    fn sort_songs_and_save(&self) {
-        self.songs
-            .borrow_mut()
-            .sort_songs(self.get_user_data().sort_by);
-
-        self.save_song_list();
-    }
-
-    pub fn get_sorting_by(&self) -> SortBy {
-        self.get_user_data().sort_by
-    }
-
-    pub fn next_sorting_by(&self) {
-        let mut sort_by = self.get_user_data().sort_by;
-
-        let next_sort_by = match sort_by.sort_by_variant {
-            SortByVariant::Title => SortByVariant::Artist,
-
-            SortByVariant::Artist => SortByVariant::Album,
-
-            SortByVariant::Album => SortByVariant::Rating,
-
-            SortByVariant::Rating => SortByVariant::Title,
-        };
-
-        sort_by.sort_by_variant = next_sort_by;
-
-        self.sort_by_and_save(sort_by);
     }
 
     fn set_selected_songs(&self, selected_songs: SelectedSongsVariant) {
@@ -352,7 +317,7 @@ impl Playlist for StandardPlaylist {
             songs.push_songs_arc_list(new_songs);
         }
 
-        self.sort_songs_and_save();
+        self.sort_songs();
     }
 
     fn get_selected_songs(&self) -> SelectedSongsVariant {
@@ -481,7 +446,7 @@ impl Playlist for StandardPlaylist {
             .save_registered_songs()
             .expect("save registered songs");
 
-        self.sort_songs_and_save();
+        self.sort_songs();
 
         if !already_exists.is_empty() {
             println!("Imported songs and saved successfully, but some failed to import");
@@ -567,6 +532,14 @@ impl Playlist for StandardPlaylist {
         pl_data.content_data.name = new_name;
 
         pl_data.save_data(self.id)
+    }
+
+    fn sort_songs(&self) {
+        self.songs
+            .borrow_mut()
+            .sort_songs(self.get_user_data().sort_by);
+
+        self.save_song_list();
     }
 }
 

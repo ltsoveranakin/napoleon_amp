@@ -92,6 +92,8 @@ impl PlaylistPanel {
                                 .sort_by
                                 .sort_by_variant
                                 .assign_next();
+
+                            self.current_playlist.sort_songs();
                         }
                     });
                 });
