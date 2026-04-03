@@ -95,6 +95,15 @@ impl PlaylistPanel {
 
                             self.current_playlist.sort_songs();
                         }
+
+                        let mut inverted_sort = sort_by.inverted;
+
+                        if ui.checkbox(&mut inverted_sort, "Descending").changed() {
+                            self.current_playlist.get_user_data_mut().sort_by.inverted =
+                                inverted_sort;
+
+                            self.current_playlist.sort_songs();
+                        }
                     });
                 });
             } else {
