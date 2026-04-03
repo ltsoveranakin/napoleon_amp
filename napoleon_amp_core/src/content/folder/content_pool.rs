@@ -5,7 +5,7 @@ use crate::paths::{
 };
 use crate::song_pool::SONG_POOL;
 use crate::{WriteWrapper, write_rwlock};
-use serbytes::prelude::{BBReadResult, SerBytes};
+use serbytes::prelude::{FromFileResult, SerBytes};
 use simple_id::prelude::{Id, SmallRngIdGenerator};
 use std::io::ErrorKind;
 use std::path::PathBuf;
@@ -87,7 +87,10 @@ impl ContentPool {
         }
     }
 
-    pub(crate) fn get_playlist_user_data(&self, playlist_id: Id) -> BBReadResult<PlaylistUserData> {
+    pub(crate) fn get_playlist_user_data(
+        &self,
+        playlist_id: Id,
+    ) -> FromFileResult<'_, PlaylistUserData> {
         if playlist_id == Id::ZERO {
             let data =
                 PlaylistUserData::new(PlaylistContentData::new("Base".to_string(), Id::ZERO));
@@ -101,7 +104,7 @@ impl ContentPool {
     pub(crate) fn get_playlist_song_list_data(
         &self,
         playlist_id: Id,
-    ) -> BBReadResult<PlaylistSongListData> {
+    ) -> FromFileResult<'_, PlaylistSongListData> {
         if playlist_id == Id::ZERO {
             let data = PlaylistSongListData {
                 song_ids: SONG_POOL

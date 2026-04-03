@@ -123,7 +123,7 @@ impl FolderList {
         // let current_folder = Rc::clone(&self.current_folder);
 
         for (current_index, folder_content_variant) in
-            Folder::get_contents(&current_sub_folder).iter().enumerate()
+            current_sub_folder.get_contents().iter().enumerate()
         {
             ui.separator();
 

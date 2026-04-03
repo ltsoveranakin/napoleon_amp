@@ -73,7 +73,7 @@ impl Default for SongData {
             audio_file: String::new().into(),
             rating: 0,
             user_tag: String::new().into(),
-            meta: Err(ReadError::new(String::new())),
+            meta: Err(ReadError::default()),
         }
     }
 }
@@ -115,7 +115,9 @@ pub(super) fn get_song_data_from_song_file_with_paths(
         Ok(mut probe_result) => {
             if let Some(track) = probe_result.format.default_track() {
                 let params = &track.codec_params;
-                if let (Some(sample_rate), Some(total_frames)) = (params.sample_rate, params.n_frames) {
+                if let (Some(sample_rate), Some(total_frames)) =
+                    (params.sample_rate, params.n_frames)
+                {
                     let duration_seconds = total_frames as f64 / sample_rate as f64;
                     let duration = Duration::from_secs_f64(duration_seconds);
                     song_data_meta.length = duration.as_secs() as u32;
