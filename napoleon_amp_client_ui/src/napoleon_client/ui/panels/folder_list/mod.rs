@@ -13,7 +13,7 @@ use crate::napoleon_client::ui::panels::open_location_button;
 use napoleon_amp_core::content::folder::content::FolderContentVariant;
 use napoleon_amp_core::content::folder::{Folder, FolderData};
 use napoleon_amp_core::content::playlist::PlaylistType;
-use napoleon_amp_core::content::playlist::data::PlaylistUserData;
+use napoleon_amp_core::content::playlist::data::PlaylistUserDataStd;
 use napoleon_amp_core::discord_rpc::set_rpc_playlist;
 use napoleon_amp_core::instance::NapoleonInstance;
 use napoleon_amp_core::simple_id::prelude::Id;
@@ -129,7 +129,8 @@ impl FolderList {
 
             match folder_content_variant {
                 FolderContentVariant::Playlist(playlist) => {
-                    let playlist_name = &playlist.get_user_data().name;
+                    let user_data = playlist.get_user_data();
+                    let playlist_name = &user_data.inner().content_data.name;
 
                     let playlist_button = ui
                         .scope(|ui| {
@@ -176,7 +177,7 @@ impl FolderList {
                         if Self::shared_popup_ui(
                             ui,
                             "playlist",
-                            PlaylistUserData::get_data_path(playlist.id()),
+                            PlaylistUserDataStd::get_data_path(playlist.id()),
                             playlist.id(),
                         ) {
                             delete_index = Some((Rc::clone(current_sub_folder), current_index));

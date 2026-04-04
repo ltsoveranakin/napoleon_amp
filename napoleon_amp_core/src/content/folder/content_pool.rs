@@ -1,5 +1,7 @@
 use crate::content::folder::{FolderContentData, FolderData};
-use crate::content::playlist::data::{PlaylistContentData, PlaylistSongListData, PlaylistUserData};
+use crate::content::playlist::data::{
+    PlaylistContentData, PlaylistSongListData, PlaylistUserData, PlaylistUserDataStd,
+};
 use crate::paths::{
     content_folder_file, content_playlist_song_list_file, content_playlist_user_data_file,
 };
@@ -92,10 +94,10 @@ impl ContentPool {
         playlist_id: Id,
     ) -> FromFileResult<'_, PlaylistUserData> {
         if playlist_id == Id::ZERO {
-            let data =
-                PlaylistUserData::new(PlaylistContentData::new("Base".to_string(), Id::ZERO));
+            let user_data_std =
+                PlaylistUserDataStd::new(PlaylistContentData::new("Base".to_string(), Id::ZERO));
 
-            Ok(data)
+            Ok(user_data_std.into())
         } else {
             PlaylistUserData::from_file_path(content_playlist_user_data_file(playlist_id))
         }
@@ -144,7 +146,7 @@ impl ContentPool {
         let id = Self::generate_unique_id(&self.playlists);
 
         let playlist_data =
-            PlaylistUserData::new(PlaylistContentData::new(playlist_name, parent_folder));
+            PlaylistUserDataStd::new(PlaylistContentData::new(playlist_name, parent_folder));
 
         playlist_data.save_data(id)?;
 

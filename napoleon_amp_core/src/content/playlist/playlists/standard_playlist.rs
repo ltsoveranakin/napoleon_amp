@@ -1,7 +1,7 @@
 use crate::content::folder::Folder;
 use crate::content::folder::content_pool::CONTENT_POOL;
 use crate::content::playlist::data::{
-    PlaybackMode, PlaylistContentData, PlaylistSongListData, PlaylistUserData,
+    PlaybackMode, PlaylistContentData, PlaylistSongListData, PlaylistUserData, PlaylistUserDataStd,
 };
 use crate::content::playlist::manager::MusicManager;
 use crate::content::playlist::song_list::{SongList, SongVec, SortBy};
@@ -100,17 +100,17 @@ impl StandardPlaylist {
         {
             let mut playlist_data = self.get_user_data_mut();
 
-            playlist_data.playback_mode = playback_mode.into();
+            playlist_data.inner_mut().playback_mode = playback_mode.into();
         }
         self.save_user_data();
     }
 
     pub fn playback_mode(&self) -> PlaybackMode {
-        self.get_user_data().playback_mode
+        self.get_user_data().inner().playback_mode
     }
 
     pub fn get_volume(&self) -> f32 {
-        self.get_user_data().volume
+        self.get_user_data().inner().volume
     }
 
     fn set_selected_songs(&self, selected_songs: SelectedSongsVariant) {
@@ -118,7 +118,7 @@ impl StandardPlaylist {
     }
 
     pub fn get_name(&self) -> Ref<'_, String> {
-        Ref::map(self.get_user_data(), |d| &d.name)
+        Ref::map(self.get_user_data(), |d| &d.inner().content_data.name)
     }
 
     fn get_song_list_data_refcell(&self) -> &RefCell<PlaylistSongListData> {
@@ -152,6 +152,7 @@ impl StandardPlaylist {
 
         let playlist_data = self.get_user_data();
         playlist_data
+            .inner()
             .save_data(self.id)
             .expect("Write playlist user data to file");
     }
@@ -198,10 +199,11 @@ impl Playlist for StandardPlaylist {
             let playlist_data = CONTENT_POOL
                 .get_playlist_user_data(self.id)
                 .unwrap_or_else(|_| {
-                    PlaylistUserData::new(PlaylistContentData::new(
+                    PlaylistUserDataStd::new(PlaylistContentData::new(
                         "Deleted Playlist".to_string(),
                         self.parent.id,
                     ))
+                    .into()
                 });
 
             RefCell::new(playlist_data)
@@ -217,7 +219,8 @@ impl Playlist for StandardPlaylist {
             current_handle.join().expect("Unwrap for panic in thread");
         }
 
-        let playlist_data = self.get_user_data();
+        let playlist_data_v = self.get_user_data();
+        let playlist_data = playlist_data_v.inner();
 
         let actual_index = if !read_rwlock(&self.songs_filtered).is_empty() {
             let songs_vec = self.get_song_vec();
@@ -268,7 +271,7 @@ impl Playlist for StandardPlaylist {
             manager.set_volume(volume);
         }
 
-        self.get_user_data_mut().volume = volume;
+        self.get_user_data_mut().inner_mut().volume = volume;
 
         self.save_user_data();
     }
@@ -312,13 +315,11 @@ impl Playlist for StandardPlaylist {
     }
 
     fn import_existing_songs(&self, new_songs: &[Arc<Song>]) {
-        {
-            let mut songs = self.songs.borrow_mut();
+        let mut songs = self.songs.borrow_mut();
 
-            songs.push_songs_arc_list(new_songs);
-        }
+        songs.push_songs_arc_list(new_songs);
 
-        self.sort_songs();
+        self.sort_songs(self.get_user_data().inner().sort_by);
     }
 
     fn get_selected_songs(&self) -> SelectedSongsVariant {
@@ -447,7 +448,7 @@ impl Playlist for StandardPlaylist {
             .save_registered_songs()
             .expect("save registered songs");
 
-        self.sort_songs();
+        self.sort_songs(self.get_user_data().inner().sort_by);
 
         if !already_exists.is_empty() {
             println!("Imported songs and saved successfully, but some failed to import");
@@ -528,17 +529,16 @@ impl Playlist for StandardPlaylist {
     }
 
     fn rename(&self, new_name: String) -> io::Result<()> {
-        let mut pl_data = self.get_user_data_mut();
+        let mut pl_data_v = self.get_user_data_mut();
+        let pl_data = pl_data_v.inner_mut();
 
-        pl_data.name = new_name;
+        pl_data.content_data.name = new_name;
 
         pl_data.save_data(self.id)
     }
 
-    fn sort_songs(&self) {
-        self.songs
-            .borrow_mut()
-            .sort_songs(self.get_user_data().sort_by);
+    fn sort_songs(&self, sort_by: SortBy) {
+        self.songs.borrow_mut().sort_songs(sort_by);
 
         self.save_song_list();
     }

@@ -49,9 +49,10 @@ impl PlaylistPanel {
         ui.horizontal(|ui| {
             if matches!(*self.current_playlist, PlaylistType::Standard(_)) {
                 ui.vertical(|ui| {
-                    let mut user_data = self.current_playlist.get_user_data_mut();
+                    let mut user_data_v = self.current_playlist.get_user_data_mut();
+                    let user_data = user_data_v.inner_mut();
 
-                    ui.heading(user_data.name.clone());
+                    ui.heading(&user_data.content_data.name);
 
                     ui.horizontal(|ui| {
                         #[cfg(not(target_os = "android"))]
@@ -79,7 +80,7 @@ impl PlaylistPanel {
                         {
                             user_data.sort_by.sort_by_variant.assign_next();
 
-                            self.current_playlist.sort_songs();
+                            self.current_playlist.sort_songs(user_data.sort_by);
                         }
 
                         if ui
@@ -89,8 +90,7 @@ impl PlaylistPanel {
                             user_data
                                 .save_data(self.current_playlist.id())
                                 .expect("Save playlist user data");
-                            drop(user_data);
-                            self.current_playlist.sort_songs();
+                            self.current_playlist.sort_songs(user_data.sort_by);
                             // self.current_playlist.s
                         }
                     });

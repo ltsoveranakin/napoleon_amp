@@ -2,11 +2,13 @@ use crate::content::folder::ContentData;
 use crate::content::playlist::song_list::SortBy;
 use crate::paths::{content_playlist_song_list_file, content_playlist_user_data_file};
 use crate::{Next, time_now};
-use serbytes::prelude::{MayNotExistOrDefault, SerBytes};
+use serbytes::prelude::{
+    BBReadResult, CurrentVersion, MayNotExistOrDefault, ReadByteBufferRefMut, SerBytes,
+    VersioningWrapper,
+};
 use simple_id::prelude::Id;
 use std::fmt::{Display, Formatter};
 use std::io;
-use std::ops::{Deref, DerefMut};
 use std::path::PathBuf;
 
 const DEFAULT_VOLUME: f32 = 1.0;
@@ -43,30 +45,37 @@ enum PlaylistTypeData {
 
 pub(crate) type PlaylistContentData = ContentData<Id>;
 
+pub type PlaylistUserData = VersioningWrapper<PlaylistUserDataStd, PlaylistUserDataVersion>;
+
 #[derive(SerBytes, Debug)]
-pub struct PlaylistUserData {
+pub struct PlaylistUserDataStd {
     pub playlist_type_data: PlaylistTypeData,
-    content_data: PlaylistContentData,
+    pub content_data: PlaylistContentData,
     pub playback_mode: PlaybackMode,
     pub volume: f32,
     pub sort_by: SortBy,
 }
 
-impl Deref for PlaylistUserData {
-    type Target = PlaylistContentData;
+#[derive(SerBytes, Debug)]
+pub enum PlaylistUserDataVersion {
+    V1,
+}
 
-    fn deref(&self) -> &Self::Target {
-        &self.content_data
+impl CurrentVersion for PlaylistUserDataVersion {
+    type Output = PlaylistUserDataStd;
+
+    fn get_data_from_buf(&self, buf: &mut ReadByteBufferRefMut) -> BBReadResult<Self::Output> {
+        match self {
+            Self::V1 => PlaylistUserDataStd::from_buf(buf),
+        }
+    }
+
+    fn current_version() -> Self {
+        Self::V1
     }
 }
 
-impl DerefMut for PlaylistUserData {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.content_data
-    }
-}
-
-impl PlaylistUserData {
+impl PlaylistUserDataStd {
     pub(crate) fn new(content_data: PlaylistContentData) -> Self {
         Self {
             playlist_type_data: PlaylistTypeData::Standard,

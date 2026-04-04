@@ -76,7 +76,7 @@ impl NapoleonInstance {
             return;
         }
 
-        let song_index = match playlist.get_user_data().playback_mode {
+        let song_index = match playlist.get_user_data().inner().playback_mode {
             PlaybackMode::Sequential => 0,
 
             PlaybackMode::Shuffle => rng().random_range(0..songs_len),

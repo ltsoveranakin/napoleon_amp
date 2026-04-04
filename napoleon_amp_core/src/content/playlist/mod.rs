@@ -7,7 +7,7 @@ mod song_list;
 use crate::content::folder::Folder;
 use crate::content::playlist::data::{PlaybackMode, PlaylistUserData};
 use crate::content::playlist::manager::MusicManager;
-use crate::content::playlist::song_list::SongVec;
+use crate::content::playlist::song_list::{SongVec, SortBy};
 use crate::content::song::Song;
 use crate::content::song::song_data::SongData;
 use crate::read_rwlock;
@@ -49,7 +49,7 @@ pub trait Playlist {
     fn set_volume(&self, volume: f32);
 
     fn get_volume(&self) -> f32 {
-        self.get_user_data().volume
+        self.get_user_data().inner().volume
     }
 
     fn delete_song(&self, index: usize);
@@ -99,7 +99,7 @@ pub trait Playlist {
 
     fn rename(&self, new_name: String) -> io::Result<()>;
 
-    fn sort_songs(&self);
+    fn sort_songs(&self, sort_by: SortBy);
 }
 
 #[derive(Debug, Eq, PartialEq)]
