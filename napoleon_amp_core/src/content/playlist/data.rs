@@ -6,6 +6,7 @@ use serbytes::prelude::{MayNotExistOrDefault, SerBytes};
 use simple_id::prelude::Id;
 use std::fmt::{Display, Formatter};
 use std::io;
+use std::ops::{Deref, DerefMut};
 use std::path::PathBuf;
 
 const DEFAULT_VOLUME: f32 = 1.0;
@@ -45,10 +46,24 @@ pub(crate) type PlaylistContentData = ContentData<Id>;
 #[derive(SerBytes, Debug)]
 pub struct PlaylistUserData {
     pub playlist_type_data: PlaylistTypeData,
-    pub content_data: PlaylistContentData,
+    content_data: PlaylistContentData,
     pub playback_mode: PlaybackMode,
     pub volume: f32,
     pub sort_by: SortBy,
+}
+
+impl Deref for PlaylistUserData {
+    type Target = PlaylistContentData;
+
+    fn deref(&self) -> &Self::Target {
+        &self.content_data
+    }
+}
+
+impl DerefMut for PlaylistUserData {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.content_data
+    }
 }
 
 impl PlaylistUserData {

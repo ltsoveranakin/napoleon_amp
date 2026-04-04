@@ -118,7 +118,7 @@ impl StandardPlaylist {
     }
 
     pub fn get_name(&self) -> Ref<'_, String> {
-        Ref::map(self.get_user_data(), |d| &d.content_data.name)
+        Ref::map(self.get_user_data(), |d| &d.name)
     }
 
     fn get_song_list_data_refcell(&self) -> &RefCell<PlaylistSongListData> {
@@ -530,7 +530,7 @@ impl Playlist for StandardPlaylist {
     fn rename(&self, new_name: String) -> io::Result<()> {
         let mut pl_data = self.get_user_data_mut();
 
-        pl_data.content_data.name = new_name;
+        pl_data.name = new_name;
 
         pl_data.save_data(self.id)
     }

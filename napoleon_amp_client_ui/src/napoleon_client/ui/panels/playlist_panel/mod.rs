@@ -51,7 +51,7 @@ impl PlaylistPanel {
                 ui.vertical(|ui| {
                     let mut user_data = self.current_playlist.get_user_data_mut();
 
-                    ui.heading(user_data.content_data.name.clone());
+                    ui.heading(user_data.name.clone());
 
                     ui.horizontal(|ui| {
                         #[cfg(not(target_os = "android"))]

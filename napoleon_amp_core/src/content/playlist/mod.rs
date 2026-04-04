@@ -22,34 +22,6 @@ use std::rc::Weak;
 use std::sync::Arc;
 
 struct SharedPlaylistData {}
-
-type MutDataSaverInner<'a> = RefMut<'a, PlaylistUserData>;
-
-pub struct MutDataSaver<'a> {
-    inner: MutDataSaverInner<'a>,
-    id: Id,
-}
-
-impl<'a> Drop for MutDataSaver<'a> {
-    fn drop(&mut self) {
-        let _ = self.inner.save_data(self.id);
-    }
-}
-
-impl<'a> Deref for MutDataSaver<'a> {
-    type Target = MutDataSaverInner<'a>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.inner
-    }
-}
-
-impl<'a> DerefMut for MutDataSaver<'a> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.inner
-    }
-}
-
 pub trait Playlist {
     fn id(&self) -> Id;
 
