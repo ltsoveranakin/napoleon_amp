@@ -49,13 +49,9 @@ impl PlaylistPanel {
         ui.horizontal(|ui| {
             if matches!(*self.current_playlist, PlaylistType::Standard(_)) {
                 ui.vertical(|ui| {
-                    ui.heading(
-                        self.current_playlist
-                            .get_user_data()
-                            .content_data
-                            .name
-                            .clone(),
-                    );
+                    let mut user_data = self.current_playlist.get_user_data_mut();
+
+                    ui.heading(user_data.content_data.name.clone());
 
                     ui.horizontal(|ui| {
                         #[cfg(not(target_os = "android"))]
@@ -69,40 +65,33 @@ impl PlaylistPanel {
                         }
 
                         if ui
-                            .button(format!(
-                                "Playback Mode: {}",
-                                self.current_playlist.get_user_data().playback_mode
-                            ))
+                            .button(format!("Playback Mode: {}", user_data.playback_mode))
                             .clicked()
                         {
-                            self.current_playlist
-                                .get_user_data_mut()
-                                .playback_mode
-                                .assign_next();
+                            user_data.playback_mode.assign_next();
                         }
 
-                        let sort_by = self.current_playlist.get_user_data().sort_by;
+                        let sort_by = user_data.sort_by;
 
                         if ui
                             .button(format!("Sort: {}", sort_by.sort_by_variant))
                             .clicked()
                         {
-                            self.current_playlist
-                                .get_user_data_mut()
-                                .sort_by
-                                .sort_by_variant
-                                .assign_next();
+                            user_data.sort_by.sort_by_variant.assign_next();
 
                             self.current_playlist.sort_songs();
                         }
 
-                        let mut inverted_sort = sort_by.inverted;
-
-                        if ui.checkbox(&mut inverted_sort, "Descending").changed() {
-                            self.current_playlist.get_user_data_mut().sort_by.inverted =
-                                inverted_sort;
-
+                        if ui
+                            .checkbox(&mut user_data.sort_by.inverted, "Descending")
+                            .changed()
+                        {
+                            user_data
+                                .save_data(self.current_playlist.id())
+                                .expect("Save playlist user data");
+                            drop(user_data);
                             self.current_playlist.sort_songs();
+                            // self.current_playlist.s
                         }
                     });
                 });

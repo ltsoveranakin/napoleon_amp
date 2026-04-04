@@ -64,11 +64,8 @@ pub trait Playlist {
         self.get_user_data_ref_cell().borrow()
     }
 
-    fn get_user_data_mut(&self) -> MutDataSaver<'_> {
-        MutDataSaver {
-            inner: self.get_user_data_ref_cell().borrow_mut(),
-            id: self.id(),
-        }
+    fn get_user_data_mut(&self) -> RefMut<'_, PlaylistUserData> {
+        self.get_user_data_ref_cell().borrow_mut()
     }
 
     fn start_play_song(&self, song_index: usize);

@@ -3,6 +3,7 @@
 use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
 use std::sync::{Mutex, MutexGuard, RwLock, RwLockReadGuard, RwLockWriteGuard};
+use std::time::{Duration, SystemTime};
 
 pub mod content;
 pub mod discord_rpc;
@@ -112,4 +113,10 @@ pub trait Next {
     {
         *self = self.get_next();
     }
+}
+
+pub(crate) fn time_now() -> Duration {
+    SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .expect("System clock went backwards")
 }

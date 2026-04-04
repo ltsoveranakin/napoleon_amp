@@ -12,7 +12,7 @@ use crate::content::song::Song;
 use crate::paths::SONG_DATA_EXT_NO_PER;
 use crate::paths::song::{song_audio_file_v2, songs_audio_dir_v2, songs_data_dir_v2};
 use crate::song_pool::SONG_POOL;
-use crate::{read_rwlock, write_rwlock};
+use crate::{read_rwlock, time_now, write_rwlock};
 use simple_id::prelude::{Id, SmallRngIdGenerator};
 use std::cell::{Cell, OnceCell, Ref, RefCell, RefMut};
 use std::fs::File;
@@ -127,6 +127,7 @@ impl StandardPlaylist {
                 .get_playlist_song_list_data(self.id)
                 .unwrap_or_else(|_| PlaylistSongListData {
                     song_ids: Vec::new(),
+                    last_updated: time_now().as_secs().into(),
                 });
 
             RefCell::new(song_list_data)

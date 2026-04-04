@@ -4,7 +4,7 @@ use crate::paths::{
     content_folder_file, content_playlist_song_list_file, content_playlist_user_data_file,
 };
 use crate::song_pool::SONG_POOL;
-use crate::{WriteWrapper, write_rwlock};
+use crate::{WriteWrapper, time_now, write_rwlock};
 use serbytes::prelude::{FromFileResult, SerBytes};
 use simple_id::prelude::{Id, SmallRngIdGenerator};
 use std::io::ErrorKind;
@@ -113,6 +113,7 @@ impl ContentPool {
                     .values()
                     .copied()
                     .collect(),
+                last_updated: time_now().as_secs().into(),
             };
 
             Ok(data)
