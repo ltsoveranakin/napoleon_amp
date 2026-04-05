@@ -7,7 +7,7 @@ use simple_id::prelude::Id;
 pub type VersionedDynamicPlaylistData =
     VersioningWrapper<DynamicPlaylistData, DynamicPlaylistDataVersion>;
 
-#[derive(SerBytes)]
+#[derive(SerBytes, Debug)]
 pub enum DynamicPlaylistDataVersion {
     V1,
 }
@@ -26,13 +26,13 @@ impl CurrentVersion for DynamicPlaylistDataVersion {
     }
 }
 
-#[derive(SerBytes)]
+#[derive(SerBytes, Debug)]
 pub enum ImportFrom {
     AllSongs,
     Playlists(Vec<Id>),
 }
 
-#[derive(SerBytes)]
+#[derive(SerBytes, Debug)]
 pub struct DynamicPlaylistData {
     rules: Rules,
     last_updated: u64,

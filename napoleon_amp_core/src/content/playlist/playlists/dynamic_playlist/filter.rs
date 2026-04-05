@@ -1,7 +1,7 @@
 use crate::content::song::Song;
 use serbytes::prelude::SerBytes;
 
-#[derive(SerBytes)]
+#[derive(SerBytes, Debug)]
 pub enum ComparisonMethod {
     LessThan,
     EqualTo,
@@ -10,7 +10,7 @@ pub enum ComparisonMethod {
     NotEqualTo,
 }
 
-#[derive(SerBytes)]
+#[derive(SerBytes, Debug)]
 pub struct FilterRule<T> {
     value: T,
     comparison_method: ComparisonMethod,
@@ -46,7 +46,7 @@ impl FilterRule<String> {
     }
 }
 
-#[derive(SerBytes)]
+#[derive(SerBytes, Debug)]
 pub enum FilterRules {
     Title(FilterRule<String>),
     Artist(FilterRule<String>),

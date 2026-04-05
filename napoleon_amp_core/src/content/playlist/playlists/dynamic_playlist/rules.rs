@@ -10,7 +10,7 @@ use std::borrow::Cow;
 use std::collections::HashSet;
 use std::sync::Arc;
 
-#[derive(SerBytes)]
+#[derive(SerBytes, Debug)]
 pub struct Rules {
     import_from: ImportFrom,
     filters: Vec<FilterRules>,
