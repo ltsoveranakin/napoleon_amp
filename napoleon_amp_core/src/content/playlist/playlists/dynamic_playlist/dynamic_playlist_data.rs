@@ -1,4 +1,4 @@
-use crate::content::playlist::AllSongsValue;
+use crate::content::playlist::PlaylistData;
 use crate::content::playlist::data::{PlaylistContentData, PlaylistUserData, PlaylistUserDataStd};
 use crate::content::playlist::playlists::dynamic_playlist::rules::Rules;
 use crate::time_now;
@@ -10,9 +10,13 @@ use simple_id::prelude::Id;
 pub type DynamicPlaylistData =
     VersioningWrapper<DynamicPlaylistDataStd, DynamicPlaylistDataVersion>;
 
-impl AllSongsValue for DynamicPlaylistData {
+impl PlaylistData for DynamicPlaylistData {
     fn new_all_songs() -> Self {
         DynamicPlaylistDataStd::new(PlaylistContentData::new_all_songs()).into()
+    }
+
+    fn new_deleted_with_data(content_data: PlaylistContentData) -> Self {
+        DynamicPlaylistDataStd::new(content_data).into()
     }
 }
 

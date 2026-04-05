@@ -1,6 +1,6 @@
 use crate::content::SaveData;
 use crate::content::folder::ContentData;
-use crate::content::playlist::AllSongsValue;
+use crate::content::playlist::PlaylistData;
 use crate::content::playlist::song_list::SortBy;
 use crate::paths::{content_playlist_song_list_file, content_playlist_user_data_file};
 use crate::{Next, time_now};
@@ -44,9 +44,13 @@ pub(crate) type PlaylistContentData = ContentData<Id>;
 
 pub type PlaylistUserData = VersioningWrapper<PlaylistUserDataStd, PlaylistUserDataVersion>;
 
-impl AllSongsValue for PlaylistUserData {
+impl PlaylistData for PlaylistUserData {
     fn new_all_songs() -> Self {
         PlaylistUserDataStd::new(PlaylistContentData::new_all_songs()).into()
+    }
+
+    fn new_deleted_with_data(content_data: PlaylistContentData) -> Self {
+        PlaylistUserDataStd::new(content_data).into()
     }
 }
 
@@ -64,9 +68,13 @@ pub struct PlaylistUserDataStd {
     pub sort_by: SortBy,
 }
 
-impl AllSongsValue for PlaylistContentData {
+impl PlaylistData for PlaylistContentData {
     fn new_all_songs() -> Self {
         Self::new("All Songs".to_string(), Id::ZERO)
+    }
+
+    fn new_deleted_with_data(content_data: PlaylistContentData) -> Self {
+        Self::new("Deleted Playlist".to_string(), content_data.parent)
     }
 }
 

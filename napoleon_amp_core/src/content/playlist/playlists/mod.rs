@@ -1,11 +1,14 @@
+mod all_songs_playlist;
 mod dynamic_playlist;
 mod standard_playlist;
 
+use crate::content::folder::content_pool::CONTENT_POOL;
 use crate::content::playlist::data::PlaylistSongListData;
 use crate::content::playlist::manager::MusicManager;
 use crate::content::playlist::song_list::{SongList, SongVec};
-use crate::content::playlist::{PlaylistParent, SelectedSongsVariant};
+use crate::content::playlist::{PlaylistData, PlaylistParent, SelectedSongsVariant};
 pub use dynamic_playlist::*;
+use serbytes::prelude::SerBytes;
 use simple_id::prelude::Id;
 pub use standard_playlist::*;
 use std::cell::{Cell, OnceCell, RefCell};
@@ -35,3 +38,19 @@ impl PartialEq for InnerPlaylist {
 }
 
 impl Eq for InnerPlaylist {}
+
+fn get_user_data_ref_cell<'a, D>(
+    playlist_user_data: &'a OnceCell<RefCell<D>>,
+    inner: &InnerPlaylist,
+) -> &'a RefCell<D>
+where
+    D: SerBytes + PlaylistData,
+{
+    playlist_user_data.get_or_init(|| {
+        let playlist_data = CONTENT_POOL
+            .get_playlist_user_data(inner.id)
+            .unwrap_or_else(|_| D::new_deleted(inner.parent.id));
+
+        RefCell::new(playlist_data)
+    })
+}

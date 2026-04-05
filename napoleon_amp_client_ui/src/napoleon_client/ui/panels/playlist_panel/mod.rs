@@ -81,6 +81,7 @@ impl PlaylistPanel {
                             .button(format!("Sort: {}", sort_by.sort_by_variant))
                             .clicked()
                         {
+                            save_data = true;
                             user_data.sort_by.sort_by_variant.assign_next();
 
                             self.current_playlist.sort_songs(user_data.sort_by);

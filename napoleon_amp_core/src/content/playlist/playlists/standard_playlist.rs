@@ -1,8 +1,6 @@
 use crate::content::folder::Folder;
-use crate::content::folder::content_pool::CONTENT_POOL;
-use crate::content::playlist::data::{
-    PlaybackMode, PlaylistContentData, PlaylistUserData, PlaylistUserDataStd,
-};
+use crate::content::playlist::data::{PlaybackMode, PlaylistUserData};
+use crate::content::playlist::playlists::get_user_data_ref_cell;
 use crate::content::playlist::song_list::SongList;
 use crate::content::playlist::{InnerPlaylist, Playlist, PlaylistParent, SelectedSongsVariant};
 use crate::read_rwlock;
@@ -106,24 +104,6 @@ impl StandardPlaylist {
     pub fn get_name(&self) -> Ref<'_, String> {
         Ref::map(self.get_user_data(), |d| &d.inner().content_data.name)
     }
-
-    fn get_user_data_ref_cell(&self) -> &RefCell<PlaylistUserData> {
-        self.playlist_user_data.get_or_init(|| {
-            let inner = self.get_inner();
-
-            let playlist_data = CONTENT_POOL
-                .get_playlist_user_data(inner.id)
-                .unwrap_or_else(|_| {
-                    PlaylistUserDataStd::new(PlaylistContentData::new(
-                        "Deleted Playlist".to_string(),
-                        inner.parent.id,
-                    ))
-                    .into()
-                });
-
-            RefCell::new(playlist_data)
-        })
-    }
 }
 
 impl Playlist for StandardPlaylist {
@@ -132,11 +112,11 @@ impl Playlist for StandardPlaylist {
     }
 
     fn get_user_data(&self) -> Ref<'_, PlaylistUserData> {
-        self.get_user_data_ref_cell().borrow()
+        get_user_data_ref_cell(&self.playlist_user_data, &self.inner_playlist).borrow()
     }
 
     fn get_user_data_mut(&self) -> RefMut<'_, PlaylistUserData> {
-        self.get_user_data_ref_cell().borrow_mut()
+        get_user_data_ref_cell(&self.playlist_user_data, &self.inner_playlist).borrow_mut()
     }
 }
 

@@ -7,7 +7,9 @@ mod song_list;
 use crate::content::SaveData;
 use crate::content::folder::Folder;
 use crate::content::folder::content_pool::CONTENT_POOL;
-use crate::content::playlist::data::{PlaybackMode, PlaylistSongListData, PlaylistUserData};
+use crate::content::playlist::data::{
+    PlaybackMode, PlaylistContentData, PlaylistSongListData, PlaylistUserData,
+};
 use crate::content::playlist::manager::MusicManager;
 use crate::content::playlist::song_list::{SongVec, SortBy};
 use crate::content::song::Song;
@@ -522,8 +524,17 @@ impl Deref for PlaylistType {
     }
 }
 
-pub(crate) trait AllSongsValue {
+pub(crate) trait PlaylistData: Sized {
     fn new_all_songs() -> Self;
+
+    fn new_deleted_with_data(content_data: PlaylistContentData) -> Self;
+
+    fn new_deleted(parent_id: Id) -> Self {
+        Self::new_deleted_with_data(PlaylistContentData::new(
+            "Deleted Playlist".to_string(),
+            parent_id,
+        ))
+    }
 }
 
 #[derive(Clone, Debug)]

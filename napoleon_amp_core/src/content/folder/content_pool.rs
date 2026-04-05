@@ -1,6 +1,6 @@
 use crate::content::SaveData;
 use crate::content::folder::{FolderContentData, FolderData};
-use crate::content::playlist::AllSongsValue;
+use crate::content::playlist::PlaylistData;
 use crate::content::playlist::data::{
     PlaylistContentData, PlaylistSongListData, PlaylistUserData, PlaylistUserDataStd,
 };
@@ -93,7 +93,7 @@ impl ContentPool {
 
     pub(crate) fn get_playlist_user_data<D>(&self, playlist_id: Id) -> FromFileResult<'_, D>
     where
-        D: SerBytes + AllSongsValue,
+        D: SerBytes + PlaylistData,
     {
         if playlist_id == Id::ZERO {
             let user_data_std = D::new_all_songs();
