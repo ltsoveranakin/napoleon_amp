@@ -1,6 +1,7 @@
 pub mod content;
 pub(crate) mod content_pool;
 
+use crate::content::SaveData;
 use crate::content::folder::content::FolderContentVariant;
 use crate::content::folder::content_pool::{CONTENT_POOL, RemoveAssociatedFileError};
 use crate::content::playlist::{PlaylistType, StandardPlaylist};
@@ -54,13 +55,11 @@ impl FolderData {
             expanded: true.into(),
         }
     }
+}
 
-    pub fn get_folder_data_path(id: Id) -> PathBuf {
+impl SaveData for FolderData {
+    fn get_path(id: Id) -> PathBuf {
         content_folder_file(id)
-    }
-
-    pub(crate) fn save_data(&self, id: Id) -> io::Result<()> {
-        self.write_to_file_path(Self::get_folder_data_path(id))
     }
 }
 
@@ -160,7 +159,7 @@ impl Folder {
 
             let data = FolderData::from_file_path(folder_path).unwrap_or_else(|_| {
                 assert_eq!(self.id, Id::ZERO, "Temp fix for base folder");
-                let data = FolderData::new(FolderContentData::new("Base".to_string(), None));
+                let mut data = FolderData::new(FolderContentData::new("Base".to_string(), None));
 
                 data.save_data(self.id).expect("write folder data to disk");
 

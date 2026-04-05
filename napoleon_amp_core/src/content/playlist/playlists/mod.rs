@@ -1,7 +1,7 @@
 mod dynamic_playlist;
 mod standard_playlist;
 
-use crate::content::playlist::data::{PlaylistSongListData, PlaylistUserData};
+use crate::content::playlist::data::PlaylistSongListData;
 use crate::content::playlist::manager::MusicManager;
 use crate::content::playlist::song_list::{SongList, SongVec};
 use crate::content::playlist::{PlaylistParent, SelectedSongsVariant};
@@ -22,7 +22,7 @@ pub struct InnerPlaylist {
     pub(crate) songs_filtered: SongVec,
     pub(crate) variant: StandardPlaylistVariant,
     pub(crate) selected_songs: RefCell<SelectedSongsVariant>,
-    pub(crate) playlist_user_data: OnceCell<RefCell<PlaylistUserData>>,
+    // pub(crate) playlist_user_data: OnceCell<RefCell<PlaylistUserData>>,
     pub(crate) playlist_song_list_data: OnceCell<RefCell<PlaylistSongListData>>,
     pub(crate) total_length: RefCell<Option<u32>>,
     pub(crate) current_search_str: RefCell<String>,

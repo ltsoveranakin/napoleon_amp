@@ -11,6 +11,7 @@ use napoleon_amp_core::content::playlist::manager::{MusicManager, SongStatus};
 use napoleon_amp_core::content::song::song_data::MAX_RATING;
 
 use crate::napoleon_client::ui::helpers::scroll_area_styled;
+use napoleon_amp_core::content::SaveData;
 use napoleon_amp_core::instance::NapoleonInstance;
 use napoleon_amp_core::paths::show_file_in_explorer;
 use napoleon_amp_core::{Next, read_rwlock};
@@ -50,6 +51,8 @@ impl PlaylistPanel {
             if matches!(*self.current_playlist, PlaylistType::Standard(_)) {
                 ui.vertical(|ui| {
                     let mut user_data_v = self.current_playlist.get_user_data_mut();
+                    let mut save_data = false;
+
                     let user_data = user_data_v.inner_mut();
 
                     ui.heading(&user_data.content_data.name);
@@ -87,13 +90,16 @@ impl PlaylistPanel {
                             .checkbox(&mut user_data.sort_by.inverted, "Descending")
                             .changed()
                         {
-                            user_data
-                                .save_data(self.current_playlist.id())
-                                .expect("Save playlist user data");
+                            save_data = true;
                             self.current_playlist.sort_songs(user_data.sort_by);
-                            // self.current_playlist.s
                         }
                     });
+
+                    if save_data {
+                        user_data_v
+                            .save_data(self.current_playlist.id())
+                            .expect("Save playlist user data");
+                    }
                 });
             } else {
                 ui.heading("All Songs");

@@ -10,10 +10,11 @@ use eframe::egui::{
 use crate::napoleon_client::colors::text_color;
 use crate::napoleon_client::ui::panels::folder_list::modals::FolderListModals;
 use crate::napoleon_client::ui::panels::open_location_button;
+use napoleon_amp_core::content::SaveData;
 use napoleon_amp_core::content::folder::content::FolderContentVariant;
 use napoleon_amp_core::content::folder::{Folder, FolderData};
 use napoleon_amp_core::content::playlist::PlaylistType;
-use napoleon_amp_core::content::playlist::data::PlaylistUserDataStd;
+use napoleon_amp_core::content::playlist::data::PlaylistUserData;
 use napoleon_amp_core::discord_rpc::set_rpc_playlist;
 use napoleon_amp_core::instance::NapoleonInstance;
 use napoleon_amp_core::simple_id::prelude::Id;
@@ -177,7 +178,7 @@ impl FolderList {
                         if Self::shared_popup_ui(
                             ui,
                             "playlist",
-                            PlaylistUserDataStd::get_data_path(playlist.id()),
+                            PlaylistUserData::get_path(playlist.id()),
                             playlist.id(),
                         ) {
                             delete_index = Some((Rc::clone(current_sub_folder), current_index));
@@ -213,7 +214,7 @@ impl FolderList {
                             if Self::shared_popup_ui(
                                 ui,
                                 "folder",
-                                FolderData::get_folder_data_path(folder.id),
+                                FolderData::get_path(folder.id),
                                 folder.id,
                             ) {
                                 delete_index = Some((Rc::clone(current_sub_folder), current_index));

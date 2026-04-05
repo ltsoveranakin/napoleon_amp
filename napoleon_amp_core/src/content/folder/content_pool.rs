@@ -1,4 +1,6 @@
+use crate::content::SaveData;
 use crate::content::folder::{FolderContentData, FolderData};
+use crate::content::playlist::AllSongsValue;
 use crate::content::playlist::data::{
     PlaylistContentData, PlaylistSongListData, PlaylistUserData, PlaylistUserDataStd,
 };
@@ -89,17 +91,16 @@ impl ContentPool {
         }
     }
 
-    pub(crate) fn get_playlist_user_data(
-        &self,
-        playlist_id: Id,
-    ) -> FromFileResult<'_, PlaylistUserData> {
+    pub(crate) fn get_playlist_user_data<D>(&self, playlist_id: Id) -> FromFileResult<'_, D>
+    where
+        D: SerBytes + AllSongsValue,
+    {
         if playlist_id == Id::ZERO {
-            let user_data_std =
-                PlaylistUserDataStd::new(PlaylistContentData::new("Base".to_string(), Id::ZERO));
+            let user_data_std = D::new_all_songs();
 
             Ok(user_data_std.into())
         } else {
-            PlaylistUserData::from_file_path(content_playlist_user_data_file(playlist_id))
+            D::from_file_path(content_playlist_user_data_file(playlist_id))
         }
     }
 
@@ -148,7 +149,7 @@ impl ContentPool {
         let playlist_data =
             PlaylistUserDataStd::new(PlaylistContentData::new(playlist_name, parent_folder));
 
-        playlist_data.save_data(id)?;
+        PlaylistUserData::from(playlist_data).save_data(id)?;
 
         Ok(id)
     }
@@ -160,7 +161,7 @@ impl ContentPool {
     ) -> io::Result<Id> {
         let id = Self::generate_unique_id(&self.folders);
 
-        let folder_data = FolderData::new(FolderContentData::new(folder_name, parent_folder));
+        let mut folder_data = FolderData::new(FolderContentData::new(folder_name, parent_folder));
 
         folder_data.save_data(id)?;
 

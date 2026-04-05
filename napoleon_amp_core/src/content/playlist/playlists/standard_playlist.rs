@@ -1,10 +1,13 @@
 use crate::content::folder::Folder;
-use crate::content::playlist::data::PlaybackMode;
+use crate::content::folder::content_pool::CONTENT_POOL;
+use crate::content::playlist::data::{
+    PlaybackMode, PlaylistContentData, PlaylistUserData, PlaylistUserDataStd,
+};
 use crate::content::playlist::song_list::SongList;
 use crate::content::playlist::{InnerPlaylist, Playlist, PlaylistParent, SelectedSongsVariant};
 use crate::read_rwlock;
 use simple_id::prelude::Id;
-use std::cell::{Cell, OnceCell, Ref, RefCell};
+use std::cell::{Cell, OnceCell, Ref, RefCell, RefMut};
 use std::ops::{Deref, RangeInclusive};
 use std::rc::Rc;
 use std::sync::{Arc, RwLock};
@@ -22,6 +25,7 @@ pub enum StandardPlaylistVariant {
 #[derive(Debug)]
 pub struct StandardPlaylist {
     inner_playlist: InnerPlaylist,
+    playlist_user_data: OnceCell<RefCell<PlaylistUserData>>,
 }
 
 impl Deref for StandardPlaylist {
@@ -47,11 +51,11 @@ impl StandardPlaylist {
                 variant,
                 songs_filtered: Arc::new(RwLock::new(Vec::new())),
                 selected_songs: RefCell::new(SelectedSongsVariant::None),
-                playlist_user_data: OnceCell::new(),
                 playlist_song_list_data: OnceCell::new(),
                 total_length: RefCell::new(None),
                 current_search_str: RefCell::new(String::new()),
             },
+            playlist_user_data: OnceCell::new(),
         }
     }
 
@@ -102,11 +106,37 @@ impl StandardPlaylist {
     pub fn get_name(&self) -> Ref<'_, String> {
         Ref::map(self.get_user_data(), |d| &d.inner().content_data.name)
     }
+
+    fn get_user_data_ref_cell(&self) -> &RefCell<PlaylistUserData> {
+        self.playlist_user_data.get_or_init(|| {
+            let inner = self.get_inner();
+
+            let playlist_data = CONTENT_POOL
+                .get_playlist_user_data(inner.id)
+                .unwrap_or_else(|_| {
+                    PlaylistUserDataStd::new(PlaylistContentData::new(
+                        "Deleted Playlist".to_string(),
+                        inner.parent.id,
+                    ))
+                    .into()
+                });
+
+            RefCell::new(playlist_data)
+        })
+    }
 }
 
 impl Playlist for StandardPlaylist {
     fn get_inner(&self) -> &InnerPlaylist {
         &self.inner_playlist
+    }
+
+    fn get_user_data(&self) -> Ref<'_, PlaylistUserData> {
+        self.get_user_data_ref_cell().borrow()
+    }
+
+    fn get_user_data_mut(&self) -> RefMut<'_, PlaylistUserData> {
+        self.get_user_data_ref_cell().borrow_mut()
     }
 }
 

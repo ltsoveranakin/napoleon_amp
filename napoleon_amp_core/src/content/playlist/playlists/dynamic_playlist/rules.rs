@@ -17,6 +17,13 @@ pub struct Rules {
 }
 
 impl Rules {
+    pub(super) fn new() -> Self {
+        Self {
+            import_from: ImportFrom::AllSongs,
+            filters: Vec::new(),
+        }
+    }
+
     fn get_song_list(&self, self_last_updated: u64) -> FromFileResult<'_, Vec<Arc<Song>>> {
         let mut song_ids_checked = HashSet::new();
         let mut songs = Vec::new();

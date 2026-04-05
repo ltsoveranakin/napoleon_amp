@@ -4,11 +4,10 @@ pub mod playlists;
 pub mod queue;
 mod song_list;
 
+use crate::content::SaveData;
 use crate::content::folder::Folder;
 use crate::content::folder::content_pool::CONTENT_POOL;
-use crate::content::playlist::data::{
-    PlaybackMode, PlaylistContentData, PlaylistSongListData, PlaylistUserData, PlaylistUserDataStd,
-};
+use crate::content::playlist::data::{PlaybackMode, PlaylistSongListData, PlaylistUserData};
 use crate::content::playlist::manager::MusicManager;
 use crate::content::playlist::song_list::{SongVec, SortBy};
 use crate::content::song::Song;
@@ -18,6 +17,7 @@ use crate::paths::song::{song_audio_file_v2, songs_audio_dir_v2, songs_data_dir_
 use crate::song_pool::SONG_POOL;
 use crate::{read_rwlock, time_now, write_rwlock};
 pub use playlists::*;
+use serbytes::prelude::SerBytes;
 use simple_id::prelude::{Id, SmallRngIdGenerator};
 use std::cell::{Ref, RefCell, RefMut};
 use std::collections::HashSet;
@@ -132,31 +132,9 @@ pub trait Playlist {
             .expect("Write playlist song list data to file");
     }
 
-    fn get_user_data_ref_cell(&self) -> &RefCell<PlaylistUserData> {
-        let inner = self.get_inner();
+    fn get_user_data(&self) -> Ref<'_, PlaylistUserData>;
 
-        inner.playlist_user_data.get_or_init(|| {
-            let playlist_data = CONTENT_POOL
-                .get_playlist_user_data(inner.id)
-                .unwrap_or_else(|_| {
-                    PlaylistUserDataStd::new(PlaylistContentData::new(
-                        "Deleted Playlist".to_string(),
-                        inner.parent.id,
-                    ))
-                    .into()
-                });
-
-            RefCell::new(playlist_data)
-        })
-    }
-
-    fn get_user_data(&self) -> Ref<'_, PlaylistUserData> {
-        self.get_user_data_ref_cell().borrow()
-    }
-
-    fn get_user_data_mut(&self) -> RefMut<'_, PlaylistUserData> {
-        self.get_user_data_ref_cell().borrow_mut()
-    }
+    fn get_user_data_mut(&self) -> RefMut<'_, PlaylistUserData>;
 
     fn start_play_song(&self, song_index: usize) {
         let inner = self.get_inner();
@@ -238,9 +216,9 @@ pub trait Playlist {
             return;
         }
 
-        let playlist_data = self.get_user_data();
+        let mut playlist_data = self.get_user_data_mut();
+
         playlist_data
-            .inner()
             .save_data(self.id())
             .expect("Write playlist user data to file");
     }
@@ -317,9 +295,11 @@ pub trait Playlist {
     }
 
     fn import_existing_songs(&self, new_songs: &[Arc<Song>]) {
-        let mut songs = self.get_inner().songs.borrow_mut();
+        {
+            let mut songs = self.get_inner().songs.borrow_mut();
 
-        songs.push_songs_arc_list(new_songs);
+            songs.push_songs_arc_list(new_songs);
+        }
 
         self.sort_songs(self.get_user_data().inner().sort_by);
     }
@@ -504,11 +484,10 @@ pub trait Playlist {
 
     fn rename(&self, new_name: String) -> io::Result<()> {
         let mut pl_data_v = self.get_user_data_mut();
-        let pl_data = pl_data_v.inner_mut();
 
-        pl_data.content_data.name = new_name;
+        pl_data_v.inner_mut().content_data.name = new_name;
 
-        pl_data.save_data(self.id())
+        pl_data_v.save_data(self.id())
     }
 
     fn sort_songs(&self, sort_by: SortBy) {
@@ -541,6 +520,10 @@ impl Deref for PlaylistType {
             Self::Dynamic(dynamic_playlist) => dynamic_playlist,
         }
     }
+}
+
+pub(crate) trait AllSongsValue {
+    fn new_all_songs() -> Self;
 }
 
 #[derive(Clone, Debug)]
