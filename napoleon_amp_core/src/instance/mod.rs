@@ -4,18 +4,17 @@ mod fixup;
 use crate::content::folder::Folder;
 use crate::content::playlist::all_songs_playlist::AllSongsPlaylist;
 use crate::content::playlist::data::PlaybackMode;
+use crate::content::playlist::manager::DiscordRPCArc;
 use crate::content::playlist::{Playlist, PlaylistType};
 use crate::content::song::Song;
-use crate::discord_rpc::discord_rpc_thread;
+use crate::discord_rpc::DiscordRPC;
 use crate::instance::data::InstanceData;
 use crate::read_rwlock;
-use rand::{RngExt, rng};
+use rand::{rng, RngExt};
 use simple_id::prelude::Id;
 use std::cell::LazyCell;
 use std::rc::{Rc, Weak};
-use std::sync::Arc;
-use std::thread;
-use std::thread::JoinHandle;
+use std::sync::{Arc, RwLock};
 
 pub struct NapoleonInstance {
     pub base_folder: Rc<Folder>,
@@ -23,7 +22,7 @@ pub struct NapoleonInstance {
     copied_songs: Option<Vec<Arc<Song>>>,
     currently_playing_playlist: Option<Rc<PlaylistType>>,
     instance_data: LazyCell<InstanceData>,
-    _discord_rpc_thread: Option<JoinHandle<()>>,
+    pub discord_rpc: DiscordRPCArc,
 }
 
 impl NapoleonInstance {
@@ -35,13 +34,7 @@ impl NapoleonInstance {
             copied_songs: None,
             currently_playing_playlist: None,
             instance_data: LazyCell::new(InstanceData::init_self),
-            _discord_rpc_thread: Some(thread::spawn(|| {
-                if discord_rpc_thread().is_ok() {
-                    println!("rpc thread fin ok");
-                } else {
-                    println!("rpc thread err");
-                }
-            })),
+            discord_rpc: Arc::new(RwLock::new(DiscordRPC::new())),
         }
     }
 

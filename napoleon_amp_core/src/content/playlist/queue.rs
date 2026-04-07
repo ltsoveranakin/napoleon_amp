@@ -44,7 +44,7 @@ pub struct Queue {
 
 pub enum QueueSong {
     Index(usize),
-    Arc(Arc<Song>),
+    SongArc(Arc<Song>),
 }
 
 impl Queue {
@@ -105,7 +105,7 @@ impl Queue {
     pub(super) fn get_next_song(&mut self) -> QueueSong {
         self.temporary_queue.pop_front().map_or_else(
             || QueueSong::Index(self.indexes[self.index]),
-            |song| QueueSong::Arc(song),
+            |song| QueueSong::SongArc(song),
         )
     }
 

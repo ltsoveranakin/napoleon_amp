@@ -1,7 +1,7 @@
 use crate::content::playlist::queue::{Queue, QueueSong};
 use crate::content::playlist::PlaybackMode;
 use crate::content::song::Song;
-use crate::discord_rpc::{send_rpc_action, RPCAction, SetSongData};
+use crate::discord_rpc::{ClientActivityArc, DiscordRPC, SetSongData};
 use crate::paths::song::song_audio_file_v2;
 use crate::{read_rwlock, write_rwlock, ReadWrapper, WriteWrapper};
 use rodio::cpal::traits::HostTrait;
@@ -17,6 +17,9 @@ use std::sync::{mpsc, Arc, RwLock};
 use std::thread::JoinHandle;
 use std::time::Duration;
 use std::{io, thread};
+use crate::content::song::song_data::Artist;
+
+pub(crate)type DiscordRPCArc = Arc<RwLock<DiscordRPC>>;
 
 static DEAD_MUSIC_THREAD_MESSAGE: &'static str =
     "Music thread should be dead, and this should be cleaned up";
@@ -91,6 +94,7 @@ impl MusicManager {
         start_index: usize,
         volume: f32,
         playback_mode: PlaybackMode,
+        discord_rpc: DiscordRPCArc,
     ) -> Option<Self> {
         // TODO: return result instead of option
         let songs = read_rwlock(&songs_arc);
@@ -169,13 +173,20 @@ impl MusicManager {
                             MusicCommand::Pause => {
                                 is_playing = false;
                                 sink.pause();
-                                send_rpc_action(RPCAction::StopMusic);
+                                write_rwlock(&discord_rpc).set_song_data(None);
+                                // send_rpc_action(RPCAction::StopMusic);
                             }
 
                             MusicCommand::Play => {
                                 is_playing = true;
                                 sink.play();
-                                send_rpc_action(RPCAction::Resume);
+                                let song_status_song = read_rwlock(&song_status).song;
+                                
+                                write_rwlock(&discord_rpc).set_song_data(Some(SetSongData {
+                                    song_title: song_status_song.,
+                                    song_artist: Artist {},
+                                    song_duration: None,
+                                }));
                             }
 
                             MusicCommand::SwitchSong(switch_song_command) => {
@@ -222,7 +233,7 @@ impl MusicManager {
                                 }
                             }
 
-                            QueueSong::Arc(song) => song,
+                            QueueSong::SongArc(song) => song,
                         };
 
                         // Skip if invalid file
