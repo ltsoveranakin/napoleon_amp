@@ -131,7 +131,7 @@ impl FolderList {
             match folder_content_variant {
                 FolderContentVariant::Playlist(playlist) => {
                     let user_data = playlist.get_user_data();
-                    let playlist_name = &user_data.inner().content_data.name;
+                    let playlist_name = &user_data.inner.content_data.name;
 
                     let playlist_button = ui
                         .scope(|ui| {

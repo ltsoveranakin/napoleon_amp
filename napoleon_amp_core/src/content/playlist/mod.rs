@@ -7,6 +7,7 @@ mod song_list;
 use crate::content::SaveData;
 use crate::content::folder::Folder;
 use crate::content::folder::content_pool::CONTENT_POOL;
+use crate::content::playlist::all_songs_playlist::AllSongsPlaylist;
 use crate::content::playlist::data::{
     PlaybackMode, PlaylistContentData, PlaylistSongListData, PlaylistUserData,
 };
@@ -30,9 +31,12 @@ use std::rc::Weak;
 use std::sync::Arc;
 use std::{fs, io};
 
-struct SharedPlaylistData {}
 pub trait Playlist {
     fn get_inner(&self) -> &InnerPlaylist;
+
+    fn get_user_data(&self) -> Ref<'_, PlaylistUserData>;
+
+    fn get_user_data_mut(&self) -> RefMut<'_, PlaylistUserData>;
 
     fn id(&self) -> Id {
         self.get_inner().id
@@ -57,30 +61,11 @@ pub trait Playlist {
         } else {
             let song_list_data = self.get_song_list_data();
 
-            let loaded_song_ids_backing;
-
-            let (song_ids, should_sort) = match inner.variant {
-                StandardPlaylistVariant::Normal => (&song_list_data.song_ids, false),
-
-                StandardPlaylistVariant::AllSongs => {
-                    loaded_song_ids_backing = SONG_POOL
-                        .get_registered_songs()
-                        .name_map
-                        .values()
-                        .copied()
-                        .collect();
-
-                    (&loaded_song_ids_backing, true)
-                }
-            };
-
             let mut songs = inner.songs.borrow_mut();
 
-            songs.push_songs(song_ids);
+            songs.push_songs(&song_list_data.song_ids);
 
-            if should_sort {
-                songs.sort_songs(SortBy::default());
-            }
+            songs.sort_songs(SortBy::default());
 
             inner.has_loaded_songs.set(true);
 
@@ -110,12 +95,6 @@ pub trait Playlist {
     }
 
     fn save_song_list(&self) {
-        if matches!(self.get_inner().variant, StandardPlaylistVariant::AllSongs)
-            || self.id() == Id::ZERO
-        {
-            return;
-        }
-
         let songs_unfiltered = self.get_song_vec_unfiltered();
 
         let songs = read_rwlock(&songs_unfiltered);
@@ -134,10 +113,6 @@ pub trait Playlist {
             .expect("Write playlist song list data to file");
     }
 
-    fn get_user_data(&self) -> Ref<'_, PlaylistUserData>;
-
-    fn get_user_data_mut(&self) -> RefMut<'_, PlaylistUserData>;
-
     fn start_play_song(&self, song_index: usize) {
         let inner = self.get_inner();
 
@@ -150,7 +125,7 @@ pub trait Playlist {
         }
 
         let playlist_data_v = self.get_user_data();
-        let playlist_data = playlist_data_v.inner();
+        let playlist_data = &playlist_data_v.inner;
 
         let actual_index = if !read_rwlock(&inner.songs_filtered).is_empty() {
             let songs_vec = self.get_song_vec();
@@ -203,21 +178,14 @@ pub trait Playlist {
             manager.set_volume(volume);
         }
 
-        self.get_user_data_mut().inner_mut().volume = volume;
+        self.get_user_data_mut().inner.volume = volume;
 
         self.save_user_data();
     }
 
-    /// Saves the list of songs to the file at `self.path_named`
-    /// This does nothing if `self.variant` is [`StandardPlaylistVariant::AllSongs`] or if this is the 'all songs' playlist
+    /// Saves the [`PlaylistUserData`] to the file at `self.path_named`
 
     fn save_user_data(&self) {
-        if matches!(self.get_inner().variant, StandardPlaylistVariant::AllSongs)
-            || self.id() == Id::ZERO
-        {
-            return;
-        }
-
         let mut playlist_data = self.get_user_data_mut();
 
         playlist_data
@@ -226,43 +194,11 @@ pub trait Playlist {
     }
 
     fn get_volume(&self) -> f32 {
-        self.get_user_data().inner().volume
+        self.get_user_data().inner.volume
     }
 
     fn delete_song(&self, song_index: usize) {
-        let inner = self.get_inner();
-
-        if matches!(inner.variant, StandardPlaylistVariant::AllSongs) {
-            return;
-        }
-
-        {
-            let mut song_list = inner.songs.borrow_mut();
-            let songs_filtered = read_rwlock(&inner.songs_filtered);
-
-            if songs_filtered.is_empty() {
-                song_list.remove_song_at(song_index);
-            } else {
-                let mut songs_filtered = write_rwlock(&inner.songs_filtered);
-
-                let song_removed = songs_filtered.remove(song_index);
-
-                let mut index_to_remove = None;
-
-                for (i, song) in song_list.songs().iter().enumerate() {
-                    if song == &song_removed {
-                        index_to_remove = Some(i);
-                        break;
-                    }
-                }
-
-                if let Some(index) = index_to_remove {
-                    song_list.remove_song_at(index);
-                }
-            }
-        }
-
-        self.save_song_list();
+        delete_song_default(self, song_index);
     }
 
     fn get_string_list(&self, filter: &dyn Fn(&SongData) -> &String) -> Vec<String> {
@@ -303,7 +239,7 @@ pub trait Playlist {
             songs.push_songs_arc_list(new_songs);
         }
 
-        self.sort_songs(self.get_user_data().inner().sort_by);
+        self.sort_songs(self.get_user_data().inner.sort_by);
     }
 
     fn get_selected_songs(&self) -> SelectedSongsVariant {
@@ -399,7 +335,7 @@ pub trait Playlist {
             .save_registered_songs()
             .expect("save registered songs");
 
-        self.sort_songs(self.get_user_data().inner().sort_by);
+        self.sort_songs(self.get_user_data().inner.sort_by);
 
         if !already_exists.is_empty() {
             println!("Imported songs and saved successfully, but some failed to import");
@@ -487,7 +423,7 @@ pub trait Playlist {
     fn rename(&self, new_name: String) -> io::Result<()> {
         let mut pl_data_v = self.get_user_data_mut();
 
-        pl_data_v.inner_mut().content_data.name = new_name;
+        pl_data_v.inner.content_data.name = new_name;
 
         pl_data_v.save_data(self.id())
     }
@@ -499,10 +435,46 @@ pub trait Playlist {
     }
 }
 
+fn delete_song_default<P>(playlist: &P, song_index: usize)
+where
+    P: Playlist + ?Sized,
+{
+    let inner = playlist.get_inner();
+
+    {
+        let mut song_list = inner.songs.borrow_mut();
+        let songs_filtered = read_rwlock(&inner.songs_filtered);
+
+        if songs_filtered.is_empty() {
+            song_list.remove_song_at(song_index);
+        } else {
+            let mut songs_filtered = write_rwlock(&inner.songs_filtered);
+
+            let song_removed = songs_filtered.remove(song_index);
+
+            let mut index_to_remove = None;
+
+            for (i, song) in song_list.songs().iter().enumerate() {
+                if song == &song_removed {
+                    index_to_remove = Some(i);
+                    break;
+                }
+            }
+
+            if let Some(index) = index_to_remove {
+                song_list.remove_song_at(index);
+            }
+        }
+    }
+
+    playlist.save_song_list();
+}
+
 #[derive(Debug, Eq, PartialEq)]
 pub enum PlaylistType {
     Standard(StandardPlaylist),
     Dynamic(DynamicPlaylist),
+    AllSongs(AllSongsPlaylist),
 }
 
 impl PartialEq for dyn Playlist {
@@ -520,6 +492,7 @@ impl Deref for PlaylistType {
         match self {
             Self::Standard(standard_playlist) => standard_playlist,
             Self::Dynamic(dynamic_playlist) => dynamic_playlist,
+            Self::AllSongs(all_songs_playlist) => all_songs_playlist,
         }
     }
 }

@@ -44,13 +44,13 @@ impl Playlist for DynamicPlaylist {
 
     fn get_user_data(&self) -> Ref<'_, PlaylistUserData> {
         Ref::map(self.get_data_ref_cell().borrow(), |dynamic_data| {
-            &dynamic_data.inner().user_data
+            &dynamic_data.inner.user_data
         })
     }
 
     fn get_user_data_mut(&self) -> RefMut<'_, PlaylistUserData> {
         RefMut::map(self.get_data_ref_cell().borrow_mut(), |dynamic_data| {
-            &mut dynamic_data.inner_mut().user_data
+            &mut dynamic_data.inner.user_data
         })
     }
 }

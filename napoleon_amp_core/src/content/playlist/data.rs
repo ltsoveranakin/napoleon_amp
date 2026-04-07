@@ -13,6 +13,12 @@ use std::fmt::{Display, Formatter};
 use std::io;
 use std::path::PathBuf;
 
+pub(crate) type PlaylistContentData = ContentData<Id>;
+
+/// [`VersioningWrapper`] of [`PlaylistUserDataStd`]
+
+pub type PlaylistUserData = VersioningWrapper<PlaylistUserDataStd, PlaylistUserDataVersion>;
+
 const DEFAULT_VOLUME: f32 = 1.0;
 
 #[derive(SerBytes, Default, Debug, Copy, Clone)]
@@ -39,10 +45,6 @@ impl Display for PlaybackMode {
         }
     }
 }
-
-pub(crate) type PlaylistContentData = ContentData<Id>;
-
-pub type PlaylistUserData = VersioningWrapper<PlaylistUserDataStd, PlaylistUserDataVersion>;
 
 impl PlaylistData for PlaylistUserData {
     fn new_all_songs() -> Self {

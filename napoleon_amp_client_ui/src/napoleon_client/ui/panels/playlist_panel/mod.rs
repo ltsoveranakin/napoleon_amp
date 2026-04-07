@@ -53,7 +53,7 @@ impl PlaylistPanel {
                     let mut user_data_v = self.current_playlist.get_user_data_mut();
                     let mut save_data = false;
 
-                    let user_data = user_data_v.inner_mut();
+                    let user_data = &mut user_data_v.inner;
 
                     ui.heading(&user_data.content_data.name);
 

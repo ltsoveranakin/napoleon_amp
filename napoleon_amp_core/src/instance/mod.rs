@@ -2,8 +2,9 @@ mod data;
 mod fixup;
 
 use crate::content::folder::Folder;
+use crate::content::playlist::all_songs_playlist::AllSongsPlaylist;
 use crate::content::playlist::data::PlaybackMode;
-use crate::content::playlist::{Playlist, PlaylistType, StandardPlaylist, StandardPlaylistVariant};
+use crate::content::playlist::{Playlist, PlaylistType};
 use crate::content::song::Song;
 use crate::discord_rpc::discord_rpc_thread;
 use crate::instance::data::InstanceData;
@@ -76,7 +77,7 @@ impl NapoleonInstance {
             return;
         }
 
-        let song_index = match playlist.get_user_data().inner().playback_mode {
+        let song_index = match playlist.get_user_data().inner.playback_mode {
             PlaybackMode::Sequential => 0,
 
             PlaybackMode::Shuffle => rng().random_range(0..songs_len),
@@ -114,9 +115,7 @@ impl NapoleonInstance {
         if let Some(upgraded) = upgraded_opt {
             upgraded
         } else {
-            let playlist = Rc::new(PlaylistType::Standard(StandardPlaylist::new(
-                Id::ZERO,
-                StandardPlaylistVariant::AllSongs,
+            let playlist = Rc::new(PlaylistType::AllSongs(AllSongsPlaylist::new(
                 &self.base_folder,
             )));
 

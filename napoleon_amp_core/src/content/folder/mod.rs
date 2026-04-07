@@ -191,7 +191,7 @@ impl Folder {
             }
 
             FolderDataContentVariant::Playlist => FolderContentVariant::Playlist(Rc::new(
-                PlaylistType::Standard(StandardPlaylist::new_file(id, self)),
+                PlaylistType::Standard(StandardPlaylist::new(id, self)),
             )),
         }
     }
