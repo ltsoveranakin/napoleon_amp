@@ -38,50 +38,6 @@ impl StandardPlaylist {
             playlist_user_data: OnceCell::new(),
         }
     }
-
-    // /// Sets the selected range of the playlist
-    // /// Errors under 3 conditions.
-    // ///
-    // /// If end is less than start.
-    // /// If start is greater than or equal to (potentially filtered songs) length.
-    // /// If end is greater than or equal to (potentially filtered songs) length.
-    //
-    // pub fn select_range(&self, range: RangeInclusive<usize>) -> Result<(), ()> {
-    //     let songs_lock = self.get_song_vec();
-    //     let songs = read_rwlock(&songs_lock);
-    //
-    //     let start = *range.start();
-    //     let end = *range.end();
-    //     let song_len = songs.len();
-    //
-    //     if end < start || start >= song_len || end >= song_len {
-    //         Err(())
-    //     } else {
-    //         self.set_selected_songs(SelectedSongsVariant::Range(range));
-    //         Ok(())
-    //     }
-    // }
-    //
-    // pub fn set_playback_mode(&self, playback_mode: PlaybackMode) {
-    //     {
-    //         let mut playlist_data = self.get_user_data_mut();
-    //
-    //         playlist_data.inner_mut().playback_mode = playback_mode.into();
-    //     }
-    //     self.save_user_data();
-    // }
-    //
-    // pub fn playback_mode(&self) -> PlaybackMode {
-    //     self.get_user_data().inner().playback_mode
-    // }
-    //
-    // pub fn get_volume(&self) -> f32 {
-    //     self.get_user_data().inner().volume
-    // }
-    //
-    // pub fn get_name(&self) -> Ref<'_, String> {
-    //     Ref::map(self.get_user_data(), |d| &d.inner().content_data.name)
-    // }
 }
 
 impl Playlist for StandardPlaylist {

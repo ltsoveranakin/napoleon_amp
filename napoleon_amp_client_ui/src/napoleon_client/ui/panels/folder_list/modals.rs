@@ -1,11 +1,24 @@
 use eframe::egui::{Id, Modal, Ui};
 use napoleon_amp_core::content::folder::Folder;
-use napoleon_amp_core::content::playlist::PlaylistType;
+use napoleon_amp_core::content::playlist::dynamic_playlist_data::DynamicPlaylistDataStd;
+use napoleon_amp_core::content::playlist::filter::{
+    ComparisonMethod, FilterRule, FilterRules, ValuesType,
+};
+use napoleon_amp_core::content::playlist::{Playlist, PlaylistType};
+use std::ops::Deref;
 use std::rc::Rc;
+
+pub(super) type EditPlaylistType =
+    PlaylistType<Rc<PlaylistType>, (DynamicPlaylistDataStd, Rc<PlaylistType>)>;
+
+pub(super) enum CreatePlaylistVariant {
+    Standard,
+    Dynamic,
+}
 
 pub(super) enum CreateFolderContentDialogVariant {
     SubFolder,
-    Playlist,
+    Playlist(CreatePlaylistVariant),
 }
 
 pub(super) enum FolderListModals {
@@ -14,9 +27,9 @@ pub(super) enum FolderListModals {
         name: String,
         current_folder: Rc<Folder>,
     },
-    RenamePlaylist {
+    EditPlaylist {
         name: String,
-        playlist: Rc<PlaylistType>,
+        edit_playlist_type: EditPlaylistType,
     },
     None,
 }
@@ -26,8 +39,14 @@ impl FolderListModals {
         Self::create(CreateFolderContentDialogVariant::SubFolder, current_folder)
     }
 
-    pub(super) fn create_playlist(current_folder: Rc<Folder>) -> Self {
-        Self::create(CreateFolderContentDialogVariant::Playlist, current_folder)
+    pub(super) fn create_playlist(
+        current_folder: Rc<Folder>,
+        create_playlist_variant: CreatePlaylistVariant,
+    ) -> Self {
+        Self::create(
+            CreateFolderContentDialogVariant::Playlist(create_playlist_variant),
+            current_folder,
+        )
     }
 
     fn create(variant: CreateFolderContentDialogVariant, current_folder: Rc<Folder>) -> Self {
@@ -38,7 +57,6 @@ impl FolderListModals {
         }
     }
 
-    /// Returns true if modal should be closed
     pub(super) fn render(&mut self, ui: &mut Ui) {
         let should_clear_modal = match self {
             Self::CreateFolderContent {
@@ -46,7 +64,10 @@ impl FolderListModals {
                 name,
                 current_folder,
             } => Self::render_create_folder_content(ui, variant, name, current_folder),
-            Self::RenamePlaylist { name, playlist } => Self::render_change_name(ui, name, playlist),
+            Self::EditPlaylist {
+                name,
+                edit_playlist_type: playlist,
+            } => Self::render_edit_playlist(ui, name, playlist),
             Self::None => false,
         };
 
@@ -68,10 +89,15 @@ impl FolderListModals {
 
             let heading = match variant {
                 CreateFolderContentDialogVariant::SubFolder => "folder",
-                CreateFolderContentDialogVariant::Playlist => "playlist",
+                CreateFolderContentDialogVariant::Playlist(playlist_variant) => {
+                    match playlist_variant {
+                        CreatePlaylistVariant::Standard => "standard",
+                        CreatePlaylistVariant::Dynamic => "dynamic",
+                    }
+                }
             };
 
-            ui.heading(format!("Create {}", heading));
+            ui.heading(format!("Create {} playlist", heading));
 
             ui.label("Name: ");
             ui.text_edit_singleline(name);
@@ -88,9 +114,18 @@ impl FolderListModals {
                                 .expect("Error creating folder");
                         }
 
-                        CreateFolderContentDialogVariant::Playlist => {
-                            Folder::create_playlist(&current_folder, name.clone())
-                                .expect("Error creating playlist");
+                        CreateFolderContentDialogVariant::Playlist(playlist_variant) => {
+                            match playlist_variant {
+                                CreatePlaylistVariant::Standard => {
+                                    Folder::create_standard_playlist(&current_folder, name.clone())
+                                        .expect("Error creating standard playlist");
+                                }
+
+                                CreatePlaylistVariant::Dynamic => {
+                                    Folder::create_dynamic_playlist(&current_folder, name.clone())
+                                        .expect("Error creating dynamic playlist");
+                                }
+                            }
                         }
                     }
 
@@ -109,24 +144,59 @@ impl FolderListModals {
         should_close
     }
 
-    fn render_change_name(ui: &mut Ui, name: &mut String, playlist: &PlaylistType) -> bool {
+    fn render_edit_playlist(
+        ui: &mut Ui,
+        name: &mut String,
+        edit_playlist: &mut EditPlaylistType,
+    ) -> bool {
         let mut should_close = false;
+        let mut rename = false;
 
         let modal = Modal::new(Id::new("Create Content Modal")).show(ui.ctx(), |ui| {
             ui.set_width(250.);
 
-            ui.heading("Rename Playlist");
+            ui.heading("Edit Playlist");
 
             ui.label("Name: ");
             ui.text_edit_singleline(name);
 
+            if let PlaylistType::Dynamic((dyn_user_data, dyn_playlist)) = edit_playlist {
+                ui.label("wip (all playlist only)");
+
+                for filter in &mut dyn_user_data.rules.filters {
+                    let (value_type, cmp_method) = filter.get_mut_values_pair();
+
+                    let mut string_val = match value_type {
+                        ValuesType::Str(s) => s.to_string(),
+                        ValuesType::U8(int) => int.to_string(),
+                    };
+
+                    ui.horizontal(|ui| {
+                        ui.label(cmp_method.to_string());
+                        ui.text_edit_singleline(&mut string_val);
+                    });
+                }
+
+                ui.menu_button("Add filter", |ui| {
+                    if ui.button("Title").clicked() {
+                        dyn_user_data
+                            .rules
+                            .filters
+                            .push(FilterRules::Title(FilterRule::new(
+                                "<Track Title>".to_string(),
+                                ComparisonMethod::Contains,
+                            )))
+                    }
+                });
+            }
+
             ui.horizontal(|ui| {
-                if ui.button("Rename").clicked() {
+                if ui.button("Ok").clicked() {
                     if name.is_empty() {
                         return;
                     }
 
-                    playlist.rename(name.clone()).expect("Rename playlist");
+                    rename = true;
 
                     should_close = true;
                 }
@@ -136,6 +206,16 @@ impl FolderListModals {
                 }
             });
         });
+
+        if rename {
+            let playlist: &dyn Playlist = match edit_playlist {
+                EditPlaylistType::Standard(playlist) => (**playlist).deref(),
+                EditPlaylistType::Dynamic((_, playlist)) => (**playlist).deref(),
+                EditPlaylistType::AllSongs(playlist) => playlist,
+            };
+
+            playlist.rename(name.clone()).expect("Editing playlist");
+        }
 
         if modal.should_close() {
             should_close = true;

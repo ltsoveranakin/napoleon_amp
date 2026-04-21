@@ -11,6 +11,7 @@ use crate::content::playlist::all_songs_playlist::AllSongsPlaylist;
 use crate::content::playlist::data::{
     PlaybackMode, PlaylistContentData, PlaylistSongListData, PlaylistUserData,
 };
+use crate::content::playlist::dynamic_playlist_data::DynamicPlaylistData;
 use crate::content::playlist::manager::MusicManager;
 use crate::content::playlist::song_list::{SongVec, SortBy};
 use crate::content::song::Song;
@@ -31,12 +32,21 @@ use std::rc::Weak;
 use std::sync::Arc;
 use std::{fs, io};
 
+pub type PlaylistTypeVariant = PlaylistType<(), (), ()>;
+
+pub type PlaylistDataTypeVariant =
+    PlaylistType<PlaylistUserData, DynamicPlaylistData, PlaylistUserData>;
+
 pub trait Playlist {
     fn get_inner(&self) -> &InnerPlaylist;
 
     fn get_user_data(&self) -> Ref<'_, PlaylistUserData>;
 
     fn get_user_data_mut(&self) -> RefMut<'_, PlaylistUserData>;
+
+    fn get_icon(&self) -> Option<&'static str> {
+        None
+    }
 
     fn id(&self) -> Id {
         self.get_inner().id
@@ -470,11 +480,11 @@ where
     playlist.save_song_list();
 }
 
-#[derive(Debug, Eq, PartialEq)]
-pub enum PlaylistType {
-    Standard(StandardPlaylist),
-    Dynamic(DynamicPlaylist),
-    AllSongs(AllSongsPlaylist),
+#[derive(SerBytes, Debug, Eq, PartialEq, Copy, Clone)]
+pub enum PlaylistType<S = StandardPlaylist, D = DynamicPlaylist, A = AllSongsPlaylist> {
+    Standard(S),
+    Dynamic(D),
+    AllSongs(A),
 }
 
 impl PartialEq for dyn Playlist {

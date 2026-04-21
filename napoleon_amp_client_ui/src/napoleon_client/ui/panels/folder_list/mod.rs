@@ -8,7 +8,9 @@ use eframe::egui::{
 };
 
 use crate::napoleon_client::colors::text_color;
-use crate::napoleon_client::ui::panels::folder_list::modals::FolderListModals;
+use crate::napoleon_client::ui::panels::folder_list::modals::{
+    CreatePlaylistVariant, EditPlaylistType, FolderListModals,
+};
 use crate::napoleon_client::ui::panels::open_location_button;
 use napoleon_amp_core::content::SaveData;
 use napoleon_amp_core::content::folder::content::FolderContentVariant;
@@ -121,8 +123,6 @@ impl FolderList {
     ) -> Option<(Rc<Folder>, usize)> {
         let mut delete_index = None;
 
-        // let current_folder = Rc::clone(&self.current_folder);
-
         for (current_index, folder_content_variant) in
             current_sub_folder.get_contents().iter().enumerate()
         {
@@ -134,7 +134,11 @@ impl FolderList {
                     let playlist_name = &user_data.inner.content_data.name;
 
                     let playlist_button = ui
-                        .scope(|ui| {
+                        .horizontal(|ui| {
+                            if let Some(icon) = playlist.get_icon() {
+                                ui.image(format!("file://assets/sprites/{}", icon));
+                            }
+
                             let mut rt = RichText::new(playlist_name);
 
                             rt = rt.color(text_color(
@@ -168,10 +172,23 @@ impl FolderList {
                             }
                         }
 
-                        if ui.button("Rename Playlist").clicked() {
-                            self.current_modal = FolderListModals::RenamePlaylist {
-                                name: String::new(),
-                                playlist: Rc::clone(playlist),
+                        if ui.button("Edit").clicked() {
+                            let playlist_rc = Rc::clone(playlist);
+
+                            let edit_playlist_type = match &**playlist {
+                                PlaylistType::Standard(_) => {
+                                    EditPlaylistType::Standard(playlist_rc)
+                                }
+                                PlaylistType::Dynamic(dyn_playlist) => EditPlaylistType::Dynamic((
+                                    dyn_playlist.get_dyn_user_data().inner.clone(),
+                                    playlist_rc,
+                                )),
+                                PlaylistType::AllSongs(_) => panic!("Cannot edit all songs"),
+                            };
+
+                            self.current_modal = FolderListModals::EditPlaylist {
+                                name: playlist_name.clone(),
+                                edit_playlist_type,
                             };
                         }
 
@@ -230,9 +247,21 @@ impl FolderList {
 
     fn new_content_button(&mut self, ui: &mut Ui, parent_folder: &Rc<Folder>) {
         ui.menu_button("New", |ui| {
-            if ui.button("Playlist").clicked() {
-                self.current_modal = FolderListModals::create_playlist(Rc::clone(parent_folder))
-            }
+            ui.menu_button("Playlist", |ui| {
+                if ui.button("Standard").clicked() {
+                    self.current_modal = FolderListModals::create_playlist(
+                        Rc::clone(parent_folder),
+                        CreatePlaylistVariant::Standard,
+                    )
+                }
+
+                if ui.button("Dynamic").clicked() {
+                    self.current_modal = FolderListModals::create_playlist(
+                        Rc::clone(parent_folder),
+                        CreatePlaylistVariant::Dynamic,
+                    )
+                }
+            });
 
             if ui.button("Folder").clicked() {
                 self.current_modal = FolderListModals::create_folder(Rc::clone(parent_folder))

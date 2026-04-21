@@ -10,10 +10,10 @@ use std::borrow::Cow;
 use std::collections::HashSet;
 use std::sync::Arc;
 
-#[derive(SerBytes, Debug)]
+#[derive(SerBytes, Debug, Clone)]
 pub struct Rules {
-    import_from: ImportFrom,
-    filters: Vec<FilterRules>,
+    pub import_from: ImportFrom,
+    pub filters: Vec<FilterRules>,
 }
 
 impl Rules {

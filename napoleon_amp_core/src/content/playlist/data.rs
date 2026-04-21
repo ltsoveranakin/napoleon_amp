@@ -13,7 +13,7 @@ use std::fmt::{Display, Formatter};
 use std::io;
 use std::path::PathBuf;
 
-pub(crate) type PlaylistContentData = ContentData<Id>;
+pub type PlaylistContentData = ContentData<Id>;
 
 /// [`VersioningWrapper`] of [`PlaylistUserDataStd`]
 
@@ -62,7 +62,7 @@ impl SaveData for PlaylistUserData {
     }
 }
 
-#[derive(SerBytes, Debug)]
+#[derive(SerBytes, Debug, Clone)]
 pub struct PlaylistUserDataStd {
     pub content_data: PlaylistContentData,
     pub playback_mode: PlaybackMode,
@@ -80,7 +80,7 @@ impl PlaylistData for PlaylistContentData {
     }
 }
 
-#[derive(SerBytes, Debug)]
+#[derive(SerBytes, Debug, Copy, Clone)]
 pub enum PlaylistUserDataVersion {
     V1,
 }

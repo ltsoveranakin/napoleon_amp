@@ -4,7 +4,10 @@ pub(crate) mod content_pool;
 use crate::content::SaveData;
 use crate::content::folder::content::FolderContentVariant;
 use crate::content::folder::content_pool::{CONTENT_POOL, RemoveAssociatedFileError};
-use crate::content::playlist::{PlaylistType, StandardPlaylist};
+use crate::content::playlist::all_songs_playlist::AllSongsPlaylist;
+use crate::content::playlist::{
+    DynamicPlaylist, PlaylistType, PlaylistTypeVariant, StandardPlaylist,
+};
 use crate::paths::content_folder_file;
 use serbytes::prelude::{MayNotExistOrDefault, SerBytes};
 use simple_id::prelude::Id;
@@ -17,10 +20,10 @@ use std::rc::{Rc, Weak};
 #[derive(SerBytes, Debug, Copy, Clone)]
 pub enum FolderDataContentVariant {
     Folder,
-    Playlist,
+    Playlist(PlaylistTypeVariant),
 }
 
-#[derive(SerBytes, Debug)]
+#[derive(SerBytes, Debug, Clone)]
 pub struct ContentData<P> {
     pub name: String,
     pub parent: P,
@@ -108,10 +111,24 @@ impl Folder {
         Ok(())
     }
 
-    pub fn create_playlist(self: &Rc<Self>, playlist_name: String) -> io::Result<()> {
-        let playlist_id = CONTENT_POOL.create_new_playlist(playlist_name, self.id)?;
+    pub fn create_standard_playlist(self: &Rc<Self>, playlist_name: String) -> io::Result<()> {
+        let playlist_id = CONTENT_POOL.create_new_standard_playlist(playlist_name, self.id)?;
 
-        self.create_content(FolderDataContentVariant::Playlist, playlist_id);
+        self.create_content(
+            FolderDataContentVariant::Playlist(PlaylistTypeVariant::Standard(())),
+            playlist_id,
+        );
+
+        Ok(())
+    }
+
+    pub fn create_dynamic_playlist(self: &Rc<Self>, playlist_name: String) -> io::Result<()> {
+        let playlist_id = CONTENT_POOL.create_new_dynamic_playlist(playlist_name, self.id)?;
+
+        self.create_content(
+            FolderDataContentVariant::Playlist(PlaylistTypeVariant::Dynamic(())),
+            playlist_id,
+        );
 
         Ok(())
     }
@@ -190,9 +207,19 @@ impl Folder {
                 FolderContentVariant::Folder(Rc::new(Folder::new(id, Some(parent))))
             }
 
-            FolderDataContentVariant::Playlist => FolderContentVariant::Playlist(Rc::new(
-                PlaylistType::Standard(StandardPlaylist::new(id, self)),
-            )),
+            FolderDataContentVariant::Playlist(variant) => match variant {
+                PlaylistTypeVariant::Standard(_) => FolderContentVariant::Playlist(Rc::new(
+                    PlaylistType::Standard(StandardPlaylist::new(id, self)),
+                )),
+
+                PlaylistTypeVariant::Dynamic(_) => FolderContentVariant::Playlist(Rc::new(
+                    PlaylistType::Dynamic(DynamicPlaylist::new(id, self)),
+                )),
+
+                PlaylistTypeVariant::AllSongs(_) => FolderContentVariant::Playlist(Rc::new(
+                    PlaylistType::AllSongs(AllSongsPlaylist::new(self)),
+                )),
+            },
         }
     }
 

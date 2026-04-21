@@ -1,7 +1,8 @@
 use crate::content::song::Song;
 use serbytes::prelude::SerBytes;
+use std::fmt::{Display, Formatter};
 
-#[derive(SerBytes, Debug)]
+#[derive(SerBytes, Debug, Copy, Clone)]
 pub enum ComparisonMethod {
     LessThan,
     EqualTo,
@@ -10,10 +11,33 @@ pub enum ComparisonMethod {
     NotEqualTo,
 }
 
-#[derive(SerBytes, Debug)]
+impl Display for ComparisonMethod {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Self::LessThan => "Less than",
+            Self::EqualTo => "Equal to",
+            Self::GreaterThan => "Greater than",
+            Self::Contains => "Contains",
+            Self::NotEqualTo => "Not equal to",
+        };
+
+        f.write_str(s)
+    }
+}
+
+#[derive(SerBytes, Debug, Copy, Clone)]
 pub struct FilterRule<T> {
-    value: T,
-    comparison_method: ComparisonMethod,
+    pub value: T,
+    pub comparison_method: ComparisonMethod,
+}
+
+impl<T> FilterRule<T> {
+    pub fn new(value: T, comparison_method: ComparisonMethod) -> Self {
+        Self {
+            value,
+            comparison_method,
+        }
+    }
 }
 
 impl<T> FilterRule<T>
@@ -46,7 +70,7 @@ impl FilterRule<String> {
     }
 }
 
-#[derive(SerBytes, Debug)]
+#[derive(SerBytes, Debug, Clone)]
 pub enum FilterRules {
     Title(FilterRule<String>),
     Artist(FilterRule<String>),
@@ -65,4 +89,30 @@ impl FilterRules {
             Self::Rating(rating) => rating.does_value_pass(&song_data.rating),
         }
     }
+
+    pub fn get_mut_values_pair(&mut self) -> (ValuesType<'_>, &mut ComparisonMethod) {
+        match self {
+            Self::Title(title) => (
+                ValuesType::Str(&mut title.value),
+                &mut title.comparison_method,
+            ),
+            Self::Artist(artist) => (
+                ValuesType::Str(&mut artist.value),
+                &mut artist.comparison_method,
+            ),
+            Self::Album(album) => (
+                ValuesType::Str(&mut album.value),
+                &mut album.comparison_method,
+            ),
+            Self::Rating(rating) => (
+                ValuesType::U8(&mut rating.value),
+                &mut rating.comparison_method,
+            ),
+        }
+    }
+}
+
+pub enum ValuesType<'a> {
+    Str(&'a mut String),
+    U8(&'a mut u8),
 }

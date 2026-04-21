@@ -4,6 +4,9 @@ use crate::content::playlist::PlaylistData;
 use crate::content::playlist::data::{
     PlaylistContentData, PlaylistSongListData, PlaylistUserData, PlaylistUserDataStd,
 };
+use crate::content::playlist::dynamic_playlist_data::{
+    DynamicPlaylistData, DynamicPlaylistDataStd,
+};
 use crate::paths::{
     content_folder_file, content_playlist_song_list_file, content_playlist_user_data_file,
 };
@@ -91,16 +94,25 @@ impl ContentPool {
         }
     }
 
-    pub(crate) fn get_playlist_user_data<D>(&self, playlist_id: Id) -> FromFileResult<'_, D>
-    where
-        D: SerBytes + PlaylistData,
-    {
+    pub(crate) fn get_standard_playlist_user_data(
+        &self,
+        playlist_id: Id,
+    ) -> FromFileResult<'_, PlaylistUserData> {
         if playlist_id == Id::ZERO {
-            let user_data_std = D::new_all_songs();
-
-            Ok(user_data_std.into())
+            Ok(PlaylistUserData::new_all_songs().into())
         } else {
-            D::from_file_path(content_playlist_user_data_file(playlist_id))
+            PlaylistUserData::from_file_path(content_playlist_user_data_file(playlist_id))
+        }
+    }
+
+    pub(crate) fn get_dynamic_playlist_user_data(
+        &self,
+        playlist_id: Id,
+    ) -> FromFileResult<'_, DynamicPlaylistData> {
+        if playlist_id == Id::ZERO {
+            Ok(DynamicPlaylistDataStd::new(PlaylistContentData::new_all_songs()).into())
+        } else {
+            DynamicPlaylistData::from_file_path(content_playlist_user_data_file(playlist_id))
         }
     }
 
@@ -139,7 +151,7 @@ impl ContentPool {
         Ok(())
     }
 
-    pub(super) fn create_new_playlist(
+    pub(super) fn create_new_standard_playlist(
         &self,
         playlist_name: String,
         parent_folder: Id,
@@ -150,6 +162,21 @@ impl ContentPool {
             PlaylistUserDataStd::new(PlaylistContentData::new(playlist_name, parent_folder));
 
         PlaylistUserData::from(playlist_data).save_data(id)?;
+
+        Ok(id)
+    }
+
+    pub(super) fn create_new_dynamic_playlist(
+        &self,
+        playlist_name: String,
+        parent_folder: Id,
+    ) -> io::Result<Id> {
+        let id = Self::generate_unique_id(&self.playlists);
+
+        let playlist_data =
+            DynamicPlaylistDataStd::new(PlaylistContentData::new(playlist_name, parent_folder));
+
+        DynamicPlaylistData::from(playlist_data).save_data(id)?;
 
         Ok(id)
     }

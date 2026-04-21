@@ -4,7 +4,7 @@ pub mod standard_playlist;
 
 use crate::content::folder::Folder;
 use crate::content::folder::content_pool::CONTENT_POOL;
-use crate::content::playlist::data::PlaylistSongListData;
+use crate::content::playlist::data::{PlaylistSongListData, PlaylistUserData};
 use crate::content::playlist::manager::MusicManager;
 use crate::content::playlist::song_list::{SongList, SongVec};
 use crate::content::playlist::{PlaylistData, PlaylistParent, SelectedSongsVariant};
@@ -60,17 +60,14 @@ impl PartialEq for InnerPlaylist {
 
 impl Eq for InnerPlaylist {}
 
-fn get_user_data_ref_cell<'a, D>(
-    playlist_user_data: &'a OnceCell<RefCell<D>>,
+fn get_user_data_ref_cell<'a>(
+    playlist_user_data: &'a OnceCell<RefCell<PlaylistUserData>>,
     inner: &InnerPlaylist,
-) -> &'a RefCell<D>
-where
-    D: SerBytes + PlaylistData,
-{
+) -> &'a RefCell<PlaylistUserData> {
     playlist_user_data.get_or_init(|| {
         let playlist_data = CONTENT_POOL
-            .get_playlist_user_data(inner.id)
-            .unwrap_or_else(|_| D::new_deleted(inner.parent.id));
+            .get_standard_playlist_user_data(inner.id)
+            .unwrap_or_else(|_| PlaylistUserData::new_deleted(inner.parent.id));
 
         RefCell::new(playlist_data)
     })
