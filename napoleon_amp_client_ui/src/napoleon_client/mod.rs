@@ -1,6 +1,8 @@
 mod colors;
+mod texture_pool;
 mod ui;
 
+use crate::napoleon_client::texture_pool::TexturePool;
 use crate::napoleon_client::ui::panels::folder_list::FolderList;
 use crate::napoleon_client::ui::panels::playlist_panel::PlaylistPanel;
 use crate::napoleon_client::ui::panels::top_menu_bar::TopMenuBar;
@@ -14,6 +16,7 @@ pub struct NapoleonClientApp {
     folder_list: FolderList,
     top_menu_bar: TopMenuBar,
     playlist_panel: Option<PlaylistPanel>,
+    texture_pool: TexturePool,
 }
 
 impl NapoleonClientApp {
@@ -26,6 +29,7 @@ impl NapoleonClientApp {
             folder_list: FolderList::new(current_folder),
             top_menu_bar: TopMenuBar::new(),
             playlist_panel: None,
+            texture_pool: TexturePool::new(),
         }
     }
 }
@@ -39,8 +43,12 @@ impl App for NapoleonClientApp {
         });
 
         SidePanel::left("folder_list").show(ctx, |ui| {
-            self.folder_list
-                .render(ui, &mut self.playlist_panel, &mut self.core_instance);
+            self.folder_list.render(
+                ui,
+                &mut self.playlist_panel,
+                &mut self.texture_pool,
+                &mut self.core_instance,
+            );
         });
 
         if let Some(ref mut playlist_panel) = self.playlist_panel {

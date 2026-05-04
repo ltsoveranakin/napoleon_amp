@@ -8,6 +8,7 @@ use eframe::egui::{
 };
 
 use crate::napoleon_client::colors::text_color;
+use crate::napoleon_client::texture_pool::TexturePool;
 use crate::napoleon_client::ui::panels::folder_list::modals::{
     CreatePlaylistVariant, EditPlaylistType, FolderListModals,
 };
@@ -40,6 +41,7 @@ impl FolderList {
         &mut self,
         ui: &mut Ui,
         playlist_panel: &mut Option<PlaylistPanel>,
+        texture_pool: &mut TexturePool,
         napoleon_instance: &mut NapoleonInstance,
     ) {
         let bg = ui.scope_builder(UiBuilder::new().sense(Sense::click()), |ui| {
@@ -47,16 +49,16 @@ impl FolderList {
 
             self.render_header_buttons(ui);
 
-            self.render_folder_content(ui, playlist_panel, napoleon_instance);
+            self.render_folder_content(ui, playlist_panel, texture_pool, napoleon_instance);
         });
 
         let (_, extra_space) = ui.allocate_at_least(ui.available_size(), Sense::click());
 
-        self.new_content_only_menu(&bg.response);
-        self.new_content_only_menu(&extra_space);
+        self.new_content_right_click_menu(&bg.response);
+        self.new_content_right_click_menu(&extra_space);
     }
 
-    fn new_content_only_menu(&mut self, response: &Response) {
+    fn new_content_right_click_menu(&mut self, response: &Response) {
         Popup::context_menu(&response).show(|ui| {
             let current_folder = Rc::clone(&self.current_folder);
 
@@ -77,6 +79,7 @@ impl FolderList {
         &mut self,
         ui: &mut Ui,
         playlist_panel: &mut Option<PlaylistPanel>,
+        texture_pool: &mut TexturePool,
         napoleon_instance: &mut NapoleonInstance,
     ) {
         scroll_area_styled(ui, ScrollArea::vertical(), |ui| {
@@ -97,6 +100,7 @@ impl FolderList {
                 playlist_panel,
                 &mut next_playlist,
                 &mut next_folder,
+                texture_pool,
                 napoleon_instance,
             ) {
                 Folder::delete_content(&folder, index).expect("Failed delete folder content");
@@ -119,6 +123,7 @@ impl FolderList {
         playlist_panel: &mut Option<PlaylistPanel>,
         next_playlist: &mut Option<Rc<PlaylistType>>,
         next_folder: &mut Option<Rc<Folder>>,
+        texture_pool: &mut TexturePool,
         napoleon_instance: &mut NapoleonInstance,
     ) -> Option<(Rc<Folder>, usize)> {
         let mut delete_index = None;
@@ -135,7 +140,11 @@ impl FolderList {
 
                     let playlist_button = ui
                         .horizontal(|ui| {
-                            ui.image(format!("file://assets/sprites/{}", playlist.get_icon()));
+                            ui.image(
+                                texture_pool
+                                    .get_tex(playlist.get_icon_str(), ui.ctx())
+                                    .expect("Invalid texture"),
+                            );
 
                             let mut rt = RichText::new(playlist_name);
 
@@ -211,6 +220,7 @@ impl FolderList {
                                     playlist_panel,
                                     next_playlist,
                                     next_folder,
+                                    texture_pool,
                                     napoleon_instance,
                                 );
 

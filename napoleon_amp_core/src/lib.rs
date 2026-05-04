@@ -5,6 +5,7 @@ use std::ops::{Deref, DerefMut};
 use std::sync::{Mutex, MutexGuard, RwLock, RwLockReadGuard, RwLockWriteGuard};
 use std::time::{Duration, SystemTime};
 
+pub mod assets;
 pub mod content;
 pub mod discord_rpc;
 pub mod instance;

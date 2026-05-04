@@ -57,7 +57,7 @@ pub trait Playlist {
 
     fn save_user_data(&self) -> io::Result<()>;
 
-    fn get_icon(&self) -> &'static str {
+    fn get_icon_str(&self) -> &'static str {
         "std_playlist_icon.png"
     }
 

@@ -84,7 +84,7 @@ impl Playlist for DynamicPlaylist {
         playlist_data.save_data(self.id())
     }
 
-    fn get_icon(&self) -> &'static str {
+    fn get_icon_str(&self) -> &'static str {
         "dyn_playlist_icon.png"
     }
 

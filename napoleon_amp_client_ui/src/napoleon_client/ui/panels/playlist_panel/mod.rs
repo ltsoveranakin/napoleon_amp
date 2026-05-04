@@ -48,7 +48,7 @@ impl PlaylistPanel {
         self.keystrokes_pressed(napoleon_instance, ctx);
 
         ui.horizontal(|ui| {
-            if matches!(*self.current_playlist, PlaylistType::Standard(_)) {
+            if !matches!(*self.current_playlist, PlaylistType::AllSongs(_)) {
                 ui.vertical(|ui| {
                     let mut user_data_v = self.current_playlist.get_user_data_mut();
                     let mut save_data = false;
