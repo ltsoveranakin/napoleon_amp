@@ -4,7 +4,7 @@ use crate::napoleon_client::ui::helpers::scroll_area_styled;
 
 use crate::napoleon_client::ui::panels::playlist_panel::PlaylistPanel;
 use eframe::egui::{
-    Button, IntoAtoms, Popup, Response, RichText, ScrollArea, Sense, Ui, UiBuilder,
+    Button, Image, IntoAtoms, Popup, Response, RichText, ScrollArea, Sense, Ui, UiBuilder, Vec2,
 };
 
 use crate::napoleon_client::colors::text_color;
@@ -140,10 +140,13 @@ impl FolderList {
 
                     let playlist_button = ui
                         .horizontal(|ui| {
-                            ui.image(
-                                texture_pool
-                                    .get_tex(playlist.get_icon_str(), ui.ctx())
-                                    .expect("Invalid texture"),
+                            ui.add(
+                                Image::new(
+                                    texture_pool
+                                        .get_tex(playlist.get_icon_str(), ui.ctx())
+                                        .expect("Invalid texture"),
+                                )
+                                .fit_to_exact_size(Vec2::new(8., 8.)),
                             );
 
                             let mut rt = RichText::new(playlist_name);
