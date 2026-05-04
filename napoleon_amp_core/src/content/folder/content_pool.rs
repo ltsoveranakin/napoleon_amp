@@ -120,6 +120,7 @@ impl ContentPool {
         &self,
         playlist_id: Id,
     ) -> FromFileResult<'_, PlaylistSongListData> {
+        // TODO: put this all songs implementation in AllSongsPlaylist
         if playlist_id == Id::ZERO {
             let data = PlaylistSongListData {
                 song_ids: SONG_POOL

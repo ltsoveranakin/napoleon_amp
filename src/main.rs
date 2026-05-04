@@ -1,14 +1,14 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use eframe::egui::{Vec2, ViewportBuilder};
-use std::fs::{create_dir_all, File};
+use std::fs::{File, create_dir_all};
 use std::io::Write;
 use std::panic;
 use std::time::SystemTime;
 
-use eframe::{egui, NativeOptions};
+use eframe::{NativeOptions, egui};
 
-use napoleon_amp_client_ui::{crash_file_time_now, log_dir, NapoleonClientApp};
+use napoleon_amp_client_ui::{NapoleonClientApp, crash_file_time_now, log_dir};
 
 fn main() {
     init_crash_logger();
@@ -32,7 +32,7 @@ fn main() {
     };
 
     let _ = eframe::run_native(
-        "Egui App",
+        "Napoleon Amp",
         options,
         Box::new(|creation_context| {
             egui_extras::install_image_loaders(&creation_context.egui_ctx);

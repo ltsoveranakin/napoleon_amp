@@ -5,10 +5,10 @@ use crate::content::playlist::song_list::SortBy;
 use crate::paths::{content_playlist_song_list_file, content_playlist_user_data_file};
 use crate::{Next, time_now};
 use serbytes::prelude::{
-    BBReadResult, CurrentVersion, MayNotExistOrDefault, ReadByteBufferRefMut, SerBytes,
-    VersioningWrapper,
+    BBReadResult, CurrentVersion, ReadByteBufferRefMut, SerBytes, VersioningWrapper,
 };
 use simple_id::prelude::Id;
+use std::cell::Cell;
 use std::fmt::{Display, Formatter};
 use std::io;
 use std::path::PathBuf;
@@ -113,7 +113,7 @@ impl PlaylistUserDataStd {
 #[derive(SerBytes, Debug)]
 pub struct PlaylistSongListData {
     pub(crate) song_ids: Vec<Id>,
-    pub(crate) last_updated: MayNotExistOrDefault<u64>,
+    pub(crate) last_updated: Cell<u64>,
 }
 
 impl SaveData for PlaylistSongListData {
@@ -121,8 +121,8 @@ impl SaveData for PlaylistSongListData {
         content_playlist_song_list_file(id)
     }
 
-    fn save_data(&mut self, id: Id) -> io::Result<()> {
-        self.last_updated = time_now().as_secs().into();
+    fn save_data(&self, id: Id) -> io::Result<()> {
+        self.last_updated.set(time_now().as_secs().into());
         self.write_to_file_path(Self::get_path(id))
     }
 }

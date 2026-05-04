@@ -135,9 +135,7 @@ impl FolderList {
 
                     let playlist_button = ui
                         .horizontal(|ui| {
-                            if let Some(icon) = playlist.get_icon() {
-                                ui.image(format!("file://assets/sprites/{}", icon));
-                            }
+                            ui.image(format!("file://assets/sprites/{}", playlist.get_icon()));
 
                             let mut rt = RichText::new(playlist_name);
 

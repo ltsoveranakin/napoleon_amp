@@ -4,7 +4,6 @@ pub mod playlists;
 pub mod queue;
 mod song_list;
 
-use crate::content::SaveData;
 use crate::content::folder::Folder;
 use crate::content::folder::content_pool::CONTENT_POOL;
 use crate::content::playlist::all_songs_playlist::AllSongsPlaylist;
@@ -16,14 +15,16 @@ use crate::content::playlist::manager::MusicManager;
 use crate::content::playlist::song_list::{SongVec, SortBy};
 use crate::content::song::Song;
 use crate::content::song::song_data::SongData;
+use crate::content::{SaveData, unwrap_inner_ref, unwrap_inner_ref_mut};
 use crate::paths::SONG_DATA_EXT_NO_PER;
 use crate::paths::song::{song_audio_file_v2, songs_audio_dir_v2, songs_data_dir_v2};
 use crate::song_pool::SONG_POOL;
 use crate::{read_rwlock, time_now, write_rwlock};
 pub use playlists::*;
+use rand::distr::uniform::SampleBorrow;
 use serbytes::prelude::SerBytes;
 use simple_id::prelude::{Id, SmallRngIdGenerator};
-use std::cell::{Ref, RefCell, RefMut};
+use std::cell::{Ref, RefMut};
 use std::collections::HashSet;
 use std::fs::File;
 use std::ops::{Deref, DerefMut, RangeInclusive};
@@ -37,6 +38,14 @@ pub type PlaylistTypeVariant = PlaylistType<(), (), ()>;
 pub type PlaylistDataTypeVariant =
     PlaylistType<PlaylistUserData, DynamicPlaylistData, PlaylistUserData>;
 
+pub trait ClearSongsCache {
+    fn clear_songs_cache(&self);
+}
+
+pub trait ClearSongsCacheMut {
+    fn clear_songs_cache_mut(&mut self);
+}
+
 pub trait Playlist {
     fn get_inner(&self) -> &InnerPlaylist;
 
@@ -44,8 +53,12 @@ pub trait Playlist {
 
     fn get_user_data_mut(&self) -> RefMut<'_, PlaylistUserData>;
 
-    fn get_icon(&self) -> Option<&'static str> {
-        None
+    /// Saves the [`PlaylistUserData`] to the file at `self.path_named`
+
+    fn save_user_data(&self) -> io::Result<()>;
+
+    fn get_icon(&self) -> &'static str {
+        "std_playlist_icon.png"
     }
 
     fn id(&self) -> Id {
@@ -69,6 +82,7 @@ pub trait Playlist {
         if inner.has_loaded_songs.get() {
             inner.songs.borrow().songs_arc()
         } else {
+            // println!("inner not loaded");
             let song_list_data = self.get_song_list_data();
 
             let mut songs = inner.songs.borrow_mut();
@@ -83,25 +97,40 @@ pub trait Playlist {
         }
     }
 
-    fn get_song_list_data_refcell(&self) -> &RefCell<PlaylistSongListData> {
-        self.get_inner().playlist_song_list_data.get_or_init(|| {
-            let song_list_data = CONTENT_POOL
-                .get_playlist_song_list_data(self.id())
-                .unwrap_or_else(|_| PlaylistSongListData {
-                    song_ids: Vec::new(),
-                    last_updated: time_now().as_secs().into(),
-                });
-
-            RefCell::new(song_list_data)
-        })
+    fn load_song_list_data_refcell(&self) -> PlaylistSongListData {
+        CONTENT_POOL
+            .get_playlist_song_list_data(self.id())
+            .unwrap_or_else(|_| PlaylistSongListData {
+                song_ids: Vec::new(),
+                last_updated: time_now().as_secs().into(),
+            })
     }
 
     fn get_song_list_data(&self) -> Ref<'_, PlaylistSongListData> {
-        self.get_song_list_data_refcell().borrow()
+        {
+            let list_data = self.get_inner().playlist_song_list_data.borrow();
+
+            if list_data.is_some() {
+                return unwrap_inner_ref(list_data);
+            }
+        }
+
+        *self.get_inner().playlist_song_list_data.borrow_mut() =
+            Some(self.load_song_list_data_refcell());
+
+        unwrap_inner_ref(self.get_inner().playlist_song_list_data.borrow())
     }
 
     fn get_song_list_mut(&self) -> RefMut<'_, PlaylistSongListData> {
-        self.get_song_list_data_refcell().borrow_mut()
+        let mut list_data = self.get_inner().playlist_song_list_data.borrow_mut();
+
+        if list_data.is_some() {
+            return unwrap_inner_ref_mut(list_data);
+        }
+
+        *list_data = Some(self.load_song_list_data_refcell());
+
+        unwrap_inner_ref_mut(self.get_inner().playlist_song_list_data.borrow_mut())
     }
 
     fn save_song_list(&self) {
@@ -181,7 +210,7 @@ pub trait Playlist {
         self.get_inner().music_manager.borrow()
     }
 
-    fn set_volume(&self, mut volume: f32) {
+    fn set_volume(&self, mut volume: f32) -> io::Result<()> {
         volume = volume.clamp(0.0, 1.0);
 
         if let Some(manager) = &*self.get_music_manager() {
@@ -190,17 +219,7 @@ pub trait Playlist {
 
         self.get_user_data_mut().inner.volume = volume;
 
-        self.save_user_data();
-    }
-
-    /// Saves the [`PlaylistUserData`] to the file at `self.path_named`
-
-    fn save_user_data(&self) {
-        let mut playlist_data = self.get_user_data_mut();
-
-        playlist_data
-            .save_data(self.id())
-            .expect("Write playlist user data to file");
+        self.save_user_data()
     }
 
     fn get_volume(&self) -> f32 {
@@ -397,7 +416,7 @@ pub trait Playlist {
             };
 
             let mut valid_search = false;
-
+            // TODO: impl contains ignore case
             for str_search_to in strings_to_search {
                 let search_to_lower = str_search_to.to_lowercase();
                 if search_to_lower.contains(&parsed_search.value_lower) {
@@ -431,11 +450,13 @@ pub trait Playlist {
     }
 
     fn rename(&self, new_name: String) -> io::Result<()> {
-        let mut pl_data_v = self.get_user_data_mut();
+        {
+            let mut pl_data_v = self.get_user_data_mut();
 
-        pl_data_v.inner.content_data.name = new_name;
+            pl_data_v.inner.content_data.name = new_name;
+        }
 
-        pl_data_v.save_data(self.id())
+        self.save_user_data()
     }
 
     fn sort_songs(&self, sort_by: SortBy) {
@@ -478,6 +499,32 @@ where
     }
 
     playlist.save_song_list();
+}
+
+// TODO: need a much much better name for this
+pub enum RefCow<'a, T> {
+    OwnedRef(Ref<'a, T>),
+    Reference(&'a T),
+}
+
+impl<'a, T> Deref for RefCow<'a, T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        match self {
+            Self::OwnedRef(r) => r,
+
+            Self::Reference(reference) => reference,
+        }
+    }
+}
+
+// impl <'a, T> RefCow<'a, T> {
+//     pub fn get_mut()
+// }
+
+fn default_save_user_data(playlist_user_data: &PlaylistUserData, id: Id) -> io::Result<()> {
+    playlist_user_data.save_data(id)
 }
 
 #[derive(SerBytes, Debug, Eq, PartialEq, Copy, Clone)]

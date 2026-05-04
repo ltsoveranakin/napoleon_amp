@@ -2,20 +2,25 @@ pub mod dynamic_playlist_data;
 pub mod filter;
 mod rules;
 
+use crate::content::SaveData;
 use crate::content::folder::Folder;
 use crate::content::folder::content_pool::CONTENT_POOL;
-use crate::content::playlist::data::{PlaylistContentData, PlaylistUserData};
+use crate::content::playlist::data::{PlaylistContentData, PlaylistSongListData, PlaylistUserData};
 use crate::content::playlist::playlists::dynamic_playlist::dynamic_playlist_data::{
     DynamicPlaylistData, DynamicPlaylistDataStd,
 };
-use crate::content::playlist::{InnerPlaylist, Playlist};
+use crate::content::playlist::{ClearSongsCache, InnerPlaylist, Playlist};
+use crate::content::song::Song;
 use serbytes::prelude::SerBytes;
 use simple_id::prelude::Id;
-use std::cell::{OnceCell, Ref, RefCell, RefMut};
+use std::cell::{Cell, OnceCell, Ref, RefCell, RefMut};
+use std::ops::Deref;
 use std::rc::Rc;
+use std::sync::Arc;
 
 #[derive(Debug)]
 pub struct DynamicPlaylist {
+    temp_pinned_songs: RefCell<Option<Vec<Arc<Song>>>>,
     inner_playlist: InnerPlaylist,
     dynamic_playlist_data: OnceCell<RefCell<DynamicPlaylistData>>,
 }
@@ -23,6 +28,7 @@ pub struct DynamicPlaylist {
 impl DynamicPlaylist {
     pub(crate) fn new(id: Id, parent: &Rc<Folder>) -> Self {
         Self {
+            temp_pinned_songs: RefCell::new(None),
             inner_playlist: InnerPlaylist::new(id, parent),
             dynamic_playlist_data: OnceCell::new(),
         }
@@ -72,8 +78,34 @@ impl Playlist for DynamicPlaylist {
         })
     }
 
-    fn get_icon(&self) -> Option<&'static str> {
-        Some("dyn_playlist_icon.png")
+    fn save_user_data(&self) -> std::io::Result<()> {
+        let playlist_data = self.get_dyn_user_data();
+
+        playlist_data.save_data(self.id())
+    }
+
+    fn get_icon(&self) -> &'static str {
+        "dyn_playlist_icon.png"
+    }
+
+    fn load_song_list_data_refcell(&self) -> PlaylistSongListData {
+        *self.temp_pinned_songs.borrow_mut() = None;
+
+        let songs = self
+            .get_dyn_user_data()
+            .inner
+            .get_song_list()
+            .unwrap_or_default();
+
+        let song_ids = songs.iter().map(|song| song.id).collect();
+
+        // Little optimization so songs (and their loaded data when checking if they work with the filter) don't get dropped
+        *self.temp_pinned_songs.borrow_mut() = Some(songs);
+
+        PlaylistSongListData {
+            song_ids,
+            last_updated: Cell::new(self.get_dyn_user_data().inner.last_updated),
+        }
     }
 }
 
@@ -84,3 +116,11 @@ impl PartialEq for DynamicPlaylist {
 }
 
 impl Eq for DynamicPlaylist {}
+
+impl Deref for DynamicPlaylist {
+    type Target = InnerPlaylist;
+
+    fn deref(&self) -> &Self::Target {
+        &self.inner_playlist
+    }
+}

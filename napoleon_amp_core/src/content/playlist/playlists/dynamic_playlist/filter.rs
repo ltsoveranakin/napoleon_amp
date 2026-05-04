@@ -1,8 +1,13 @@
 use crate::content::song::Song;
+use derive_enum_all_values::AllValues;
 use serbytes::prelude::SerBytes;
+use std::borrow::Cow;
 use std::fmt::{Display, Formatter};
+use std::str::FromStr;
 
-#[derive(SerBytes, Debug, Copy, Clone)]
+pub type FilterRules = FilterRulesTyped<FilterRule<String>, FilterRule<u8>>;
+
+#[derive(SerBytes, AllValues, Debug, Copy, Clone)]
 pub enum ComparisonMethod {
     LessThan,
     EqualTo,
@@ -11,17 +16,21 @@ pub enum ComparisonMethod {
     NotEqualTo,
 }
 
-impl Display for ComparisonMethod {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let s = match self {
+impl ComparisonMethod {
+    pub fn get_display_str(&self) -> &str {
+        match self {
             Self::LessThan => "Less than",
             Self::EqualTo => "Equal to",
             Self::GreaterThan => "Greater than",
             Self::Contains => "Contains",
             Self::NotEqualTo => "Not equal to",
-        };
+        }
+    }
+}
 
-        f.write_str(s)
+impl Display for ComparisonMethod {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.get_display_str())
     }
 }
 
@@ -42,7 +51,7 @@ impl<T> FilterRule<T> {
 
 impl<T> FilterRule<T>
 where
-    T: Ord,
+    T: Ord + AsStr,
 {
     fn does_value_pass(&self, test_value: &T) -> bool {
         match self.comparison_method {
@@ -51,31 +60,38 @@ where
             ComparisonMethod::GreaterThan => &self.value > test_value,
             ComparisonMethod::NotEqualTo => &self.value != test_value,
             ComparisonMethod::Contains => {
-                panic!("Cannot check contains on a non string test value")
+                test_value
+                    .as_cow_str()
+                    .to_lowercase()
+                    .contains(&self.value.as_cow_str().to_lowercase())
+                // panic!("Cannot check contains on a non string test value")
             }
         }
     }
 }
 
-impl FilterRule<String> {
-    fn does_str_pass(&self, test_str: &String) -> bool {
-        match self.comparison_method {
-            ComparisonMethod::LessThan
-            | ComparisonMethod::EqualTo
-            | ComparisonMethod::GreaterThan
-            | ComparisonMethod::NotEqualTo => self.does_value_pass(test_str),
+pub trait AsStr {
+    fn as_cow_str(&self) -> Cow<'_, str>;
+}
 
-            ComparisonMethod::Contains => self.value.contains(test_str),
-        }
+impl AsStr for String {
+    fn as_cow_str(&self) -> Cow<'_, str> {
+        Cow::Borrowed(self)
+    }
+}
+
+impl AsStr for u8 {
+    fn as_cow_str(&self) -> Cow<'_, str> {
+        Cow::Owned(self.to_string())
     }
 }
 
 #[derive(SerBytes, Debug, Clone)]
-pub enum FilterRules {
-    Title(FilterRule<String>),
-    Artist(FilterRule<String>),
-    Album(FilterRule<String>),
-    Rating(FilterRule<u8>),
+pub enum FilterRulesTyped<S, U> {
+    Title(S),
+    Artist(S),
+    Album(S),
+    Rating(U),
 }
 
 impl FilterRules {
@@ -109,6 +125,62 @@ impl FilterRules {
                 &mut rating.comparison_method,
             ),
         }
+    }
+
+    pub fn try_assign_from_str(&mut self, s: &str) -> Result<(), ()> {
+        match self {
+            Self::Title(str_rule) | Self::Artist(str_rule) | Self::Album(str_rule) => {
+                str_rule.value = s.to_string();
+            }
+
+            Self::Rating(rating) => {
+                rating.value = u8::from_str(s).map_err(|_| ())?;
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn from_variant(
+        filter_rules: FilterRulesTyped<(), ()>,
+        current_str_value: &str,
+        cmp_method: ComparisonMethod,
+    ) -> Self {
+        match filter_rules {
+            FilterRulesTyped::Title(_) => {
+                Self::Title(FilterRule::new(current_str_value.to_string(), cmp_method))
+            }
+            FilterRulesTyped::Artist(_) => {
+                Self::Artist(FilterRule::new(current_str_value.to_string(), cmp_method))
+            }
+            FilterRulesTyped::Album(_) => {
+                Self::Album(FilterRule::new(current_str_value.to_string(), cmp_method))
+            }
+            FilterRulesTyped::Rating(_) => Self::Rating(FilterRule::new(
+                u8::from_str(current_str_value).unwrap_or_default(),
+                cmp_method,
+            )),
+        }
+    }
+}
+
+impl<S, U> FilterRulesTyped<S, U> {
+    pub fn get_display_str(&self) -> &'static str {
+        match self {
+            Self::Title(_) => "Title",
+            Self::Artist(_) => "Artist",
+            Self::Album(_) => "Album",
+            Self::Rating(_) => "Rating",
+        }
+    }
+
+    pub fn values() -> [FilterRulesTyped<(), ()>; 4] {
+        [
+            FilterRulesTyped::Title(()),
+            FilterRulesTyped::Artist(()),
+            FilterRulesTyped::Album(()),
+            FilterRulesTyped::Rating(()),
+        ]
     }
 }
 

@@ -1,3 +1,4 @@
+use crate::content::playlist::ClearSongsCacheMut;
 use crate::content::song::Song;
 use crate::content::song::song_data::{MAX_RATING, SongData};
 use crate::song_pool::SONG_POOL;
@@ -123,7 +124,7 @@ impl SongList {
 
     pub(super) fn new() -> Self {
         Self {
-            songs_vec: Arc::new(RwLock::new(Vec::new())),
+            songs_vec: SongVec::new(RwLock::new(Vec::new())),
             songs_set: HashSet::new(),
         }
     }
@@ -258,5 +259,12 @@ impl SongList {
         }
 
         Ok(())
+    }
+}
+
+impl ClearSongsCacheMut for SongList {
+    fn clear_songs_cache_mut(&mut self) {
+        write_rwlock(&self.songs_vec).clear();
+        self.songs_set.clear();
     }
 }

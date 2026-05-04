@@ -436,7 +436,9 @@ impl PlaylistPanel {
                 .add(Slider::new(&mut volume, 0..=100).trailing_fill(true))
                 .drag_stopped()
             {
-                self.current_playlist.set_volume(volume as f32 / 100.);
+                self.current_playlist
+                    .set_volume(volume as f32 / 100.)
+                    .expect("Unable to save playlist data when setting volume");
             }
 
             if ui.button("Prev").clicked() {

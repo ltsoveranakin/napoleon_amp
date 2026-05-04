@@ -21,7 +21,7 @@ pub(super) fn unwrap_inner_ref_mut<T>(r: RefMut<Option<T>>) -> RefMut<T> {
 pub trait SaveData: SerBytes {
     fn get_path(id: Id) -> PathBuf;
 
-    fn save_data(&mut self, id: Id) -> io::Result<()> {
+    fn save_data(&self, id: Id) -> io::Result<()> {
         self.write_to_file_path(Self::get_path(id))
     }
 }
