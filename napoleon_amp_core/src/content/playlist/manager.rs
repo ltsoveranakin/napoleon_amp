@@ -1,19 +1,19 @@
-use crate::content::playlist::queue::{Queue, QueueSong};
 use crate::content::playlist::PlaybackMode;
+use crate::content::playlist::queue::Queue;
 use crate::content::song::Song;
-use crate::discord_rpc::{send_rpc_action, RPCAction, SetSongData};
+use crate::discord_rpc::{RPCAction, SetSongData, send_rpc_action};
 use crate::paths::song::song_audio_file_v2;
-use crate::{read_rwlock, write_rwlock, ReadWrapper, WriteWrapper};
+use crate::{ReadWrapper, WriteWrapper, read_rwlock, write_rwlock};
 use rodio::cpal::traits::HostTrait;
 use rodio::source::SeekError;
-use rodio::{cpal, Decoder, DeviceTrait, OutputStream, OutputStreamBuilder, Sink, Source};
+use rodio::{Decoder, DeviceTrait, OutputStream, OutputStreamBuilder, Sink, Source, cpal};
 use std::any::Any;
 use std::fmt::{Debug, Formatter};
 use std::fs::File;
 use std::io::{BufReader, ErrorKind};
 use std::ops::{Deref, DerefMut};
 use std::sync::mpsc::Sender;
-use std::sync::{mpsc, Arc, RwLock};
+use std::sync::{Arc, RwLock, mpsc};
 use std::thread::JoinHandle;
 use std::time::Duration;
 use std::{io, thread};
@@ -99,12 +99,12 @@ impl MusicManager {
             return None;
         }
 
-        let queue = Queue::new(start_index, &songs, playback_mode);
+        let queue = Queue::new(start_index, songs.clone(), playback_mode);
 
         let (music_command_tx, music_command_rx) = mpsc::channel();
 
         let song_status = Arc::new(RwLock::new(SongStatus {
-            song: Arc::clone(&songs[queue.indexes[0]]),
+            song: Arc::clone(&queue.song_list[0]),
             total_duration: None,
         }));
         let song_status_thread = Arc::clone(&song_status);
@@ -119,7 +119,7 @@ impl MusicManager {
         let queue = Arc::new(RwLock::new(queue));
         let queue_thread = Arc::clone(&queue);
 
-        let songs_thread = Arc::clone(&songs_arc);
+        // let songs_thread = Arc::clone(&songs_arc);
 
         let playing_handle = thread::Builder::new()
             .name("Music Manager".to_string())
@@ -127,7 +127,7 @@ impl MusicManager {
                 let sink_arc = sink_thread;
                 let queue = queue_thread;
                 let song_status = song_status_thread;
-                let songs = songs_thread;
+                // let songs = songs_thread;
 
                 let mut audio_device_in_use = cpal::default_host().default_output_device();
                 let mut audio_device_changed = false;
@@ -209,20 +209,21 @@ impl MusicManager {
                     }
 
                     if sink.empty() {
-                        let songs = read_rwlock(&songs);
-                        let next_song = write_rwlock(&queue).get_next_song();
+                        // let songs = read_rwlock(&songs);
+                        let mut queue_mut = write_rwlock(&queue);
+                        let next_song = queue_mut.get_next_song();
 
-                        let song = match next_song {
-                            QueueSong::Index(song_index) => {
-                                if let Some(song) = songs.get(song_index) {
-                                    Arc::clone(song)
-                                } else {
-                                    write_rwlock(&queue).reset_queue();
-                                    continue;
-                                }
+                        let song = if let Some(song) = next_song {
+                            song
+                        } else {
+                            queue_mut.reset_queue();
+
+                            if let Some(song) = queue_mut.get_next_song() {
+                                song
+                            } else {
+                                // Entire queue is probably 0, some bug occurred, don't need to constantly loop clearing the queue. Just kill the thread
+                                break;
                             }
-
-                            QueueSong::Arc(song) => song,
                         };
 
                         // Skip if invalid file
@@ -255,7 +256,7 @@ impl MusicManager {
                             println!("Invalid or corrupted audio file detected, skipping")
                         }
 
-                        write_rwlock(&queue).next();
+                        queue_mut.next();
                     }
 
                     if is_playing {

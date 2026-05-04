@@ -163,7 +163,9 @@ impl FolderListModals {
             if let PlaylistType::Dynamic((dyn_user_data, _)) = edit_playlist {
                 // ui.label("wip (all playlist only)");
 
-                for filter in &mut dyn_user_data.rules.filters {
+                let len = dyn_user_data.rules.filters.len();
+
+                for (i, filter) in dyn_user_data.rules.filters.iter_mut().enumerate() {
                     let filter_of_str = filter.get_display_str();
 
                     let (mut string_val, cmp_method_copy) = {
@@ -207,6 +209,10 @@ impl FolderListModals {
                             }
                         })
                         .inner;
+
+                    if i < len.saturating_sub(1) {
+                        ui.label("And");
+                    }
 
                     if edited {
                         //TODO: handle this err
