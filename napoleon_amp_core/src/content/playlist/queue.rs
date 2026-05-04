@@ -4,7 +4,7 @@ use rand::RngExt;
 use std::collections::VecDeque;
 use std::sync::Arc;
 
-pub type CurrentQueue<'q> = (&'q [Arc<Song>], &'q [Arc<Song>], &'q [usize]);
+pub type CurrentQueue<'q> = (&'q [Arc<Song>], &'q [Arc<Song>], &'q [Arc<Song>]);
 
 // enum CQIterOn {
 //     FirstSlice,
@@ -32,7 +32,7 @@ pub type CurrentQueue<'q> = (&'q [Arc<Song>], &'q [Arc<Song>], &'q [usize]);
 
 #[derive(Clone, Debug)]
 pub struct Queue {
-    pub(super) indexes: Vec<usize>,
+    pub(super) song_list: Vec<Arc<Song>>,
     index: usize,
     temporary_queue: VecDeque<Arc<Song>>,
 }
@@ -50,14 +50,14 @@ pub enum QueueSong {
 impl Queue {
     pub(super) fn new(
         mut start_index: usize,
-        songs: &[Arc<Song>],
+        mut song_list: Vec<Arc<Song>>,
         playback_mode: PlaybackMode,
     ) -> Self {
-        let mut indexes = Vec::with_capacity(songs.len());
-
-        for index in 0..songs.len() {
-            indexes.push(index);
-        }
+        // let mut song_list = Vec::with_capacity(song_list.len());
+        //
+        // for index in 0..song_list.len() {
+        //     song_list.push(index);
+        // }
 
         match playback_mode {
             PlaybackMode::Sequential => {
@@ -66,11 +66,11 @@ impl Queue {
 
             PlaybackMode::Shuffle => {
                 let mut rng = rand::rng();
-                indexes.swap(start_index, 0);
+                song_list.swap(start_index, 0);
 
-                for i in 1..indexes.len() {
-                    let swap_to = rng.random_range(1..indexes.len());
-                    indexes.swap(i, swap_to);
+                for i in 1..song_list.len() {
+                    let swap_to = rng.random_range(1..song_list.len());
+                    song_list.swap(i, swap_to);
                 }
 
                 start_index = 0;
@@ -78,7 +78,7 @@ impl Queue {
         }
 
         Self {
-            indexes,
+            song_list,
             index: start_index,
             temporary_queue: VecDeque::new(),
         }
@@ -90,7 +90,7 @@ impl Queue {
         (
             temporary_queue_slices.0,
             temporary_queue_slices.1,
-            &self.indexes[self.index..],
+            &self.song_list[self.index..],
         )
     }
 
@@ -102,10 +102,10 @@ impl Queue {
         self.temporary_queue.push_back(song);
     }
 
-    pub(super) fn get_next_song(&mut self) -> QueueSong {
+    pub(super) fn get_next_song(&mut self) -> Option<Arc<Song>> {
         self.temporary_queue.pop_front().map_or_else(
-            || QueueSong::Index(self.indexes[self.index]),
-            |song| QueueSong::Arc(song),
+            || self.song_list.get(self.index).cloned(),
+            |song| Some(song),
         )
     }
 
@@ -138,6 +138,6 @@ impl Queue {
     }
 
     fn get_wrapped_index(&self, index: i32) -> usize {
-        index.rem_euclid(self.indexes.len() as i32) as usize
+        index.rem_euclid(self.song_list.len() as i32) as usize
     }
 }

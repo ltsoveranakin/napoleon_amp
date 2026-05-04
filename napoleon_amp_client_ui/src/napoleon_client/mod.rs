@@ -46,11 +46,7 @@ impl App for NapoleonClientApp {
         if let Some(ref mut playlist_panel) = self.playlist_panel {
             if let Some(ref music_manager) = *playlist_panel.current_playlist.get_music_manager() {
                 SidePanel::right("queue_list").show(ctx, |ui| {
-                    playlist_panel.queue_panel.render(
-                        ui,
-                        &playlist_panel.current_playlist,
-                        music_manager,
-                    );
+                    playlist_panel.queue_panel.render(ui, music_manager);
                 });
             }
 
