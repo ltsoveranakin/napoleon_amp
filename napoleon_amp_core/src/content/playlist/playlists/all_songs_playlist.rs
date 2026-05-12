@@ -41,7 +41,7 @@ impl Playlist for AllSongsPlaylist {
         default_save_user_data(&self.get_user_data(), self.id)
     }
 
-    fn load_song_list_data_refcell(&self) -> PlaylistSongListData {
+    fn load_song_list_data(&self) -> PlaylistSongListData {
         CONTENT_POOL
             .get_playlist_song_list_data(Id::ZERO)
             .unwrap_or_else(|_| PlaylistSongListData {

@@ -20,6 +20,8 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Duration;
 
+const REPAINT_DELAY: f32 = 1.0;
+
 pub(crate) struct PlaylistPanel {
     pub(crate) current_playlist: Rc<PlaylistType>,
     playlist_modal: PlaylistModals,
@@ -481,20 +483,23 @@ impl PlaylistPanel {
 
             ui.spacing_mut().slider_width = ui.available_width();
 
-            if ui
-                .add(
-                    Slider::new(&mut progress_f32, 0f32..=total_duration.as_secs_f32())
-                        .show_value(false)
-                        .trailing_fill(true),
-                )
-                .drag_stopped()
-            {
+            let slider_response = ui.add(
+                Slider::new(&mut progress_f32, 0f32..=total_duration.as_secs_f32())
+                    .show_value(false)
+                    .trailing_fill(true),
+            );
+
+            if slider_response.drag_stopped() {
                 let seek_pos = Duration::from_secs_f32(progress_f32);
                 music_manager.try_seek(seek_pos).expect("Failed to seek");
             }
+
+            if slider_response.hovered() {
+                ctx.request_repaint();
+            }
         }
 
-        ctx.request_repaint();
+        ctx.request_repaint_after(Duration::from_secs_f32(REPAINT_DELAY));
 
         should_stop
     }

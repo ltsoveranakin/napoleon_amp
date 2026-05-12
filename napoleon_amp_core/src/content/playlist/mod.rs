@@ -97,7 +97,7 @@ pub trait Playlist {
         }
     }
 
-    fn load_song_list_data_refcell(&self) -> PlaylistSongListData {
+    fn load_song_list_data(&self) -> PlaylistSongListData {
         CONTENT_POOL
             .get_playlist_song_list_data(self.id())
             .unwrap_or_else(|_| PlaylistSongListData {
@@ -115,8 +115,9 @@ pub trait Playlist {
             }
         }
 
-        *self.get_inner().playlist_song_list_data.borrow_mut() =
-            Some(self.load_song_list_data_refcell());
+        *self.get_inner().playlist_song_list_data.borrow_mut() = Some(self.load_song_list_data());
+
+        self.sort_songs(self.get_user_data().inner.sort_by);
 
         unwrap_inner_ref(self.get_inner().playlist_song_list_data.borrow())
     }
@@ -128,7 +129,9 @@ pub trait Playlist {
             return unwrap_inner_ref_mut(list_data);
         }
 
-        *list_data = Some(self.load_song_list_data_refcell());
+        *list_data = Some(self.load_song_list_data());
+
+        self.sort_songs(self.get_user_data().inner.sort_by);
 
         unwrap_inner_ref_mut(self.get_inner().playlist_song_list_data.borrow_mut())
     }
@@ -462,7 +465,7 @@ pub trait Playlist {
     fn sort_songs(&self, sort_by: SortBy) {
         self.get_inner().songs.borrow_mut().sort_songs(sort_by);
 
-        self.save_song_list();
+        // self.save_song_list();
     }
 }
 

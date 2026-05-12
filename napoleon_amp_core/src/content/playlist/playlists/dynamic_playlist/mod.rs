@@ -87,7 +87,7 @@ impl Playlist for DynamicPlaylist {
         "dyn_playlist_icon.png"
     }
 
-    fn load_song_list_data_refcell(&self) -> PlaylistSongListData {
+    fn load_song_list_data(&self) -> PlaylistSongListData {
         *self.temp_pinned_songs.borrow_mut() = None;
 
         let dyn_user_data = self.get_dyn_user_data();
@@ -105,12 +105,6 @@ impl Playlist for DynamicPlaylist {
         } else {
             println!("Recreating song list");
 
-            // hey!
-            // mark this 4 l8r
-            //
-            // sort songs when loading cuz ur not saving songlist on change sort
-            //
-            // uhhh also render client less like add request repaint timeout
             // and fix the queue nopt properly working theres no need for the temp queue anymore just make a whole vecdequeue
 
             // TODO: handle failure? doesnt break if it fails to save since its a dyn playlist that will just recreate itself
