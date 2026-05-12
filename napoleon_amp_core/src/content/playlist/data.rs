@@ -122,7 +122,11 @@ impl SaveData for PlaylistSongListData {
     }
 
     fn save_data(&self, id: Id) -> io::Result<()> {
-        self.last_updated.set(time_now().as_secs());
+        if self.last_updated.get() != 0 {
+            // not clearing the cache so set it to the current time
+            self.last_updated.set(time_now().as_secs());
+        }
+
         self.write_to_file_path(Self::get_path(id))
     }
 }

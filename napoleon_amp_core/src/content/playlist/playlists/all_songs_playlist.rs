@@ -1,9 +1,7 @@
 use crate::content::folder::Folder;
-use crate::content::folder::content_pool::CONTENT_POOL;
-use crate::content::playlist::data::{PlaylistSongListData, PlaylistUserData};
+use crate::content::playlist::data::PlaylistUserData;
 use crate::content::playlist::playlists::get_user_data_ref_cell;
 use crate::content::playlist::{InnerPlaylist, Playlist, default_save_user_data};
-use crate::time_now;
 use simple_id::prelude::Id;
 use std::cell::{OnceCell, Ref, RefCell, RefMut};
 use std::ops::Deref;
@@ -39,15 +37,6 @@ impl Playlist for AllSongsPlaylist {
 
     fn save_user_data(&self) -> std::io::Result<()> {
         default_save_user_data(&self.get_user_data(), self.id)
-    }
-
-    fn load_song_list_data(&self) -> PlaylistSongListData {
-        CONTENT_POOL
-            .get_playlist_song_list_data(Id::ZERO)
-            .unwrap_or_else(|_| PlaylistSongListData {
-                song_ids: Vec::new(),
-                last_updated: time_now().as_secs().into(),
-            })
     }
 
     /// Does nothing since "All Songs" playlist doesn't have a specified file location instead it just loads all the registered songs

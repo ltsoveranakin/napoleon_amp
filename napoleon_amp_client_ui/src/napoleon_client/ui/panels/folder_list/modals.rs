@@ -288,6 +288,11 @@ impl FolderListModals {
                         PlaylistType::Dynamic(dynamic_playlist) => {
                             dynamic_playlist.get_dyn_user_data_mut().inner =
                                 dyn_playlist_data_std.clone();
+
+                            dynamic_playlist
+                                .save_user_data()
+                                .expect("Failed to save dynamic playlist user data");
+                            dynamic_playlist.clear_songs_cache();
                         }
 
                         _ => {
@@ -295,10 +300,6 @@ impl FolderListModals {
                         }
                     }
 
-                    playlist
-                        .save_user_data()
-                        .expect("Failed to save dynamic playlist user data");
-                    playlist.get_inner().clear_songs_cache();
                     (**playlist).deref()
                 }
                 EditPlaylistType::AllSongs(playlist) => playlist,

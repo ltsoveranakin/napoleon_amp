@@ -16,8 +16,8 @@ use crate::napoleon_client::ui::panels::open_location_button;
 use napoleon_amp_core::content::SaveData;
 use napoleon_amp_core::content::folder::content::FolderContentVariant;
 use napoleon_amp_core::content::folder::{Folder, FolderData};
-use napoleon_amp_core::content::playlist::PlaylistType;
 use napoleon_amp_core::content::playlist::data::PlaylistUserData;
+use napoleon_amp_core::content::playlist::{ClearSongsCache, PlaylistType};
 use napoleon_amp_core::discord_rpc::set_rpc_playlist;
 use napoleon_amp_core::instance::NapoleonInstance;
 use napoleon_amp_core::simple_id::prelude::Id;
@@ -200,6 +200,12 @@ impl FolderList {
                                 name: playlist_name.clone(),
                                 edit_playlist_type,
                             };
+                        }
+
+                        if let PlaylistType::Dynamic(dynamic_playlist) = &**playlist {
+                            if ui.button("Clear dynamic cache").clicked() {
+                                dynamic_playlist.clear_songs_cache();
+                            }
                         }
 
                         if Self::shared_popup_ui(

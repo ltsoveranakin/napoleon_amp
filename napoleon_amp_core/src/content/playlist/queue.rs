@@ -6,45 +6,11 @@ use std::sync::Arc;
 
 pub type CurrentQueue<'q> = (&'q [Arc<Song>], &'q [Arc<Song>], &'q [Arc<Song>]);
 
-// enum CQIterOn {
-//     FirstSlice,
-//     SecondSlice,
-//     Indexes,
-// }
-//
-// struct CQIter<'q> {
-//     cq: CurrentQueue<'q>,
-//     on: CQIterOn,
-//     index: usize,
-// }
-//
-// impl<'q> Iterator for CQIter<'q> {
-//     type Item = QueueSongRef<'q>;
-//
-//     fn next(&mut self) -> Option<Self::Item> {
-//         match self.on {
-//             CQIterOn::FirstSlice => {
-//                 if self.cq.0
-//             },
-//         }
-//     }
-// }
-
 #[derive(Clone, Debug)]
 pub struct Queue {
     pub(super) song_list: Vec<Arc<Song>>,
     index: usize,
     temporary_queue: VecDeque<Arc<Song>>,
-}
-
-// pub enum QueueSongRef<'s> {
-//     Index(usize),
-//     Song(&'s Song),
-// }
-
-pub enum QueueSong {
-    Index(usize),
-    Arc(Arc<Song>),
 }
 
 impl Queue {

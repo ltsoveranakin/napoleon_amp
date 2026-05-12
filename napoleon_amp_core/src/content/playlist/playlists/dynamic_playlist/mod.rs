@@ -105,13 +105,24 @@ impl Playlist for DynamicPlaylist {
         } else {
             println!("Recreating song list");
 
-            // and fix the queue nopt properly working theres no need for the temp queue anymore just make a whole vecdequeue
-
             // TODO: handle failure? doesnt break if it fails to save since its a dyn playlist that will just recreate itself
             let _ = song_list_res.song_list_data.save_data(self.id);
         }
 
         song_list_res.song_list_data
+    }
+}
+
+impl ClearSongsCache for DynamicPlaylist {
+    fn clear_songs_cache(&self) {
+        {
+            let mut song_list = self.get_song_list_mut();
+            song_list.song_ids.clear();
+            song_list.last_updated.set(0);
+            song_list.save_data(self.id).expect("Unable to clear cache");
+        }
+
+        self.inner_playlist.clear_songs_cache();
     }
 }
 
