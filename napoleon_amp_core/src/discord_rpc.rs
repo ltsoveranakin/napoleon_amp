@@ -1,15 +1,16 @@
-use crate::content::song::song_data::Artist;
 use crate::content::song::UNKNOWN_ARTIST_STR;
+use crate::content::song::song_data::Artist;
 use crate::{read_rwlock, write_rwlock};
 use discord_rich_presence::activity::{
     Activity, ActivityType, Assets, StatusDisplayType, Timestamps,
 };
 use discord_rich_presence::{DiscordIpc, DiscordIpcClient};
 use std::sync::mpsc::Sender;
-use std::sync::{mpsc, RwLock};
+use std::sync::{RwLock, mpsc};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 const APPLICATION_ID_STR: &str = "1470966026106830868";
+const MAX_DETAILS_PREFIX_LEN: usize = 15;
 
 static RPC_ACTION_TX: RwLock<Option<Sender<RPCAction>>> = RwLock::new(None);
 
@@ -112,7 +113,7 @@ fn set_activity_to_song_data(activity: Activity, set_song_data: SetSongData) -> 
         timestamp = timestamp.end(current_time + song_duration.as_millis() as i64)
     }
 
-    let (state_string, details_prefix) = if main_artist != UNKNOWN_ARTIST_STR {
+    let (state_string, mut details_prefix) = if main_artist != UNKNOWN_ARTIST_STR {
         (
             format!("By {}", song_artist.full_artist_string),
             format!("{} - ", main_artist),
@@ -120,6 +121,10 @@ fn set_activity_to_song_data(activity: Activity, set_song_data: SetSongData) -> 
     } else {
         ("Jammin'".into(), String::new())
     };
+
+    if details_prefix.len() > MAX_DETAILS_PREFIX_LEN {
+        details_prefix = String::new();
+    }
 
     let details_string = format!("{}{}", details_prefix, song_title);
 

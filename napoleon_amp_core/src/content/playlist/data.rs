@@ -110,7 +110,7 @@ impl PlaylistUserDataStd {
     }
 }
 
-#[derive(SerBytes, Debug)]
+#[derive(SerBytes, Default, Debug)]
 pub struct PlaylistSongListData {
     pub(crate) song_ids: Vec<Id>,
     pub(crate) last_updated: Cell<u64>,
@@ -122,7 +122,7 @@ impl SaveData for PlaylistSongListData {
     }
 
     fn save_data(&self, id: Id) -> io::Result<()> {
-        self.last_updated.set(time_now().as_secs().into());
+        self.last_updated.set(time_now().as_secs());
         self.write_to_file_path(Self::get_path(id))
     }
 }

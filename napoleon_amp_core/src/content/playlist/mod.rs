@@ -87,7 +87,7 @@ pub trait Playlist {
 
             let mut songs = inner.songs.borrow_mut();
 
-            songs.push_songs(&song_list_data.song_ids);
+            songs.push_songs_without_save(&song_list_data.song_ids);
 
             songs.sort_songs(SortBy::default());
 

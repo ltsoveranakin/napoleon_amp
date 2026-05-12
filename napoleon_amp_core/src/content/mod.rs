@@ -1,8 +1,11 @@
+use crate::content::song::Song;
+use crate::song_pool::SONG_POOL;
 use serbytes::prelude::SerBytes;
 use simple_id::prelude::Id;
 use std::cell::{Ref, RefMut};
 use std::io;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 pub mod folder;
 pub mod playlist;
@@ -24,4 +27,10 @@ pub trait SaveData: SerBytes {
     fn save_data(&self, id: Id) -> io::Result<()> {
         self.write_to_file_path(Self::get_path(id))
     }
+}
+
+pub(super) fn map_ids_to_songs(ids: &[Id]) -> Vec<Arc<Song>> {
+    ids.iter()
+        .map(|song_id| SONG_POOL.get_song_by_id(*song_id))
+        .collect()
 }

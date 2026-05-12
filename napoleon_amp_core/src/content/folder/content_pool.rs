@@ -11,9 +11,10 @@ use crate::paths::{
     content_folder_file, content_playlist_song_list_file, content_playlist_user_data_file,
 };
 use crate::song_pool::SONG_POOL;
-use crate::{WriteWrapper, time_now, write_rwlock};
+use crate::{WriteWrapper, write_rwlock};
 use serbytes::prelude::{FromFileResult, SerBytes};
 use simple_id::prelude::{Id, SmallRngIdGenerator};
+use std::cell::Cell;
 use std::io::ErrorKind;
 use std::path::PathBuf;
 use std::sync::{LazyLock, RwLock};
@@ -120,16 +121,12 @@ impl ContentPool {
         &self,
         playlist_id: Id,
     ) -> FromFileResult<'_, PlaylistSongListData> {
-        // TODO: put this all songs implementation in AllSongsPlaylist
         if playlist_id == Id::ZERO {
+            let registered_songs = SONG_POOL.get_registered_songs();
+
             let data = PlaylistSongListData {
-                song_ids: SONG_POOL
-                    .get_registered_songs()
-                    .name_map
-                    .values()
-                    .copied()
-                    .collect(),
-                last_updated: time_now().as_secs().into(),
+                song_ids: registered_songs.name_map.values().copied().collect(),
+                last_updated: Cell::new(registered_songs.last_updated.clone()?),
             };
 
             Ok(data)
@@ -189,7 +186,7 @@ impl ContentPool {
     ) -> io::Result<Id> {
         let id = Self::generate_unique_id(&self.folders);
 
-        let mut folder_data = FolderData::new(FolderContentData::new(folder_name, parent_folder));
+        let folder_data = FolderData::new(FolderContentData::new(folder_name, parent_folder));
 
         folder_data.save_data(id)?;
 

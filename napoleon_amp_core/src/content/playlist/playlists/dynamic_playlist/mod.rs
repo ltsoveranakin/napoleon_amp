@@ -11,9 +11,8 @@ use crate::content::playlist::playlists::dynamic_playlist::dynamic_playlist_data
 };
 use crate::content::playlist::{ClearSongsCache, InnerPlaylist, Playlist};
 use crate::content::song::Song;
-use serbytes::prelude::SerBytes;
 use simple_id::prelude::Id;
-use std::cell::{Cell, OnceCell, Ref, RefCell, RefMut};
+use std::cell::{OnceCell, Ref, RefCell, RefMut};
 use std::ops::Deref;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -91,21 +90,34 @@ impl Playlist for DynamicPlaylist {
     fn load_song_list_data_refcell(&self) -> PlaylistSongListData {
         *self.temp_pinned_songs.borrow_mut() = None;
 
-        let songs = self
-            .get_dyn_user_data()
+        let dyn_user_data = self.get_dyn_user_data();
+
+        let song_list_res = dyn_user_data
             .inner
-            .get_song_list()
+            .get_song_list(self.id)
             .unwrap_or_default();
 
-        let song_ids = songs.iter().map(|song| song.id).collect();
-
         // Little optimization so songs (and their loaded data when checking if they work with the filter) don't get dropped
-        *self.temp_pinned_songs.borrow_mut() = Some(songs);
+        *self.temp_pinned_songs.borrow_mut() = Some(song_list_res.songs);
 
-        PlaylistSongListData {
-            song_ids,
-            last_updated: Cell::new(self.get_dyn_user_data().inner.last_updated),
+        if song_list_res.used_cached_songs {
+            println!("Using cached song list");
+        } else {
+            println!("Recreating song list");
+
+            // hey!
+            // mark this 4 l8r
+            //
+            // sort songs when loading cuz ur not saving songlist on change sort
+            //
+            // uhhh also render client less like add request repaint timeout
+            // and fix the queue nopt properly working theres no need for the temp queue anymore just make a whole vecdequeue
+
+            // TODO: handle failure? doesnt break if it fails to save since its a dyn playlist that will just recreate itself
+            let _ = song_list_res.song_list_data.save_data(self.id);
         }
+
+        song_list_res.song_list_data
     }
 }
 

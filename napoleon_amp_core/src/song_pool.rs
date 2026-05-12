@@ -1,7 +1,7 @@
 use crate::content::song::Song;
 use crate::paths::song::registered_songs_data_file_v2;
-use crate::{read_rwlock, write_rwlock, ReadWrapper};
-use serbytes::prelude::SerBytes;
+use crate::{ReadWrapper, read_rwlock, time_now, write_rwlock};
+use serbytes::prelude::{MayNotExistDataProvider, ReadError, SerBytes};
 use simple_id::prelude::Id;
 use std::collections::HashMap;
 use std::io;
@@ -11,9 +11,34 @@ pub(super) static SONG_POOL: LazyLock<SongPool> = LazyLock::new(SongPool::new);
 
 type WeakArc<T> = std::sync::Weak<T>;
 
-#[derive(SerBytes, Default)]
+#[derive(Default)]
+pub(crate) struct LastUpdatedProvider;
+
+impl MayNotExistDataProvider<u64> for LastUpdatedProvider {
+    fn get_data() -> u64 {
+        time_now().as_secs()
+    }
+}
+
+#[derive(SerBytes)]
 pub(crate) struct RegisteredSongs {
     pub(crate) name_map: HashMap<String, Id>,
+    pub(crate) last_updated: Result<u64, ReadError<'static>>,
+}
+
+impl Default for RegisteredSongs {
+    fn default() -> Self {
+        Self {
+            name_map: HashMap::default(),
+            last_updated: Err(ReadError::default()),
+        }
+    }
+}
+
+impl RegisteredSongs {
+    fn save_registered_songs(&self) -> io::Result<()> {
+        self.write_to_file_path(registered_songs_data_file_v2())
+    }
 }
 
 pub(super) struct SongPool {
@@ -30,8 +55,15 @@ impl SongPool {
     }
 
     fn load_registered_songs() -> RwLock<RegisteredSongs> {
-        let registered_songs =
+        let mut registered_songs =
             RegisteredSongs::from_file_path(registered_songs_data_file_v2()).unwrap_or_default();
+
+        if registered_songs.last_updated.is_err() {
+            registered_songs.last_updated = Ok(time_now().as_secs());
+        }
+
+        // Doesn't matter if we cant save registered songs immediately after loading since it will just reload all the dynamic playlists
+        let _ = registered_songs.save_registered_songs();
 
         RwLock::new(registered_songs)
     }
@@ -73,7 +105,7 @@ impl SongPool {
     }
 
     pub(super) fn save_registered_songs(&self) -> io::Result<()> {
-        read_rwlock(&self.registered_songs).write_to_file_path(registered_songs_data_file_v2())
+        read_rwlock(&self.registered_songs).save_registered_songs()
     }
 
     fn load_song(&self, song_id: Id) -> Arc<Song> {

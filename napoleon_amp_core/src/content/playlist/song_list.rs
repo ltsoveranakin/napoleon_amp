@@ -129,7 +129,7 @@ impl SongList {
         }
     }
 
-    pub(super) fn push_songs(&mut self, song_id_list: &[Id]) {
+    pub(super) fn push_songs_without_save(&mut self, song_id_list: &[Id]) {
         let songs_set = &mut self.songs_set;
         let mut songs_vec = write_rwlock(&self.songs_vec);
 
