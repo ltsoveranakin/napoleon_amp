@@ -1,6 +1,6 @@
 use crate::content::playlist::ClearSongsCacheMut;
 use crate::content::song::Song;
-use crate::content::song::song_data::{MAX_RATING, SongData};
+use crate::content::song::song_data::{MAX_RATING, SongDataStd};
 use crate::song_pool::SONG_POOL;
 use crate::{Next, ReadWrapper, read_rwlock, write_rwlock};
 use serbytes::prelude::SerBytes;
@@ -187,8 +187,8 @@ impl SongList {
 
     pub(super) fn sort_songs(&self, sort_by: SortBy) {
         write_rwlock(&self.songs_vec).sort_by(|a, b| {
-            let a_song_data = a.get_song_data();
-            let b_song_data = b.get_song_data();
+            let a_song_data = &a.get_song_data().inner;
+            let b_song_data = &b.get_song_data().inner;
 
             let index = match sort_by.sort_by_variant {
                 SortByVariant::Title => Self::TITLE_INDEX,
@@ -198,8 +198,8 @@ impl SongList {
                 SortByVariant::Length => Self::LENGTH_INDEX,
             };
 
-            let a_sort_properties = Self::get_sort_properties(&a_song_data, index);
-            let b_sort_properties = Self::get_sort_properties(&b_song_data, index);
+            let a_sort_properties = Self::get_sort_properties(a_song_data, index);
+            let b_sort_properties = Self::get_sort_properties(b_song_data, index);
 
             if !sort_by.inverted {
                 a_sort_properties.cmp(&b_sort_properties)
@@ -209,7 +209,10 @@ impl SongList {
         });
     }
 
-    fn get_sort_properties(song_data: &SongData, swap_index: usize) -> [SortableProperty<'_>; 5] {
+    fn get_sort_properties(
+        song_data: &SongDataStd,
+        swap_index: usize,
+    ) -> [SortableProperty<'_>; 5] {
         let mut sort_properties = [SortableProperty::Int(0); 5];
 
         sort_properties[Self::TITLE_INDEX] = SortableProperty::Str(&song_data.title);
@@ -247,8 +250,8 @@ impl SongList {
         {
             let mut song_data = song.get_song_data().clone();
 
-            if song_data.title.is_empty() {
-                song_data.title = original_name.unwrap_or("Unnamed Song").to_string();
+            if song_data.inner.title.is_empty() {
+                song_data.inner.title = original_name.unwrap_or("Unnamed Song").to_string();
                 song.set_song_data_and_save(song_data);
             }
         }

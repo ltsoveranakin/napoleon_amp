@@ -36,7 +36,10 @@ impl QueuePanel {
                 .chain(current_queue.2.iter().map(|song| song)),
             current_queue_length,
             |_, song| {
-                ScrollListDisplay::new(false, get_song_data_display_str(&song.get_song_data()))
+                ScrollListDisplay::new(
+                    false,
+                    get_song_data_display_str(&song.get_song_data().inner),
+                )
             },
             |clicked_queue_index| {
                 music_manager.set_queue_index(clicked_queue_index);

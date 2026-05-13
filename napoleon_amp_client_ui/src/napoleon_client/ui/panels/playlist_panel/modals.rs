@@ -4,7 +4,7 @@ use eframe::egui::{Id, Modal, ScrollArea, Ui};
 use egui_autocomplete::AutoCompleteTextEdit;
 use napoleon_amp_core::content::playlist::PlaylistType;
 use napoleon_amp_core::content::song::Song;
-use napoleon_amp_core::content::song::song_data::SongData;
+use napoleon_amp_core::content::song::song_data::{SongData, SongDataStd};
 use std::mem;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -58,8 +58,12 @@ impl PlaylistModals {
                 album_list,
                 ..
             } => {
-                let (should_close_modal, should_save_song_data) =
-                    Self::draw_edit_song_modal(ui, editing_song_data, artist_list, album_list);
+                let (should_close_modal, should_save_song_data) = Self::draw_edit_song_modal(
+                    ui,
+                    &mut editing_song_data.inner,
+                    artist_list,
+                    album_list,
+                );
 
                 clear_modals = should_close_modal;
                 save_song_data = should_save_song_data;
@@ -164,7 +168,7 @@ impl PlaylistModals {
 
     fn draw_edit_song_modal(
         ui: &mut Ui,
-        editing_song_data: &mut SongData,
+        editing_song_data: &mut SongDataStd,
         artist_list: &[String],
         album_list: &[String],
     ) -> (bool, bool) {

@@ -96,7 +96,7 @@ pub enum FilterRulesTyped<S, U> {
 
 impl FilterRules {
     pub(super) fn does_song_pass(&self, song: &Song) -> bool {
-        let song_data = &**song.get_song_data();
+        let song_data = &song.get_song_data().inner;
 
         match self {
             Self::Title(title) => title.does_value_pass(&song_data.title),

@@ -1,9 +1,11 @@
 use crate::content::song::{Song, UNKNOWN_ALBUM_STR, UNKNOWN_ARTIST_STR};
-use serbytes::prelude::{BBReadResult, MayNotExistOrDefault, ReadError, SerBytes};
+use serbytes::prelude::{
+    BBReadResult, CurrentVersion, MayNotExistOrDefault, ReadByteBufferRefMut, ReadError, SerBytes,
+    VersioningWrapper, from_buf,
+};
 use std::fs;
 use std::fs::File;
 use std::path::PathBuf;
-use std::sync::LazyLock;
 use std::time::Duration;
 use symphonia::core::formats::FormatOptions;
 use symphonia::core::io::{MediaSourceStream, MediaSourceStreamOptions};
@@ -13,12 +15,32 @@ use symphonia::default::get_probe;
 
 pub const MAX_RATING: u32 = 5;
 
-static DEFAULT_SONG_DATA: LazyLock<SongData> = LazyLock::new(|| SongData::default());
+pub type SongData = VersioningWrapper<SongDataStd, SongDataVersion>;
+
+#[derive(SerBytes, Default, Debug, Copy, Clone)]
+pub enum SongDataVersion {
+    #[default]
+    V1,
+}
+
+impl CurrentVersion for SongDataVersion {
+    type Output = SongDataStd;
+
+    fn get_data_from_buf(&self, buf: &mut ReadByteBufferRefMut) -> BBReadResult<Self::Output> {
+        match self {
+            Self::V1 => from_buf(buf),
+        }
+    }
+
+    fn current_version() -> Self {
+        Self::V1
+    }
+}
 
 /// Data stored for each song which has been registered, contains metadata which is commonly used
 
 #[derive(SerBytes, Clone, Debug)]
-pub struct SongData {
+pub struct SongDataStd {
     pub artist: Artist,
     pub album: String,
     pub title: String,
@@ -63,7 +85,7 @@ impl Default for SongDataMeta {
     }
 }
 
-impl Default for SongData {
+impl Default for SongDataStd {
     fn default() -> Self {
         Self {
             artist: Artist::new(UNKNOWN_ARTIST_STR),
@@ -78,14 +100,14 @@ impl Default for SongData {
     }
 }
 
-pub(crate) fn get_song_data_from_song_file(song: &Song, song_data: &mut SongData) {
+pub(crate) fn get_song_data_from_song_file(song: &Song, song_data: &mut SongDataStd) {
     get_song_data_from_song_file_with_paths(&song.song_audio_path, &song.song_data_path, song_data);
 }
 
 pub(super) fn get_song_data_from_song_file_with_paths(
     song_audio_path: &PathBuf,
     song_data_path: &PathBuf,
-    song_data: &mut SongData,
+    song_data: &mut SongDataStd,
 ) {
     let song_file = File::open(&song_audio_path).expect("Open new song file");
 

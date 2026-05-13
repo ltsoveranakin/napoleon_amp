@@ -249,11 +249,11 @@ pub trait Playlist {
     }
 
     fn get_artist_list(&self) -> Vec<String> {
-        self.get_string_list(&|song_data| &song_data.artist.full_artist_string)
+        self.get_string_list(&|song_data| &song_data.inner.artist.full_artist_string)
     }
 
     fn get_album_list(&self) -> Vec<String> {
-        self.get_string_list(&|song_data| &song_data.album)
+        self.get_string_list(&|song_data| &song_data.inner.album)
     }
 
     fn select_all(&self) {
@@ -287,7 +287,7 @@ pub trait Playlist {
                 let mut total_length = 0;
 
                 for song in read_rwlock(&self.get_song_vec_unfiltered()).iter() {
-                    total_length += song.get_song_data().meta.as_ref().unwrap().length;
+                    total_length += song.get_song_data().inner.meta.as_ref().unwrap().length;
                 }
 
                 total_length
@@ -400,7 +400,7 @@ pub trait Playlist {
         };
 
         for song in read_rwlock(&self.get_song_vec_unfiltered()).iter() {
-            let song_data = song.get_song_data();
+            let song_data = &song.get_song_data().inner;
             let strings_to_search: &[&String] = match parsed_search.search_type {
                 ParsedSearchType::Title => &[&song_data.title],
 

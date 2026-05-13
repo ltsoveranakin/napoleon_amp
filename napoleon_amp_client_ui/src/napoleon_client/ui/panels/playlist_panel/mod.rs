@@ -247,7 +247,8 @@ impl PlaylistPanel {
                                 let song_index = row.index();
                                 let song = &songs[song_index];
                                 let is_selected = selected_songs.is_selected(song_index);
-                                let song_data = song.get_song_data();
+                                let song_data_vers = song.get_song_data();
+                                let song_data = &song_data_vers.inner;
 
                                 row.col(|ui| {
                                     let button_text_color = text_color(is_selected, current_playing_song_opt.as_ref().is_some_and(|current_playing_song| current_playing_song == song));
@@ -289,7 +290,7 @@ impl PlaylistPanel {
                                         if ui.button("Edit song data").clicked() {
                                             self.playlist_modal = PlaylistModals::EditSong {
                                                 song: Arc::clone(song),
-                                                editing_song_data: song_data.clone(),
+                                                editing_song_data: song_data_vers.clone(),
                                                 artist_list: current_playlist.get_artist_list(),
                                                 album_list: current_playlist.get_album_list(),
                                             };
@@ -319,13 +320,13 @@ impl PlaylistPanel {
                                     ui.label(&song_data.album);
                                 });
 
-                                let song_data = Self::col_return(&mut row, |ui| {
+                                let mut rating = song_data.rating as i8;
+
+                                let song_data = &Self::col_return(&mut row, |ui| {
                                     let mut update_rating = None;
 
                                     ui.horizontal(|ui| {
                                         ui.style_mut().spacing.item_spacing.x = 2.;
-
-                                        let mut rating = song_data.rating as i8;
 
                                         for star_index in 0..MAX_RATING {
                                             let image_source = if rating > 0 {
@@ -352,16 +353,16 @@ impl PlaylistPanel {
                                     });
 
                                     if let Some(updated_rating) = update_rating {
-                                        drop(song_data);
+                                        drop(song_data_vers);
 
-                                        song.get_song_data_mut().rating = updated_rating as u8;
+                                        song.get_song_data_mut().inner.rating = updated_rating as u8;
                                         song.save_song_data();
 
                                         song.get_song_data()
                                     } else {
-                                        song_data
+                                        song_data_vers
                                     }
-                                });
+                                }).inner;
 
                                 row.col(|ui| {
                                     ui.label(&song_data.user_tag.inner);
@@ -392,7 +393,7 @@ impl PlaylistPanel {
 
         if let Some(music_manager) = self.current_playlist.get_music_manager().deref() {
             let song_status = music_manager.get_song_status();
-            let song_data = song_status.song().get_song_data();
+            let song_data = &song_status.song().get_song_data().inner;
 
             let height = ui
                 .scope(|ui| {

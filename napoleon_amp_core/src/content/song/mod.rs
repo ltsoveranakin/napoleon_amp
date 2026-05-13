@@ -1,9 +1,9 @@
 mod master;
 pub mod song_data;
 
-use crate::content::song::song_data::{get_song_data_from_song_file, SongData};
+use crate::content::song::song_data::{SongData, SongDataStd, get_song_data_from_song_file};
 use crate::paths::song::{song_audio_file_v2, song_data_file_v2};
-use crate::{read_rwlock, write_rwlock, ReadWrapper, WriteWrapper};
+use crate::{ReadWrapper, WriteWrapper, read_rwlock, write_rwlock};
 use serbytes::prelude::SerBytes;
 use simple_id::prelude::Id;
 use std::hash::{Hash, Hasher};
@@ -51,26 +51,28 @@ impl Song {
             let mut song_data =
                 SongData::from_file_path(&self.song_data_path).unwrap_or_else(|_| {
                     let mut sd = SongData::default();
-                    get_song_data_from_song_file(&self, &mut sd);
+                    get_song_data_from_song_file(&self, &mut sd.inner);
 
                     sd
                 });
 
-            if song_data.meta.is_err() {
+            let song_data_std = &mut song_data.inner;
+
+            if song_data_std.meta.is_err() {
                 // meta is outdated
-                let mut sd = SongData::default();
+                let mut sd = SongDataStd::default();
 
                 get_song_data_from_song_file(&self, &mut sd);
 
-                song_data.meta = sd.meta;
+                song_data_std.meta = sd.meta;
             }
 
-            if song_data.artist.full_artist_string.len() == 0 {
-                song_data.artist.full_artist_string = UNKNOWN_ARTIST_STR.to_string();
+            if song_data_std.artist.full_artist_string.len() == 0 {
+                song_data_std.artist.full_artist_string = UNKNOWN_ARTIST_STR.to_string();
             }
 
-            if song_data.album.len() == 0 {
-                song_data.album = UNKNOWN_ALBUM_STR.into();
+            if song_data_std.album.len() == 0 {
+                song_data_std.album = UNKNOWN_ALBUM_STR.into();
             }
 
             RwLock::new(song_data)

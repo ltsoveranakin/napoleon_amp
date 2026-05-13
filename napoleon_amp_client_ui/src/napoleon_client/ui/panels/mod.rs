@@ -1,7 +1,7 @@
 use eframe::egui::Ui;
 use std::path::Path;
 
-use napoleon_amp_core::content::song::song_data::SongData;
+use napoleon_amp_core::content::song::song_data::SongDataStd;
 use napoleon_amp_core::paths::show_file_in_explorer;
 
 pub(crate) mod folder_list;
@@ -9,7 +9,7 @@ pub(crate) mod playlist_panel;
 pub(crate) mod queue_panel;
 pub(crate) mod top_menu_bar;
 
-fn get_song_data_display_str(song_data: &SongData) -> String {
+fn get_song_data_display_str(song_data: &SongDataStd) -> String {
     format!("{} - [{}]", song_data.title, song_data.album)
 }
 

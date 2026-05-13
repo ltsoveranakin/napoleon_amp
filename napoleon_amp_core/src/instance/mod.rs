@@ -10,6 +10,7 @@ use crate::discord_rpc::discord_rpc_thread;
 use crate::instance::data::InstanceData;
 use crate::read_rwlock;
 use rand::{RngExt, rng};
+use serbytes::prelude::SerBytes;
 use simple_id::prelude::Id;
 use std::cell::LazyCell;
 use std::rc::{Rc, Weak};
@@ -28,6 +29,24 @@ pub struct NapoleonInstance {
 
 impl NapoleonInstance {
     pub fn new() -> Self {
+        // for song_dir in read_dir(songs_data_dir_v2()).unwrap().map(|song_dir_res| song_dir_res.unwrap()).collect::<Vec<_>>() {
+        //     println!("songd: {:?}", song_dir);
+        //
+        //     let mut song_data_std = SongDataStd::from_file_path(song_dir.path()).unwrap();
+        //
+        //     if song_data_std.meta.is_err() {
+        //         song_data_std.meta = Ok(SongDataMeta {
+        //             length: 0
+        //         });
+        //
+        //         println!("bad one sd: {:?}", song_data_std);
+        //     }
+        //
+        //     let song_data_versioned = SongData::new(song_data_std);
+        //
+        //     song_data_versioned.write_to_file_path(song_dir.path()).unwrap();
+        // }
+
         Self {
             // TODO: initialize thru content_pool
             base_folder: Rc::new(Folder::new(Id::ZERO, None)),
