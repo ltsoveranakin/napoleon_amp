@@ -221,8 +221,7 @@ impl SongList {
             SortableProperty::Str(&song_data.artist.full_artist_string);
         sort_properties[Self::RATING_INDEX] =
             SortableProperty::Int(MAX_RATING - song_data.rating as u32);
-        sort_properties[Self::LENGTH_INDEX] =
-            SortableProperty::Int(song_data.meta.as_ref().unwrap().length);
+        sort_properties[Self::LENGTH_INDEX] = SortableProperty::Int(song_data.song_length);
 
         let temp = sort_properties[swap_index];
 

@@ -11,6 +11,8 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 const APPLICATION_ID_STR: &str = "1470966026106830868";
 const MAX_DETAILS_PREFIX_LEN: usize = 15;
+const DETAILS_OVERFLOW_EXT: &str = "...";
+const DETAILS_SEP: &str = " - ";
 
 static RPC_ACTION_TX: RwLock<Option<Sender<RPCAction>>> = RwLock::new(None);
 
@@ -116,14 +118,22 @@ fn set_activity_to_song_data(activity: Activity, set_song_data: SetSongData) -> 
     let (state_string, mut details_prefix) = if main_artist != UNKNOWN_ARTIST_STR {
         (
             format!("By {}", song_artist.full_artist_string),
-            format!("{} - ", main_artist),
+            format!("{}{}", main_artist, DETAILS_SEP),
         )
     } else {
         ("Jammin'".into(), String::new())
     };
 
-    if details_prefix.len() > MAX_DETAILS_PREFIX_LEN {
-        details_prefix = String::new();
+    let tot_len = details_prefix.len();
+
+    if tot_len > MAX_DETAILS_PREFIX_LEN {
+        let amt_to_trim = tot_len - MAX_DETAILS_PREFIX_LEN;
+        let trim_to_index =
+            main_artist.len() - (amt_to_trim + DETAILS_OVERFLOW_EXT.len() + DETAILS_SEP.len());
+
+        let artist_trimmed = &main_artist[..trim_to_index].trim();
+
+        details_prefix = format!("{artist_trimmed}{DETAILS_OVERFLOW_EXT}{DETAILS_SEP}");
     }
 
     let details_string = format!("{}{}", details_prefix, song_title);

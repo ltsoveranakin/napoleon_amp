@@ -193,7 +193,7 @@ impl PlaylistModals {
             ));
 
             ui.label("User Tag:");
-            ui.text_edit_singleline(&mut editing_song_data.user_tag.inner);
+            ui.text_edit_singleline(&mut editing_song_data.user_tag);
 
             let action = ui
                 .horizontal(|ui| {

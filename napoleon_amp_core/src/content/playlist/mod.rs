@@ -287,7 +287,7 @@ pub trait Playlist {
                 let mut total_length = 0;
 
                 for song in read_rwlock(&self.get_song_vec_unfiltered()).iter() {
-                    total_length += song.get_song_data().inner.meta.as_ref().unwrap().length;
+                    total_length += song.get_song_data().inner.song_length;
                 }
 
                 total_length
@@ -408,13 +408,13 @@ pub trait Playlist {
 
                 ParsedSearchType::Artist => &[&song_data.artist.full_artist_string],
 
-                ParsedSearchType::UserTag => &[&song_data.user_tag.inner],
+                ParsedSearchType::UserTag => &[&song_data.user_tag],
 
                 ParsedSearchType::Any => &[
                     &song_data.title,
                     &song_data.album,
                     &song_data.artist.full_artist_string,
-                    &song_data.user_tag.inner,
+                    &song_data.user_tag,
                 ],
             };
 

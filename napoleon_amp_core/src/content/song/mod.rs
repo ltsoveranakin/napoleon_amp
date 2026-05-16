@@ -1,7 +1,7 @@
 mod master;
 pub mod song_data;
 
-use crate::content::song::song_data::{SongData, SongDataStd, get_song_data_from_song_file};
+use crate::content::song::song_data::{SongData, get_song_data_from_song_file};
 use crate::paths::song::{song_audio_file_v2, song_data_file_v2};
 use crate::{ReadWrapper, WriteWrapper, read_rwlock, write_rwlock};
 use serbytes::prelude::SerBytes;
@@ -58,14 +58,14 @@ impl Song {
 
             let song_data_std = &mut song_data.inner;
 
-            if song_data_std.meta.is_err() {
-                // meta is outdated
-                let mut sd = SongDataStd::default();
-
-                get_song_data_from_song_file(&self, &mut sd);
-
-                song_data_std.meta = sd.meta;
-            }
+            // if song_data_std.meta.is_err() {
+            //     // meta is outdated
+            //     let mut sd = SongDataStd::default();
+            //
+            //     get_song_data_from_song_file(&self, &mut sd);
+            //
+            //     song_data_std.meta = sd.meta;
+            // }
 
             if song_data_std.artist.full_artist_string.len() == 0 {
                 song_data_std.artist.full_artist_string = UNKNOWN_ARTIST_STR.to_string();

@@ -1,7 +1,7 @@
 use crate::content::song::{Song, UNKNOWN_ALBUM_STR, UNKNOWN_ARTIST_STR};
 use serbytes::prelude::{
-    BBReadResult, CurrentVersion, MayNotExistOrDefault, ReadByteBufferRefMut, ReadError, SerBytes,
-    VersioningWrapper, from_buf,
+    BBReadResult, CurrentVersion, MayNotExistOrDefault, ReadByteBufferRefMut, SerBytes,
+    VersioningWrapper,
 };
 use std::fs;
 use std::fs::File;
@@ -15,12 +15,14 @@ use symphonia::default::get_probe;
 
 pub const MAX_RATING: u32 = 5;
 
+pub type SongDataStd = SongDataStdV2;
 pub type SongData = VersioningWrapper<SongDataStd, SongDataVersion>;
 
 #[derive(SerBytes, Default, Debug, Copy, Clone)]
 pub enum SongDataVersion {
     #[default]
     V1,
+    V2,
 }
 
 impl CurrentVersion for SongDataVersion {
@@ -28,7 +30,23 @@ impl CurrentVersion for SongDataVersion {
 
     fn get_data_from_buf(&self, buf: &mut ReadByteBufferRefMut) -> BBReadResult<Self::Output> {
         match self {
-            Self::V1 => from_buf(buf),
+            Self::V1 => {
+                let sd_v1 = SongDataStdV1::from_buf(buf)?;
+
+                let sd_v2 = SongDataStdV2 {
+                    artist: sd_v1.artist,
+                    album: sd_v1.album,
+                    title: sd_v1.title,
+                    custom_tags: sd_v1.custom_tags,
+                    audio_file: sd_v1.audio_file,
+                    rating: sd_v1.rating,
+                    user_tag: sd_v1.user_tag.inner,
+                    song_length: sd_v1.meta.unwrap_or_default().length,
+                };
+
+                Ok(sd_v2)
+            }
+            Self::V2 => SongDataStdV2::from_buf(buf),
         }
     }
 
@@ -40,7 +58,21 @@ impl CurrentVersion for SongDataVersion {
 /// Data stored for each song which has been registered, contains metadata which is commonly used
 
 #[derive(SerBytes, Clone, Debug)]
-pub struct SongDataStd {
+pub struct SongDataStdV2 {
+    pub artist: Artist,
+    pub album: String,
+    pub title: String,
+    pub custom_tags: Vec<String>,
+    pub(crate) audio_file: String,
+    /// A rating of the song from 0 to 5
+    /// where 0 represents unrated and 1-5 represent a rating
+    pub rating: u8,
+    pub user_tag: String,
+    pub song_length: u32,
+}
+
+#[derive(SerBytes, Clone, Debug)]
+pub struct SongDataStdV1 {
     pub artist: Artist,
     pub album: String,
     pub title: String,
@@ -95,7 +127,7 @@ impl Default for SongDataStd {
             audio_file: String::new().into(),
             rating: 0,
             user_tag: String::new().into(),
-            meta: Err(ReadError::default()),
+            song_length: 0,
         }
     }
 }
@@ -122,11 +154,11 @@ pub(super) fn get_song_data_from_song_file_with_paths(
 
     let mss = MediaSourceStream::new(Box::new(song_file), mss_options);
 
-    if song_data.meta.is_err() {
-        song_data.meta = Ok(SongDataMeta::default());
-    }
+    // if song_data.meta.is_err() {
+    //     song_data.meta = Ok(SongDataMeta::default());
+    // }
 
-    let song_data_meta = song_data.meta.as_mut().unwrap();
+    // let song_data_meta = song_data.meta.as_mut().unwrap();
 
     match get_probe().format(
         Hint::new().with_extension(&ext),
@@ -142,7 +174,7 @@ pub(super) fn get_song_data_from_song_file_with_paths(
                 {
                     let duration_seconds = total_frames as f64 / sample_rate as f64;
                     let duration = Duration::from_secs_f64(duration_seconds);
-                    song_data_meta.length = duration.as_secs() as u32;
+                    song_data.song_length = duration.as_secs() as u32;
                 }
             }
 

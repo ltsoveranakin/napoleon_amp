@@ -36,7 +36,8 @@ impl Default for RegisteredSongs {
 }
 
 impl RegisteredSongs {
-    fn save_registered_songs(&self) -> io::Result<()> {
+    fn save_registered_songs(&mut self) -> io::Result<()> {
+        self.last_updated = Ok(time_now().as_secs());
         self.write_to_file_path(registered_songs_data_file_v2())
     }
 }
@@ -105,7 +106,7 @@ impl SongPool {
     }
 
     pub(super) fn save_registered_songs(&self) -> io::Result<()> {
-        read_rwlock(&self.registered_songs).save_registered_songs()
+        write_rwlock(&self.registered_songs).save_registered_songs()
     }
 
     fn load_song(&self, song_id: Id) -> Arc<Song> {

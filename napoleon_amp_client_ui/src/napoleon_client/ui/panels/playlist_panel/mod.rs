@@ -365,11 +365,11 @@ impl PlaylistPanel {
                                 }).inner;
 
                                 row.col(|ui| {
-                                    ui.label(&song_data.user_tag.inner);
+                                    ui.label(&song_data.user_tag);
                                 });
 
                                 row.col(|ui| {
-                                    ui.label(Self::secs_to_str(song_data.meta.as_ref().unwrap().length as u64));
+                                    ui.label(Self::secs_to_str(song_data.song_length as u64));
                                 });
                             });
                         }
