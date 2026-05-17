@@ -208,7 +208,9 @@ impl PlaylistPanel {
                     .column(Column::remainder())
                     .column(Column::remainder())
                     .column(Column::remainder())
-                    .column(Column::remainder()).column(Column::remainder())
+                    .column(Column::remainder())
+                    .column(Column::remainder())
+                    .column(Column::remainder())
                     .header(20.0, |mut header| {
                         header.col(|ui| {
                             ui.heading("Title");
@@ -232,6 +234,10 @@ impl PlaylistPanel {
 
                         header.col(|ui| {
                             ui.heading("Length");
+                        });
+
+                        header.col(|ui| {
+                            ui.heading("Times Listened");
                         });
                     })
                     .body(|body| {
@@ -370,6 +376,10 @@ impl PlaylistPanel {
 
                                 row.col(|ui| {
                                     ui.label(Self::secs_to_str(song_data.song_length as u64));
+                                });
+
+                                row.col(|ui| {
+                                    ui.label(song_data.times_listened.to_string());
                                 });
                             });
                         }

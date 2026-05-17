@@ -21,6 +21,8 @@ use std::{io, thread};
 static DEAD_MUSIC_THREAD_MESSAGE: &'static str =
     "Music thread should be dead, and this should be cleaned up";
 
+const LISTEN_TIME_COUNT_AS_INCREMENT: f32 = 0.75;
+
 pub(super) enum SwitchSongMusicCommand {
     Previous,
     Next,
@@ -134,6 +136,8 @@ impl MusicManager {
 
                 let mut is_playing = true;
 
+                let mut last_song: Option<Arc<Song>> = None;
+
                 loop {
                     if audio_device_changed {
                         println!("Changing audio device, replacing sink");
@@ -158,6 +162,8 @@ impl MusicManager {
                     }
 
                     let sink = read_rwlock(&sink_arc);
+
+                    let mut switched_song_pos = None;
 
                     if let Ok(music_command) = music_command_rx.try_recv() {
                         match music_command {
@@ -192,12 +198,16 @@ impl MusicManager {
 
                                     SwitchSongMusicCommand::Next => {
                                         // Queue has already incremented
+                                        switched_song_pos = Some(sink.get_pos());
                                     }
 
                                     SwitchSongMusicCommand::SkipToQueueIndex(index) => {
                                         queue.set_index_from_queue(index);
+                                        switched_song_pos = Some(sink.get_pos());
                                     }
                                 }
+
+                                sink.get_pos();
 
                                 sink.clear();
                             }
@@ -209,7 +219,27 @@ impl MusicManager {
                     }
 
                     if sink.empty() {
-                        // let songs = read_rwlock(&songs);
+                        if let Some(ls) = &last_song {
+                            let should_increment = if let Some(pos) = switched_song_pos {
+                                let song_status = read_rwlock(&song_status);
+
+                                pos.as_secs_f32()
+                                    >= song_status
+                                        .total_duration()
+                                        .unwrap_or_default()
+                                        .as_secs_f32()
+                                        * LISTEN_TIME_COUNT_AS_INCREMENT
+                            } else {
+                                // we finished the song normally
+                                true
+                            };
+
+                            if should_increment {
+                                ls.get_song_data_mut().inner.times_listened += 1;
+                                ls.save_song_data()
+                            }
+                        }
+
                         let mut queue_mut = write_rwlock(&queue);
                         let next_song = queue_mut.get_next_song();
 
@@ -255,6 +285,8 @@ impl MusicManager {
                         } else {
                             println!("Invalid or corrupted audio file detected, skipping")
                         }
+
+                        last_song = Some(song);
 
                         queue_mut.next();
                     }

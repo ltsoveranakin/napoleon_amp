@@ -19,12 +19,6 @@ impl Queue {
         mut song_list: Vec<Arc<Song>>,
         playback_mode: PlaybackMode,
     ) -> Self {
-        // let mut song_list = Vec::with_capacity(song_list.len());
-        //
-        // for index in 0..song_list.len() {
-        //     song_list.push(index);
-        // }
-
         match playback_mode {
             PlaybackMode::Sequential => {
                 // no-op
