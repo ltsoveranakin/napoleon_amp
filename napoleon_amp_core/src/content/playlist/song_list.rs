@@ -20,6 +20,7 @@ pub enum SortByVariant {
     Album,
     Rating,
     Length,
+    TimesListened,
 }
 
 impl Next for SortByVariant {
@@ -33,7 +34,9 @@ impl Next for SortByVariant {
 
             SortByVariant::Rating => SortByVariant::Length,
 
-            SortByVariant::Length => SortByVariant::Title,
+            SortByVariant::Length => SortByVariant::TimesListened,
+
+            SortByVariant::TimesListened => SortByVariant::Title,
         }
     }
 }
@@ -50,6 +53,8 @@ impl Display for SortByVariant {
             Self::Rating => "Rating",
 
             Self::Length => "Length",
+
+            Self::TimesListened => "Times Listened",
         };
 
         f.write_str(display_str)
@@ -121,6 +126,7 @@ impl SongList {
     const ARTIST_INDEX: usize = 2;
     const RATING_INDEX: usize = 3;
     const LENGTH_INDEX: usize = 4;
+    const TIMES_LISTENED_INDEX: usize = 5;
 
     pub(super) fn new() -> Self {
         Self {
@@ -196,6 +202,7 @@ impl SongList {
                 SortByVariant::Album => Self::ALBUM_INDEX,
                 SortByVariant::Rating => Self::RATING_INDEX,
                 SortByVariant::Length => Self::LENGTH_INDEX,
+                SortByVariant::TimesListened => Self::TIMES_LISTENED_INDEX,
             };
 
             let a_sort_properties = Self::get_sort_properties(a_song_data, index);
@@ -212,8 +219,8 @@ impl SongList {
     fn get_sort_properties(
         song_data: &SongDataStd,
         swap_index: usize,
-    ) -> [SortableProperty<'_>; 5] {
-        let mut sort_properties = [SortableProperty::Int(0); 5];
+    ) -> [SortableProperty<'_>; 6] {
+        let mut sort_properties = [SortableProperty::Int(0); 6];
 
         sort_properties[Self::TITLE_INDEX] = SortableProperty::Str(&song_data.title);
         sort_properties[Self::ALBUM_INDEX] = SortableProperty::Str(&song_data.album);
@@ -222,6 +229,8 @@ impl SongList {
         sort_properties[Self::RATING_INDEX] =
             SortableProperty::Int(MAX_RATING - song_data.rating as u32);
         sort_properties[Self::LENGTH_INDEX] = SortableProperty::Int(song_data.song_length);
+        sort_properties[Self::TIMES_LISTENED_INDEX] =
+            SortableProperty::Int(song_data.times_listened);
 
         let temp = sort_properties[swap_index];
 
