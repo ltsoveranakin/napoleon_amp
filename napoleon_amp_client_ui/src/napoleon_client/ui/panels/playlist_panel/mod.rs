@@ -1,17 +1,17 @@
 mod modals;
 
 use crate::napoleon_client::colors::text_color;
+use crate::napoleon_client::ui::helpers::scroll_area_styled;
 use crate::napoleon_client::ui::panels::get_song_data_display_str;
 use crate::napoleon_client::ui::panels::playlist_panel::modals::PlaylistModals;
 use crate::napoleon_client::ui::panels::queue_panel::QueuePanel;
 use eframe::egui::*;
 use egui_extras::{Column, TableBuilder, TableRow};
+use napoleon_amp_core::content::SaveData;
 use napoleon_amp_core::content::playlist::PlaylistType;
 use napoleon_amp_core::content::playlist::manager::{MusicManager, SongStatus};
+use napoleon_amp_core::content::playlist::song_list::SortByVariant;
 use napoleon_amp_core::content::song::song_data::MAX_RATING;
-
-use crate::napoleon_client::ui::helpers::scroll_area_styled;
-use napoleon_amp_core::content::SaveData;
 use napoleon_amp_core::instance::NapoleonInstance;
 use napoleon_amp_core::paths::show_file_in_explorer;
 use napoleon_amp_core::{Next, read_rwlock};
@@ -79,15 +79,16 @@ impl PlaylistPanel {
 
                         let sort_by = user_data.sort_by;
 
-                        if ui
-                            .button(format!("Sort: {}", sort_by.sort_by_variant))
-                            .clicked()
-                        {
-                            save_data = true;
-                            user_data.sort_by.sort_by_variant.assign_next();
+                        ui.menu_button(format!("Sort: {}", sort_by.sort_by_variant), |ui| {
+                            for sort_by_variant in SortByVariant::all_values() {
+                                if ui.button(sort_by_variant.to_string()).clicked() {
+                                    save_data = true;
+                                    user_data.sort_by.sort_by_variant = *sort_by_variant;
 
-                            self.current_playlist.sort_songs(user_data.sort_by);
-                        }
+                                    self.current_playlist.sort_songs(user_data.sort_by);
+                                }
+                            }
+                        });
 
                         if ui
                             .checkbox(&mut user_data.sort_by.inverted, "Descending")

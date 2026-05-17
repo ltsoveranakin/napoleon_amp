@@ -2,7 +2,8 @@ use crate::content::playlist::ClearSongsCacheMut;
 use crate::content::song::Song;
 use crate::content::song::song_data::{MAX_RATING, SongDataStd};
 use crate::song_pool::SONG_POOL;
-use crate::{Next, ReadWrapper, read_rwlock, write_rwlock};
+use crate::{ReadWrapper, read_rwlock, write_rwlock};
+use derive_enum_all_values::AllValues;
 use serbytes::prelude::SerBytes;
 use simple_id::prelude::Id;
 use std::cmp::Ordering;
@@ -12,7 +13,7 @@ use std::sync::{Arc, RwLock};
 
 pub type SongVec = Arc<RwLock<Vec<Arc<Song>>>>;
 
-#[derive(SerBytes, Default, Debug, Copy, Clone)]
+#[derive(SerBytes, AllValues, Default, Debug, Copy, Clone)]
 pub enum SortByVariant {
     #[default]
     Title,
@@ -21,24 +22,6 @@ pub enum SortByVariant {
     Rating,
     Length,
     TimesListened,
-}
-
-impl Next for SortByVariant {
-    fn get_next(&self) -> Self {
-        match self {
-            SortByVariant::Title => SortByVariant::Artist,
-
-            SortByVariant::Artist => SortByVariant::Album,
-
-            SortByVariant::Album => SortByVariant::Rating,
-
-            SortByVariant::Rating => SortByVariant::Length,
-
-            SortByVariant::Length => SortByVariant::TimesListened,
-
-            SortByVariant::TimesListened => SortByVariant::Title,
-        }
-    }
 }
 
 impl Display for SortByVariant {
