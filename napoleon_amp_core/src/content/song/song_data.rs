@@ -15,14 +15,15 @@ use symphonia::default::get_probe;
 
 pub const MAX_RATING: u32 = 5;
 
-pub type SongDataStd = SongDataStdV2;
+pub type SongDataStd = SongDataStdV3;
 pub type SongData = VersioningWrapper<SongDataStd, SongDataVersion>;
 
-#[derive(SerBytes, Default, Debug, Copy, Clone)]
+#[derive(SerBytes, Default, Debug, Copy, Clone, Eq, PartialEq)]
 pub enum SongDataVersion {
-    #[default]
     V1,
     V2,
+    #[default]
+    V3,
 }
 
 impl CurrentVersion for SongDataVersion {
@@ -33,29 +34,59 @@ impl CurrentVersion for SongDataVersion {
             Self::V1 => {
                 let sd_v1 = SongDataStdV1::from_buf(buf)?;
 
-                let sd_v2 = SongDataStdV2 {
+                let sd_v3 = SongDataStdV3 {
                     artist: sd_v1.artist,
                     album: sd_v1.album,
                     title: sd_v1.title,
                     custom_tags: sd_v1.custom_tags,
-                    audio_file: sd_v1.audio_file,
                     rating: sd_v1.rating,
                     user_tag: sd_v1.user_tag.inner,
                     song_length: sd_v1.meta.unwrap_or_default().length,
+                    times_listened: 0,
                 };
 
-                Ok(sd_v2)
+                Ok(sd_v3)
             }
-            Self::V2 => SongDataStdV2::from_buf(buf),
+            Self::V2 => {
+                let sd_v2 = SongDataStdV2::from_buf(buf)?;
+
+                let sd_v3 = SongDataStdV3 {
+                    artist: sd_v2.artist,
+                    album: sd_v2.album,
+                    title: sd_v2.title,
+                    custom_tags: sd_v2.custom_tags,
+                    rating: sd_v2.rating,
+                    user_tag: sd_v2.user_tag,
+                    song_length: sd_v2.song_length,
+                    times_listened: 0,
+                };
+
+                Ok(sd_v3)
+            }
+            Self::V3 => SongDataStdV3::from_buf(buf),
         }
     }
 
     fn current_version() -> Self {
-        Self::V1
+        Self::V3
     }
 }
 
 /// Data stored for each song which has been registered, contains metadata which is commonly used
+
+#[derive(SerBytes, Clone, Debug)]
+pub struct SongDataStdV3 {
+    pub artist: Artist,
+    pub album: String,
+    pub title: String,
+    pub custom_tags: Vec<String>,
+    /// A rating of the song from 0 to 5
+    /// where 0 represents unrated and 1-5 represent a rating
+    pub rating: u8,
+    pub user_tag: String,
+    pub song_length: u32,
+    pub times_listened: u32,
+}
 
 #[derive(SerBytes, Clone, Debug)]
 pub struct SongDataStdV2 {
@@ -124,10 +155,10 @@ impl Default for SongDataStd {
             album: UNKNOWN_ALBUM_STR.to_string(),
             title: String::new(),
             custom_tags: Vec::new(),
-            audio_file: String::new().into(),
             rating: 0,
             user_tag: String::new().into(),
             song_length: 0,
+            times_listened: 0,
         }
     }
 }

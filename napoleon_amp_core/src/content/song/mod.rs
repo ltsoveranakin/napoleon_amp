@@ -58,21 +58,19 @@ impl Song {
 
             let song_data_std = &mut song_data.inner;
 
-            // if song_data_std.meta.is_err() {
-            //     // meta is outdated
-            //     let mut sd = SongDataStd::default();
-            //
-            //     get_song_data_from_song_file(&self, &mut sd);
-            //
-            //     song_data_std.meta = sd.meta;
-            // }
-
             if song_data_std.artist.full_artist_string.len() == 0 {
                 song_data_std.artist.full_artist_string = UNKNOWN_ARTIST_STR.to_string();
             }
 
             if song_data_std.album.len() == 0 {
                 song_data_std.album = UNKNOWN_ALBUM_STR.into();
+            }
+
+            if song_data.did_update() {
+                println!("updating song data");
+                song_data
+                    .write_to_file_path(song_data_file_v2(&self.id))
+                    .expect("unable to update song data to latest version");
             }
 
             RwLock::new(song_data)
