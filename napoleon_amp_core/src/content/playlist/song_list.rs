@@ -204,14 +204,15 @@ impl SongList {
         swap_index: usize,
     ) -> [SortableProperty<'_>; 6] {
         let mut sort_properties = [SortableProperty::Int(0); 6];
+        let meta = song_data.meta();
 
         sort_properties[Self::TITLE_INDEX] = SortableProperty::Str(&song_data.title);
-        sort_properties[Self::ALBUM_INDEX] = SortableProperty::Str(&song_data.album);
+        sort_properties[Self::ALBUM_INDEX] = SortableProperty::Str(&meta.album);
         sort_properties[Self::ARTIST_INDEX] =
-            SortableProperty::Str(&song_data.artist.full_artist_string);
+            SortableProperty::Str(&meta.artist.full_artist_string);
         sort_properties[Self::RATING_INDEX] =
             SortableProperty::Int(MAX_RATING - song_data.rating as u32);
-        sort_properties[Self::LENGTH_INDEX] = SortableProperty::Int(song_data.song_length);
+        sort_properties[Self::LENGTH_INDEX] = SortableProperty::Int(meta.song_length);
         sort_properties[Self::TIMES_LISTENED_INDEX] =
             SortableProperty::Int(song_data.times_listened);
 

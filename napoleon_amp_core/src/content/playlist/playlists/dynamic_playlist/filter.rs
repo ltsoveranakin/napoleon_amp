@@ -97,11 +97,12 @@ pub enum FilterRulesTyped<S, U> {
 impl FilterRules {
     pub(super) fn does_song_pass(&self, song: &Song) -> bool {
         let song_data = &song.get_song_data().inner;
+        let meta = song_data.meta.inner.as_ref().unwrap();
 
         match self {
             Self::Title(title) => title.does_value_pass(&song_data.title),
-            Self::Artist(artist) => artist.does_value_pass(&song_data.artist.full_artist_string),
-            Self::Album(album) => album.does_value_pass(&song_data.album),
+            Self::Artist(artist) => artist.does_value_pass(&meta.artist.full_artist_string),
+            Self::Album(album) => album.does_value_pass(&meta.album),
             Self::Rating(rating) => rating.does_value_pass(&song_data.rating),
         }
     }

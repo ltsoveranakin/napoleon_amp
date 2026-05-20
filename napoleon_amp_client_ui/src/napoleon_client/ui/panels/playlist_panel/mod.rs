@@ -53,7 +53,7 @@ impl PlaylistPanel {
             if !matches!(*self.current_playlist, PlaylistType::AllSongs(_)) {
                 ui.vertical(|ui| {
                     let mut user_data_v = self.current_playlist.get_user_data_mut();
-                    let mut save_data = false;
+                    let mut should_save_song_data = false;
 
                     let user_data = &mut user_data_v.inner;
 
@@ -82,7 +82,7 @@ impl PlaylistPanel {
                         ui.menu_button(format!("Sort: {}", sort_by.sort_by_variant), |ui| {
                             for sort_by_variant in SortByVariant::all_values() {
                                 if ui.button(sort_by_variant.to_string()).clicked() {
-                                    save_data = true;
+                                    should_save_song_data = true;
                                     user_data.sort_by.sort_by_variant = *sort_by_variant;
 
                                     self.current_playlist.sort_songs(user_data.sort_by);
@@ -94,12 +94,12 @@ impl PlaylistPanel {
                             .checkbox(&mut user_data.sort_by.inverted, "Descending")
                             .changed()
                         {
-                            save_data = true;
+                            should_save_song_data = true;
                             self.current_playlist.sort_songs(user_data.sort_by);
                         }
                     });
 
-                    if save_data {
+                    if should_save_song_data {
                         user_data_v
                             .save_data(self.current_playlist.id())
                             .expect("Save playlist user data");
@@ -320,11 +320,11 @@ impl PlaylistPanel {
                                 });
 
                                 row.col(|ui| {
-                                    ui.label(&song_data.artist.full_artist_string);
+                                    ui.label(&song_data.meta().artist.full_artist_string);
                                 });
 
                                 row.col(|ui| {
-                                    ui.label(&song_data.album);
+                                    ui.label(&song_data.meta().album);
                                 });
 
                                 let mut rating = song_data.rating as i8;
@@ -376,7 +376,7 @@ impl PlaylistPanel {
                                 });
 
                                 row.col(|ui| {
-                                    ui.label(Self::secs_to_str(song_data.song_length as u64));
+                                    ui.label(Self::secs_to_str(song_data.meta().song_length as u64));
                                 });
 
                                 row.col(|ui| {
@@ -411,7 +411,11 @@ impl PlaylistPanel {
                     ui.heading(get_song_data_display_str(&song_data));
                     ui.label(format!(
                         "By: {}",
-                        song_data.artist.full_artist_string.replace("/", ", ")
+                        song_data
+                            .meta()
+                            .artist
+                            .full_artist_string
+                            .replace("/", ", ")
                     ));
 
                     should_stop_music = self.render_currently_playing_song_controls(

@@ -1,7 +1,7 @@
 use crate::content::song::{Song, UNKNOWN_ALBUM_STR, UNKNOWN_ARTIST_STR};
 use serbytes::prelude::{
-    BBReadResult, CurrentVersion, MayNotExistOrDefault, ReadByteBufferRefMut, SerBytes,
-    VersioningWrapper,
+    BBReadResult, CurrentVersion, MayNotExistOrDefault, ReadByteBufferRefMut, ReadError, SerBytes,
+    SizedBlock, VersioningWrapper,
 };
 use std::fs;
 use std::fs::File;
@@ -15,15 +15,16 @@ use symphonia::default::get_probe;
 
 pub const MAX_RATING: u32 = 5;
 
-pub type SongDataStd = SongDataStdV3;
+pub type SongDataStd = SongDataStdV4;
 pub type SongData = VersioningWrapper<SongDataStd, SongDataVersion>;
 
 #[derive(SerBytes, Default, Debug, Copy, Clone, Eq, PartialEq)]
 pub enum SongDataVersion {
     V1,
     V2,
-    #[default]
     V3,
+    #[default]
+    V4,
 }
 
 impl CurrentVersion for SongDataVersion {
@@ -34,45 +35,119 @@ impl CurrentVersion for SongDataVersion {
             Self::V1 => {
                 let sd_v1 = SongDataStdV1::from_buf(buf)?;
 
-                let sd_v3 = SongDataStdV3 {
-                    artist: sd_v1.artist,
-                    album: sd_v1.album,
+                let sd_v4 = SongDataStdV4 {
                     title: sd_v1.title,
                     custom_tags: sd_v1.custom_tags,
                     rating: sd_v1.rating,
                     user_tag: sd_v1.user_tag.inner,
-                    song_length: sd_v1.meta.unwrap_or_default().length,
+                    meta: SizedBlock::new(Ok(SongDataMeta2 {
+                        artist: Artist {
+                            full_artist_string: sd_v1.artist.full_artist_string,
+                        },
+                        album: sd_v1.album,
+                        song_length: sd_v1.meta.unwrap_or_default().length,
+                    })),
                     times_listened: 0,
                 };
 
-                Ok(sd_v3)
+                Ok(sd_v4)
             }
+
             Self::V2 => {
                 let sd_v2 = SongDataStdV2::from_buf(buf)?;
 
-                let sd_v3 = SongDataStdV3 {
-                    artist: sd_v2.artist,
-                    album: sd_v2.album,
+                let sd_v4 = SongDataStdV4 {
                     title: sd_v2.title,
                     custom_tags: sd_v2.custom_tags,
                     rating: sd_v2.rating,
                     user_tag: sd_v2.user_tag,
-                    song_length: sd_v2.song_length,
+                    meta: SizedBlock::new(Ok(SongDataMeta2 {
+                        artist: Artist {
+                            full_artist_string: sd_v2.artist.full_artist_string,
+                        },
+                        album: sd_v2.album,
+                        song_length: sd_v2.song_length,
+                    })),
                     times_listened: 0,
                 };
 
-                Ok(sd_v3)
+                Ok(sd_v4)
             }
-            Self::V3 => SongDataStdV3::from_buf(buf),
+
+            Self::V3 => {
+                let sd_v3 = SongDataStdV3::from_buf(buf)?;
+
+                let sd_v4 = SongDataStdV4 {
+                    title: sd_v3.title,
+                    custom_tags: sd_v3.custom_tags,
+                    rating: sd_v3.rating,
+                    user_tag: sd_v3.user_tag,
+                    meta: SizedBlock::new(Ok(SongDataMeta2 {
+                        artist: Artist {
+                            full_artist_string: sd_v3.artist.full_artist_string,
+                        },
+                        album: sd_v3.album,
+                        song_length: sd_v3.song_length,
+                    })),
+                    times_listened: sd_v3.times_listened,
+                };
+
+                Ok(sd_v4)
+            }
+
+            Self::V4 => SongDataStdV4::from_buf(buf),
         }
     }
 
     fn current_version() -> Self {
-        Self::V3
+        Self::default()
     }
 }
 
 /// Data stored for each song which has been registered, contains metadata which is commonly used
+
+#[derive(SerBytes, Clone, Debug)]
+pub struct SongDataStdV4 {
+    pub title: String,
+    pub custom_tags: Vec<String>,
+    /// A rating of the song from 0 to 5
+    /// where 0 represents unrated and 1-5 represent a rating
+    pub rating: u8,
+    pub user_tag: String,
+    /// Metadata related to a song, this is never of type Err, and can be unwrapped with no issue. Use the helper function [`SongDataStdV4::meta`] where appropriate
+    pub meta: SizedBlock<BBReadResult<SongDataMeta2>>,
+    pub times_listened: u32,
+}
+
+impl SongDataStdV4 {
+    /// Helper function that unwraps and retrieves the song metadata
+    pub fn meta(&self) -> &SongDataMeta2 {
+        self.meta.inner.as_ref().unwrap()
+    }
+
+    pub fn meta_mut(&mut self) -> &mut SongDataMeta2 {
+        self.meta.inner.as_mut().unwrap()
+    }
+}
+
+/// Any part of song data that can be retrieved with parsing the audio file
+
+#[derive(SerBytes, Clone, Debug)]
+pub struct SongDataMeta2 {
+    pub artist: Artist,
+    pub album: String,
+    pub song_length: u32,
+}
+
+impl Default for SongDataMeta2 {
+    fn default() -> Self {
+        Self {
+            artist: Artist::default(),
+            album: UNKNOWN_ALBUM_STR.to_string(),
+            song_length: 0,
+        }
+    }
+}
 
 #[derive(SerBytes, Clone, Debug)]
 pub struct SongDataStdV3 {
@@ -137,6 +212,12 @@ impl Artist {
     }
 }
 
+impl Default for Artist {
+    fn default() -> Self {
+        Self::new(UNKNOWN_ARTIST_STR)
+    }
+}
+
 #[derive(SerBytes, Clone, Debug)]
 pub struct SongDataMeta {
     pub length: u32,
@@ -151,13 +232,11 @@ impl Default for SongDataMeta {
 impl Default for SongDataStd {
     fn default() -> Self {
         Self {
-            artist: Artist::new(UNKNOWN_ARTIST_STR),
-            album: UNKNOWN_ALBUM_STR.to_string(),
             title: String::new(),
             custom_tags: Vec::new(),
             rating: 0,
             user_tag: String::new().into(),
-            song_length: 0,
+            meta: SizedBlock::new(Err(ReadError::default())),
             times_listened: 0,
         }
     }
@@ -171,7 +250,7 @@ pub(super) fn get_song_data_from_song_file_with_paths(
     song_audio_path: &PathBuf,
     song_data_path: &PathBuf,
     song_data: &mut SongDataStd,
-) {
+) -> bool {
     let song_file = File::open(&song_audio_path).expect("Open new song file");
 
     let ext = song_audio_path
@@ -185,11 +264,11 @@ pub(super) fn get_song_data_from_song_file_with_paths(
 
     let mss = MediaSourceStream::new(Box::new(song_file), mss_options);
 
-    // if song_data.meta.is_err() {
-    //     song_data.meta = Ok(SongDataMeta::default());
-    // }
+    if song_data.meta.inner.is_err() {
+        song_data.meta = SizedBlock::new(Ok(SongDataMeta2::default()));
+    }
 
-    // let song_data_meta = song_data.meta.as_mut().unwrap();
+    let mut did_err = false;
 
     match get_probe().format(
         Hint::new().with_extension(&ext),
@@ -205,7 +284,7 @@ pub(super) fn get_song_data_from_song_file_with_paths(
                 {
                     let duration_seconds = total_frames as f64 / sample_rate as f64;
                     let duration = Duration::from_secs_f64(duration_seconds);
-                    song_data.song_length = duration.as_secs() as u32;
+                    song_data.meta_mut().song_length = duration.as_secs() as u32;
                 }
             }
 
@@ -216,7 +295,7 @@ pub(super) fn get_song_data_from_song_file_with_paths(
                             match std_key {
                                 StandardTagKey::Artist => match tag.value {
                                     Value::String(ref artist_string) => {
-                                        song_data.artist = Artist::new(artist_string);
+                                        song_data.meta_mut().artist = Artist::new(artist_string);
                                     }
 
                                     _ => {
@@ -226,7 +305,7 @@ pub(super) fn get_song_data_from_song_file_with_paths(
 
                                 StandardTagKey::Album => match tag.value {
                                     Value::String(ref album) => {
-                                        song_data.album = album.clone();
+                                        song_data.meta_mut().album = album.clone();
                                     }
 
                                     _ => {
@@ -254,11 +333,15 @@ pub(super) fn get_song_data_from_song_file_with_paths(
 
         Err(error) => {
             println!(
-                "failed getting format for {:?}; error: {}",
-                song_audio_path, error
+                "failed getting format for {:?}; The title of this song is: {}; error: {}",
+                song_audio_path, song_data.title, error
             );
+
+            did_err = true;
         }
     }
 
     fs::write(song_data_path, song_data.to_bb().buf()).expect("Clean write to song data file");
+
+    did_err
 }

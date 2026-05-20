@@ -10,7 +10,7 @@ pub(crate) mod queue_panel;
 pub(crate) mod top_menu_bar;
 
 fn get_song_data_display_str(song_data: &SongDataStd) -> String {
-    format!("{} - [{}]", song_data.title, song_data.album)
+    format!("{} - [{}]", song_data.title, song_data.meta().album)
 }
 
 fn open_location_button(ui: &mut Ui, variant_text: &str, path: impl AsRef<Path>) {

@@ -56,14 +56,22 @@ impl Song {
                     sd
                 });
 
-            let song_data_std = &mut song_data.inner;
-
-            if song_data_std.artist.full_artist_string.len() == 0 {
-                song_data_std.artist.full_artist_string = UNKNOWN_ARTIST_STR.to_string();
+            if let Ok(sd_meta) = &song_data.inner.meta.inner {
+                if sd_meta.song_length == 0 {
+                    get_song_data_from_song_file(&self, &mut song_data.inner)
+                }
+            } else {
+                get_song_data_from_song_file(&self, &mut song_data.inner);
             }
 
-            if song_data_std.album.len() == 0 {
-                song_data_std.album = UNKNOWN_ALBUM_STR.into();
+            let meta = song_data.inner.meta_mut();
+
+            if meta.artist.full_artist_string.len() == 0 {
+                meta.artist.full_artist_string = UNKNOWN_ARTIST_STR.to_string();
+            }
+
+            if meta.album.len() == 0 {
+                meta.album = UNKNOWN_ALBUM_STR.into();
             }
 
             if song_data.did_update() {
