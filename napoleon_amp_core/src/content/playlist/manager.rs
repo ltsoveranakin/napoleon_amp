@@ -4,11 +4,13 @@ use crate::content::song::Song;
 use crate::discord_rpc::{RPCAction, SetSongData, send_rpc_action};
 use crate::paths::song::song_audio_file_v2;
 use crate::{ReadWrapper, WriteWrapper, read_rwlock, write_rwlock};
+use derive_enum_all_values::AllValues;
 use rodio::cpal::traits::HostTrait;
 use rodio::source::SeekError;
 use rodio::{Decoder, DeviceTrait, OutputStream, OutputStreamBuilder, Sink, Source, cpal};
 use std::any::Any;
-use std::fmt::{Debug, Formatter};
+use std::cell::Cell;
+use std::fmt::{Debug, Display, Formatter, Pointer, Write};
 use std::fs::File;
 use std::io::{BufReader, ErrorKind};
 use std::ops::{Deref, DerefMut};
@@ -35,6 +37,7 @@ pub(super) enum MusicCommand {
     Stop,
     SwitchSong(SwitchSongMusicCommand),
     SetVolume(f32),
+    SetLoopMode(LoopMode),
 }
 
 #[derive(Clone, Debug)]
@@ -78,6 +81,23 @@ impl<T> DerefMut for DebugWrapper<T> {
     }
 }
 
+#[derive(AllValues, Debug, Copy, Clone)]
+pub enum LoopMode {
+    None,
+    Single,
+}
+
+impl Display for LoopMode {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Self::Single => "Single",
+            Self::None => "None",
+        };
+
+        f.write_str(s)
+    }
+}
+
 #[derive(Debug)]
 pub struct MusicManager {
     pub(super) playing_handle: JoinHandle<()>,
@@ -85,6 +105,7 @@ pub struct MusicManager {
     pub(super) sink: DebugWrapper<Arc<RwLock<Sink>>>,
     pub(super) queue: Arc<RwLock<Queue>>,
     song_status: Arc<RwLock<SongStatus>>,
+    loop_mode: Cell<LoopMode>,
 }
 
 impl MusicManager {
@@ -137,6 +158,7 @@ impl MusicManager {
                 let mut is_playing = true;
 
                 let mut last_song: Option<Arc<Song>> = None;
+                let mut loop_mode = LoopMode::Single;
 
                 loop {
                     if audio_device_changed {
@@ -197,7 +219,7 @@ impl MusicManager {
                                     }
 
                                     SwitchSongMusicCommand::Next => {
-                                        // Queue has already incremented
+                                        // Queue has already incremented, do nothing
                                         switched_song_pos = Some(sink.get_pos());
                                     }
 
@@ -207,13 +229,15 @@ impl MusicManager {
                                     }
                                 }
 
-                                sink.get_pos();
-
                                 sink.clear();
                             }
 
                             MusicCommand::SetVolume(volume) => {
                                 sink.set_volume(volume);
+                            }
+
+                            MusicCommand::SetLoopMode(lm) => {
+                                loop_mode = lm;
                             }
                         }
                     }
@@ -241,7 +265,18 @@ impl MusicManager {
                         }
 
                         let mut queue_mut = write_rwlock(&queue);
-                        let next_song = queue_mut.get_next_song();
+                        let next_song = match loop_mode {
+                            LoopMode::None => queue_mut.get_next_song(),
+
+                            LoopMode::Single => {
+                                // last song should always be some, only way it isnt is if somehow the loop mode is set before the first song is ever played
+                                match last_song {
+                                    Some(ls) => Some(ls),
+
+                                    None => queue_mut.get_next_song(),
+                                }
+                            }
+                        };
 
                         let song = if let Some(song) = next_song {
                             song
@@ -323,6 +358,7 @@ impl MusicManager {
             sink: DebugWrapper(sink),
             queue,
             song_status,
+            loop_mode: Cell::new(LoopMode::None),
         })
     }
 
@@ -377,11 +413,22 @@ impl MusicManager {
     }
 
     pub fn next(&self) {
+        self.set_loop_mode(LoopMode::None);
+
         self.switch_song_command(SwitchSongMusicCommand::Next);
     }
 
     pub fn set_queue_index(&self, index: usize) {
         self.switch_song_command(SwitchSongMusicCommand::SkipToQueueIndex(index));
+    }
+
+    pub fn loop_mode(&self) -> LoopMode {
+        self.loop_mode.get()
+    }
+
+    pub fn set_loop_mode(&self, loop_mode: LoopMode) {
+        self.loop_mode.set(loop_mode);
+        self.send_command(MusicCommand::SetLoopMode(loop_mode))
     }
 
     pub(super) fn send_stop_command(&self) {

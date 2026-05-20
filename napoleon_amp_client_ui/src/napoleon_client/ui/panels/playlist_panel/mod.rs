@@ -9,7 +9,7 @@ use eframe::egui::*;
 use egui_extras::{Column, TableBuilder, TableRow};
 use napoleon_amp_core::content::SaveData;
 use napoleon_amp_core::content::playlist::PlaylistType;
-use napoleon_amp_core::content::playlist::manager::{MusicManager, SongStatus};
+use napoleon_amp_core::content::playlist::manager::{LoopMode, MusicManager, SongStatus};
 use napoleon_amp_core::content::playlist::song_list::SortByVariant;
 use napoleon_amp_core::content::song::song_data::MAX_RATING;
 use napoleon_amp_core::instance::NapoleonInstance;
@@ -456,7 +456,7 @@ impl PlaylistPanel {
             {
                 self.current_playlist
                     .set_volume(volume as f32 / 100.)
-                    .expect("Unable to save playlist data when setting volume");
+                    .expect("Unable to set volume");
             }
 
             if ui.button("Prev").clicked() {
@@ -483,6 +483,14 @@ impl PlaylistPanel {
 
             if let Some(total_duration) = song_status.total_duration() {
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                    ui.menu_button(format!("Loop: {}", music_manager.loop_mode()), |ui| {
+                        for loop_mode in LoopMode::all_values() {
+                            if ui.button(loop_mode.to_string()).clicked() {
+                                music_manager.set_loop_mode(*loop_mode);
+                            }
+                        }
+                    });
+
                     ui.label(format!(
                         "{}/{}",
                         Self::duration_to_str(music_manager.get_song_pos()),
