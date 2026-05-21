@@ -158,7 +158,7 @@ impl MusicManager {
                 let mut is_playing = true;
 
                 let mut last_song: Option<Arc<Song>> = None;
-                let mut loop_mode = LoopMode::Single;
+                let mut loop_mode = LoopMode::None;
 
                 loop {
                     if audio_device_changed {
