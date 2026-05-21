@@ -10,7 +10,7 @@ use rodio::source::SeekError;
 use rodio::{Decoder, DeviceTrait, OutputStream, OutputStreamBuilder, Sink, Source, cpal};
 use std::any::Any;
 use std::cell::Cell;
-use std::fmt::{Debug, Display, Formatter, Pointer, Write};
+use std::fmt::{Debug, Display, Formatter};
 use std::fs::File;
 use std::io::{Cursor, ErrorKind, Read};
 use std::ops::{Deref, DerefMut};
