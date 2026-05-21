@@ -12,7 +12,6 @@ pub mod instance;
 mod net;
 pub mod paths;
 mod resetable_once_cell;
-mod song_pool;
 
 pub use simple_id;
 

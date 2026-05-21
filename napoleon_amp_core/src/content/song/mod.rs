@@ -1,5 +1,6 @@
 mod master;
 pub mod song_data;
+pub(crate) mod song_pool;
 
 use crate::content::song::song_data::{SongData, get_song_data_from_song_file};
 use crate::paths::song::{song_audio_file_v2, song_data_file_v2};

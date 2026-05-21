@@ -1,7 +1,7 @@
 use crate::content::playlist::ClearSongsCacheMut;
 use crate::content::song::Song;
 use crate::content::song::song_data::{MAX_RATING, SongDataStd};
-use crate::song_pool::SONG_POOL;
+use crate::content::song::song_pool::SONG_POOL;
 use crate::{ReadWrapper, read_rwlock, write_rwlock};
 use derive_enum_all_values::AllValues;
 use serbytes::prelude::SerBytes;

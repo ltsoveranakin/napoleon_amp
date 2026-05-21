@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::io;
 use std::sync::{Arc, LazyLock, RwLock};
 
-pub(super) static SONG_POOL: LazyLock<SongPool> = LazyLock::new(SongPool::new);
+pub(crate) static SONG_POOL: LazyLock<SongPool> = LazyLock::new(SongPool::new);
 
 type WeakArc<T> = std::sync::Weak<T>;
 
@@ -33,7 +33,7 @@ impl RegisteredSongs {
     }
 }
 
-pub(super) struct SongPool {
+pub(crate) struct SongPool {
     songs: RwLock<HashMap<Id, WeakArc<Song>>>,
     registered_songs: LazyLock<RwLock<RegisteredSongs>>,
 }
@@ -60,7 +60,7 @@ impl SongPool {
         RwLock::new(registered_songs)
     }
 
-    pub(super) fn get_song_by_id(&self, song_id: Id) -> Arc<Song> {
+    pub(crate) fn get_song_by_id(&self, song_id: Id) -> Arc<Song> {
         let songs = read_rwlock(&self.songs);
 
         let song = if let Some(song) = songs.get(&song_id) {
@@ -80,7 +80,7 @@ impl SongPool {
         song
     }
 
-    pub(super) fn register_new_song(&self, song_id: Id, name: String) -> Result<(), ()> {
+    pub(crate) fn register_new_song(&self, song_id: Id, name: String) -> Result<(), ()> {
         let name_map = &mut write_rwlock(&self.registered_songs).name_map;
 
         if name_map.contains_key(&name) {
@@ -96,7 +96,7 @@ impl SongPool {
         read_rwlock(&self.registered_songs)
     }
 
-    pub(super) fn save_registered_songs(&self) -> io::Result<()> {
+    pub(crate) fn save_registered_songs(&self) -> io::Result<()> {
         write_rwlock(&self.registered_songs).save_registered_songs()
     }
 
