@@ -1,7 +1,18 @@
-use crate::content::song::{Song, UNKNOWN_ALBUM_STR, UNKNOWN_ARTIST_STR};
+mod artist;
+mod meta;
+mod v1;
+mod v2;
+mod v3;
+mod v4;
+
+use crate::content::song::Song;
+pub(crate) use crate::content::song::song_data::artist::Artist;
+use crate::content::song::song_data::v1::SongDataStdV1;
+use crate::content::song::song_data::v2::SongDataStdV2;
+use crate::content::song::song_data::v3::SongDataStdV3;
+use crate::content::song::song_data::v4::{SongDataMeta2, SongDataStdV4};
 use serbytes::prelude::{
-    BBReadResult, CurrentVersion, MayNotExistOrDefault, ReadByteBufferRefMut, ReadError, SerBytes,
-    SizedBlock, VersioningWrapper,
+    BBReadResult, CurrentVersion, ReadByteBufferRefMut, SerBytes, SizedBlock, VersioningWrapper,
 };
 use std::fs;
 use std::fs::File;
@@ -101,144 +112,6 @@ impl CurrentVersion for SongDataVersion {
 
     fn current_version() -> Self {
         Self::default()
-    }
-}
-
-/// Data stored for each song which has been registered, contains metadata which is commonly used
-
-#[derive(SerBytes, Clone, Debug)]
-pub struct SongDataStdV4 {
-    pub title: String,
-    pub custom_tags: Vec<String>,
-    /// A rating of the song from 0 to 5
-    /// where 0 represents unrated and 1-5 represent a rating
-    pub rating: u8,
-    pub user_tag: String,
-    /// Metadata related to a song, this is never of type Err, and can be unwrapped with no issue. Use the helper function [`SongDataStdV4::meta`] where appropriate
-    pub meta: SizedBlock<BBReadResult<SongDataMeta2>>,
-    pub times_listened: u32,
-}
-
-impl SongDataStdV4 {
-    /// Helper function that unwraps and retrieves the song metadata
-    pub fn meta(&self) -> &SongDataMeta2 {
-        self.meta.inner.as_ref().unwrap()
-    }
-
-    pub fn meta_mut(&mut self) -> &mut SongDataMeta2 {
-        self.meta.inner.as_mut().unwrap()
-    }
-}
-
-/// Any part of song data that can be retrieved with parsing the audio file
-
-#[derive(SerBytes, Clone, Debug)]
-pub struct SongDataMeta2 {
-    pub artist: Artist,
-    pub album: String,
-    pub song_length: u32,
-}
-
-impl Default for SongDataMeta2 {
-    fn default() -> Self {
-        Self {
-            artist: Artist::default(),
-            album: UNKNOWN_ALBUM_STR.to_string(),
-            song_length: 0,
-        }
-    }
-}
-
-#[derive(SerBytes, Clone, Debug)]
-pub struct SongDataStdV3 {
-    pub artist: Artist,
-    pub album: String,
-    pub title: String,
-    pub custom_tags: Vec<String>,
-    /// A rating of the song from 0 to 5
-    /// where 0 represents unrated and 1-5 represent a rating
-    pub rating: u8,
-    pub user_tag: String,
-    pub song_length: u32,
-    pub times_listened: u32,
-}
-
-#[derive(SerBytes, Clone, Debug)]
-pub struct SongDataStdV2 {
-    pub artist: Artist,
-    pub album: String,
-    pub title: String,
-    pub custom_tags: Vec<String>,
-    pub(crate) audio_file: String,
-    /// A rating of the song from 0 to 5
-    /// where 0 represents unrated and 1-5 represent a rating
-    pub rating: u8,
-    pub user_tag: String,
-    pub song_length: u32,
-}
-
-#[derive(SerBytes, Clone, Debug)]
-pub struct SongDataStdV1 {
-    pub artist: Artist,
-    pub album: String,
-    pub title: String,
-    pub custom_tags: Vec<String>,
-    pub(crate) audio_file: String,
-    /// A rating of the song from 0 to 5
-    /// where 0 represents unrated and 1-5 represent a rating
-    pub rating: u8,
-    pub user_tag: MayNotExistOrDefault<String>,
-    pub meta: BBReadResult<SongDataMeta>,
-}
-
-#[derive(SerBytes, Clone, Debug)]
-pub struct Artist {
-    /// The full artist string which includes all artists that contributed to the song, separated by slashes (/)
-    pub full_artist_string: String,
-}
-
-impl Artist {
-    fn new(artist_string: impl Into<String>) -> Self {
-        Self {
-            full_artist_string: artist_string.into(),
-        }
-    }
-
-    pub fn main_artist(&self) -> &str {
-        self.full_artist_string
-            .split("/")
-            .next()
-            .unwrap_or(UNKNOWN_ARTIST_STR)
-    }
-}
-
-impl Default for Artist {
-    fn default() -> Self {
-        Self::new(UNKNOWN_ARTIST_STR)
-    }
-}
-
-#[derive(SerBytes, Clone, Debug)]
-pub struct SongDataMeta {
-    pub length: u32,
-}
-
-impl Default for SongDataMeta {
-    fn default() -> Self {
-        Self { length: 0 }
-    }
-}
-
-impl Default for SongDataStd {
-    fn default() -> Self {
-        Self {
-            title: String::new(),
-            custom_tags: Vec::new(),
-            rating: 0,
-            user_tag: String::new().into(),
-            meta: SizedBlock::new(Err(ReadError::default())),
-            times_listened: 0,
-        }
     }
 }
 
