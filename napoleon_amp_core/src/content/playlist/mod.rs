@@ -21,13 +21,12 @@ use crate::paths::song::{song_audio_file_v2, songs_audio_dir_v2, songs_data_dir_
 use crate::song_pool::SONG_POOL;
 use crate::{read_rwlock, time_now, write_rwlock};
 pub use playlists::*;
-use rand::distr::uniform::SampleBorrow;
 use serbytes::prelude::SerBytes;
 use simple_id::prelude::{Id, SmallRngIdGenerator};
 use std::cell::{Ref, RefMut};
 use std::collections::HashSet;
 use std::fs::File;
-use std::ops::{Deref, DerefMut, RangeInclusive};
+use std::ops::{Deref, RangeInclusive};
 use std::path::PathBuf;
 use std::rc::Weak;
 use std::sync::Arc;

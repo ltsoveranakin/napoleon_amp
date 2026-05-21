@@ -2,15 +2,14 @@ mod data;
 mod fixup;
 
 use crate::content::folder::Folder;
+use crate::content::playlist::PlaylistType;
 use crate::content::playlist::all_songs_playlist::AllSongsPlaylist;
 use crate::content::playlist::data::PlaybackMode;
-use crate::content::playlist::{Playlist, PlaylistType};
 use crate::content::song::Song;
 use crate::discord_rpc::discord_rpc_thread;
 use crate::instance::data::InstanceData;
 use crate::read_rwlock;
 use rand::{RngExt, rng};
-use serbytes::prelude::SerBytes;
 use simple_id::prelude::Id;
 use std::cell::LazyCell;
 use std::rc::{Rc, Weak};

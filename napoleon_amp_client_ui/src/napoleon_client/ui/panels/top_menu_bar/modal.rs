@@ -1,15 +1,13 @@
 use eframe::egui::{Id, Modal, Ui};
 
 pub(super) enum MenuPage {
-    Settings
+    Settings,
 }
 
 impl MenuPage {
-    fn render(&mut self, ui: &mut Ui) {
+    fn render(&mut self, _ui: &mut Ui) {
         match self {
-            Self::Settings => {
-
-            }
+            Self::Settings => {}
         }
     }
 }
@@ -20,9 +18,7 @@ pub(super) struct MenuModal {
 
 impl MenuModal {
     pub(super) fn new(page: MenuPage) -> Self {
-        Self {
-            page
-        }
+        Self { page }
     }
 
     pub(super) fn render(&mut self, ui: &mut Ui) -> bool {
@@ -42,8 +38,10 @@ impl MenuModal {
                     }
 
                     return false;
-                }).inner
-            }).inner
+                })
+                .inner
+            })
+            .inner
         });
 
         modal.should_close() || modal.inner

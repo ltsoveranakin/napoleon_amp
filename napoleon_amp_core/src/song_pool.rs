@@ -1,7 +1,7 @@
 use crate::content::song::Song;
 use crate::paths::song::registered_songs_data_file_v2;
 use crate::{ReadWrapper, read_rwlock, time_now, write_rwlock};
-use serbytes::prelude::{MayNotExistDataProvider, ReadError, SerBytes};
+use serbytes::prelude::{ReadError, SerBytes};
 use simple_id::prelude::Id;
 use std::collections::HashMap;
 use std::io;
@@ -10,15 +10,6 @@ use std::sync::{Arc, LazyLock, RwLock};
 pub(super) static SONG_POOL: LazyLock<SongPool> = LazyLock::new(SongPool::new);
 
 type WeakArc<T> = std::sync::Weak<T>;
-
-#[derive(Default)]
-pub(crate) struct LastUpdatedProvider;
-
-impl MayNotExistDataProvider<u64> for LastUpdatedProvider {
-    fn get_data() -> u64 {
-        time_now().as_secs()
-    }
-}
 
 #[derive(SerBytes)]
 pub(crate) struct RegisteredSongs {

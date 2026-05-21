@@ -1,13 +1,6 @@
-use crate::paths::{napoleon_amp_dir, DATA_EXT, SONG_DATA_EXT};
+use crate::paths::{DATA_EXT, SONG_DATA_EXT, napoleon_amp_dir};
 use simple_id::prelude::Id;
 use std::path::PathBuf;
-// pub(crate) fn songs_dir_v1() -> PathBuf {
-//     napoleon_amp_dir().join("songs/")
-// }
-//
-// pub(crate) fn song_file_v1<P: AsRef<Path>>(song_name: P) -> PathBuf {
-//     songs_dir_v1().join(song_name)
-// }
 
 pub(crate) fn songs_blanket_dir_v2() -> PathBuf {
     napoleon_amp_dir().join("songs_v2/")

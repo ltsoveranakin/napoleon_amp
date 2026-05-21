@@ -7,7 +7,6 @@ use std::path::{Path, PathBuf};
 use std::{fs, io};
 
 const DATA_EXT: &str = ".dnap";
-const INDEX_EXT: &str = ".inap";
 const FOLDER_EXT: &str = ".fnap";
 const PLAYLIST_EXT: &str = ".pnap";
 const PLAYLIST_SONG_LIST_EXT: &str = ".psnap";
@@ -56,14 +55,6 @@ pub(crate) fn content_playlist_user_data_file(id: Id) -> PathBuf {
 
 pub(crate) fn content_playlist_song_list_file(id: Id) -> PathBuf {
     content_playlist_song_list_path().join(format!("{}{}", id, PLAYLIST_SONG_LIST_EXT))
-}
-
-pub(crate) fn content_folders_index_file() -> PathBuf {
-    content_blanket_path().join(format!("folders{}", INDEX_EXT))
-}
-
-pub(crate) fn content_playlists_index_file() -> PathBuf {
-    content_blanket_path().join(format!("playlists{}", INDEX_EXT))
 }
 
 pub fn log_dir() -> PathBuf {

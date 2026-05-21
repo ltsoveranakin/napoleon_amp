@@ -1,5 +1,3 @@
-mod custom_scroll_area;
-
 use eframe::egui::scroll_area::{ScrollAreaOutput, ScrollSource};
 use eframe::egui::{Button, IntoAtoms, ScrollArea, TextWrapMode, Ui};
 use std::marker::PhantomData;
@@ -17,10 +15,6 @@ pub(crate) fn scroll_area_styled<O>(
             add_contents(ui)
         })
 }
-
-// pub(crate) fn default_scroll_area(ui: &mut Ui, add_contents: impl FnOnce(&mut Ui)) {
-//     scroll_area_styled(ui, ScrollArea::vertical(), add_contents);
-// }
 
 pub(crate) struct ScrollListDisplay<'a, A>
 where

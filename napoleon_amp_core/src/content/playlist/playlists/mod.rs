@@ -11,7 +11,6 @@ use crate::content::playlist::{
     ClearSongsCache, ClearSongsCacheMut, PlaylistData, PlaylistParent, SelectedSongsVariant,
 };
 pub use dynamic_playlist::*;
-use serbytes::prelude::SerBytes;
 use simple_id::prelude::Id;
 pub use standard_playlist::*;
 use std::cell::{Cell, OnceCell, RefCell};
