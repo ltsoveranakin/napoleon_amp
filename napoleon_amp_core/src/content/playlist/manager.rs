@@ -12,7 +12,7 @@ use std::any::Any;
 use std::cell::Cell;
 use std::fmt::{Debug, Display, Formatter, Pointer, Write};
 use std::fs::File;
-use std::io::{BufReader, ErrorKind};
+use std::io::{Cursor, ErrorKind, Read};
 use std::ops::{Deref, DerefMut};
 use std::sync::mpsc::Sender;
 use std::sync::{Arc, RwLock, mpsc};
@@ -465,11 +465,19 @@ fn create_sink(volume: f32) -> (Sink, OutputStream) {
     (sink, output_stream)
 }
 
-fn get_decoder_for_song(song: &Song) -> io::Result<Decoder<BufReader<File>>> {
-    let file = File::open(song_audio_file_v2(&song.id))
+fn get_decoder_for_song(song: &Song) -> io::Result<Decoder<Cursor<Vec<u8>>>> {
+    let mut file = File::open(song_audio_file_v2(&song.id))
         .expect(&format!("Unable to open song file for: {:?}", song.id));
 
-    Decoder::try_from(file)
-        .map(|decoder| decoder)
+    let mut buf = Vec::new();
+    file.read_to_end(&mut buf)?;
+
+    let buf_len = buf.len() as u64;
+
+    Decoder::builder()
+        .with_data(Cursor::new(buf))
+        .with_byte_len(buf_len)
+        .with_seekable(true)
+        .build()
         .map_err(|_| ErrorKind::InvalidData.into())
 }
