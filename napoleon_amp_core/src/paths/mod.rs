@@ -2,9 +2,8 @@ pub(super) mod song;
 
 use chrono::{Datelike, Local, Timelike};
 use simple_id::prelude::Id;
-use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
-use std::{fs, io};
+use std::{fs, io, thread};
 
 const DATA_EXT: &str = ".dnap";
 const FOLDER_EXT: &str = ".fnap";
@@ -76,25 +75,11 @@ pub fn crash_file_time_now() -> PathBuf {
 }
 
 pub fn show_file_in_explorer(path: impl AsRef<Path>) -> io::Result<()> {
-    let path_buf = fs::canonicalize(path)?;
-    let parent = path_buf.parent().ok_or(ErrorKind::InvalidFilename)?;
-    open::that_detached(parent)
+    let abs_path = fs::canonicalize(path)?;
 
-    // let path_str = path_buf.to_string_lossy();
+    thread::spawn(|| {
+        showfile::show_path_in_file_manager(abs_path);
+    });
 
-    // let path_str = if path_str.starts_with(r"\\?\") {
-    //     path_str.replace(r"\\?\", "")
-    // } else {
-    //     path_str.to_string()
-    // };
-    //
-    // // let arg = format!(r#"/select,"{}""#, path_str);
-    // // println!("arg: {}", arg);
-    // Command::new("explorer")
-    //     .arg(r#"/select,""#)
-    //     // .arg("/select,")
-    //     // .arg(format!("\"{}\"", path_str))
-    //     .spawn()?;
-
-    // Ok(())
+    Ok(())
 }

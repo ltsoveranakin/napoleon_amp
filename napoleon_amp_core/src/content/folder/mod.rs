@@ -174,7 +174,7 @@ impl Folder {
         self.folder_data.get_or_init(|| {
             let folder_path = content_folder_file(self.id);
 
-            let mut data = FolderData::from_file_path(folder_path).unwrap_or_else(|_| {
+            let data = FolderData::from_file_path(folder_path).unwrap_or_else(|_| {
                 assert_eq!(self.id, Id::ZERO, "Temp fix for base folder");
                 let data = FolderData::new(FolderContentData::new("Base".to_string(), None));
 

@@ -1,8 +1,7 @@
 use eframe::egui::Ui;
-use std::path::Path;
-
 use napoleon_amp_core::content::song::song_data::SongDataStd;
 use napoleon_amp_core::paths::show_file_in_explorer;
+use std::path::Path;
 
 pub(crate) mod folder_list;
 pub(crate) mod playlist_panel;
@@ -18,6 +17,6 @@ fn open_location_button(ui: &mut Ui, variant_text: &str, path: impl AsRef<Path>)
         .button(format!("Open {} location", variant_text))
         .clicked()
     {
-        show_file_in_explorer(path).expect("Error showing file in explorer")
+        show_file_in_explorer(path).expect("Error showing file in explorer");
     }
 }

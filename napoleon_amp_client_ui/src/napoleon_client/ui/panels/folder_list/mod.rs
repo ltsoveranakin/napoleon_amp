@@ -1,11 +1,11 @@
 mod modals;
 
 use crate::napoleon_client::ui::helpers::scroll_area_styled;
-
 use crate::napoleon_client::ui::panels::playlist_panel::PlaylistPanel;
 use eframe::egui::{
     Button, Image, IntoAtoms, Popup, Response, RichText, ScrollArea, Sense, Ui, UiBuilder, Vec2,
 };
+use std::path::Path;
 
 use crate::napoleon_client::colors::text_color;
 use crate::napoleon_client::texture_pool::TexturePool;
@@ -21,7 +21,6 @@ use napoleon_amp_core::content::playlist::{ClearSongsCache, PlaylistType};
 use napoleon_amp_core::discord_rpc::set_rpc_playlist;
 use napoleon_amp_core::instance::NapoleonInstance;
 use napoleon_amp_core::simple_id::prelude::Id;
-use std::path::Path;
 use std::rc::{Rc, Weak};
 
 pub(crate) struct FolderList {
