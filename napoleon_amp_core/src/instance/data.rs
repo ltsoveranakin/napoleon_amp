@@ -1,5 +1,5 @@
 use crate::paths::instance_data_file_path;
-use serbytes::prelude::SerBytes;
+use serbytes::prelude::{SerBytes, SerBytesFs};
 
 #[derive(SerBytes, Default)]
 pub(super) struct InstanceData {

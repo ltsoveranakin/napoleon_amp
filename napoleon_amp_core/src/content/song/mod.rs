@@ -5,7 +5,7 @@ pub(crate) mod song_pool;
 use crate::content::song::song_data::{SongData, get_song_data_from_song_file};
 use crate::paths::song::{song_audio_file_v2, song_data_file_v2};
 use crate::{ReadWrapper, WriteWrapper, read_rwlock, write_rwlock};
-use serbytes::prelude::SerBytes;
+use serbytes::prelude::{SerBytes, SerBytesFs};
 use simple_id::prelude::Id;
 use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
@@ -49,25 +49,29 @@ impl Song {
 
     pub fn get_song_data_rwlock(&self) -> &RwLock<SongData> {
         self.song_data.get_or_init(|| {
-            let mut song_data =
-                SongData::from_file_path(&self.song_data_path).unwrap_or_else(|_| {
+            let mut song_data = match SongData::from_file_path(&self.song_data_path) {
+                Ok(song_data) => song_data,
+                Err(e) => {
+                    eprintln!("{}", e);
+
                     let mut sd = SongData::default();
-                    get_song_data_from_song_file(&self, &mut sd.inner);
+                    get_song_data_from_song_file(&self, &mut sd);
 
                     sd
-                });
+                }
+            };
 
             if let Ok(sd_meta) = &song_data.inner.meta.inner {
                 if sd_meta.song_length == 0 {
-                    get_song_data_from_song_file(&self, &mut song_data.inner)
+                    get_song_data_from_song_file(&self, &mut song_data)
                 }
             } else {
-                get_song_data_from_song_file(&self, &mut song_data.inner);
+                get_song_data_from_song_file(&self, &mut song_data);
             }
 
             let meta = song_data.inner.meta_mut();
 
-            if meta.artist.full_artist_string.len() == 0 {
+            if meta.artist.full_artist_string.is_empty() {
                 meta.artist.full_artist_string = UNKNOWN_ARTIST_STR.to_string();
             }
 

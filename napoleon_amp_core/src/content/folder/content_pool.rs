@@ -12,7 +12,7 @@ use crate::paths::{
     content_folder_file, content_playlist_song_list_file, content_playlist_user_data_file,
 };
 use crate::{WriteWrapper, write_rwlock};
-use serbytes::prelude::{FromFileResult, SerBytes};
+use serbytes::prelude::{FromFileResult, SerBytesFs};
 use simple_id::prelude::{Id, SmallRngIdGenerator};
 use std::cell::Cell;
 use std::io::ErrorKind;

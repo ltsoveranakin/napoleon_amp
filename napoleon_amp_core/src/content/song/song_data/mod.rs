@@ -5,12 +5,12 @@ mod v2;
 mod v3;
 mod v4;
 
-use crate::content::song::Song;
 pub(crate) use crate::content::song::song_data::artist::Artist;
 use crate::content::song::song_data::v1::SongDataStdV1;
 use crate::content::song::song_data::v2::SongDataStdV2;
 use crate::content::song::song_data::v3::SongDataStdV3;
 use crate::content::song::song_data::v4::{SongDataMeta2, SongDataStdV4};
+use crate::content::song::{Song, UNKNOWN_ARTIST_STR};
 use serbytes::prelude::{
     BBReadResult, CurrentVersion, ReadByteBufferRefMut, SerBytes, SizedBlock, VersioningWrapper,
 };
@@ -115,15 +115,16 @@ impl CurrentVersion for SongDataVersion {
     }
 }
 
-pub(crate) fn get_song_data_from_song_file(song: &Song, song_data: &mut SongDataStd) {
+pub(crate) fn get_song_data_from_song_file(song: &Song, song_data: &mut SongData) {
     get_song_data_from_song_file_with_paths(&song.song_audio_path, &song.song_data_path, song_data);
 }
 
 pub(super) fn get_song_data_from_song_file_with_paths(
     song_audio_path: &PathBuf,
     song_data_path: &PathBuf,
-    song_data: &mut SongDataStd,
+    song_data: &mut SongData,
 ) -> bool {
+    let song_data_std = &mut song_data.inner;
     let song_file = File::open(&song_audio_path).expect("Open new song file");
 
     let ext = song_audio_path
@@ -137,8 +138,8 @@ pub(super) fn get_song_data_from_song_file_with_paths(
 
     let mss = MediaSourceStream::new(Box::new(song_file), mss_options);
 
-    if song_data.meta.inner.is_err() {
-        song_data.meta = SizedBlock::new(Ok(SongDataMeta2::default()));
+    if song_data_std.meta.inner.is_err() {
+        song_data_std.meta = SizedBlock::new(Ok(SongDataMeta2::default()));
     }
 
     let mut did_err = false;
@@ -157,7 +158,7 @@ pub(super) fn get_song_data_from_song_file_with_paths(
                 {
                     let duration_seconds = total_frames as f64 / sample_rate as f64;
                     let duration = Duration::from_secs_f64(duration_seconds);
-                    song_data.meta_mut().song_length = duration.as_secs() as u32;
+                    song_data_std.meta_mut().song_length = duration.as_secs() as u32;
                 }
             }
 
@@ -168,7 +169,8 @@ pub(super) fn get_song_data_from_song_file_with_paths(
                             match std_key {
                                 StandardTagKey::Artist => match tag.value {
                                     Value::String(ref artist_string) => {
-                                        song_data.meta_mut().artist = Artist::new(artist_string);
+                                        song_data_std.meta_mut().artist =
+                                            Artist::new(artist_string);
                                     }
 
                                     _ => {
@@ -178,7 +180,7 @@ pub(super) fn get_song_data_from_song_file_with_paths(
 
                                 StandardTagKey::Album => match tag.value {
                                     Value::String(ref album) => {
-                                        song_data.meta_mut().album = album.clone();
+                                        song_data_std.meta_mut().album = album.clone();
                                     }
 
                                     _ => {
@@ -188,7 +190,7 @@ pub(super) fn get_song_data_from_song_file_with_paths(
 
                                 StandardTagKey::TrackTitle => match tag.value {
                                     Value::String(ref title) => {
-                                        song_data.title = title.clone();
+                                        song_data_std.title = title.clone();
                                     }
 
                                     _ => {
@@ -207,8 +209,16 @@ pub(super) fn get_song_data_from_song_file_with_paths(
         Err(error) => {
             println!(
                 "failed getting format for {:?}; The title of this song is: {}; error: {}",
-                song_audio_path, song_data.title, error
+                song_audio_path, song_data_std.title, error
             );
+
+            // panic!("uhh here");
+
+            song_data_std.meta.inner = Ok(SongDataMeta2 {
+                artist: Artist::new(UNKNOWN_ARTIST_STR),
+                album: UNKNOWN_ARTIST_STR.to_string(),
+                song_length: 0,
+            });
 
             did_err = true;
         }

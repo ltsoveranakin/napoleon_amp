@@ -1,6 +1,6 @@
 use crate::content::song::Song;
 use crate::content::song::song_pool::SONG_POOL;
-use serbytes::prelude::SerBytes;
+use serbytes::prelude::{SerBytes, SerBytesFs};
 use simple_id::prelude::Id;
 use std::cell::{Ref, RefMut};
 use std::io;
@@ -21,7 +21,7 @@ pub(super) fn unwrap_inner_ref_mut<T>(r: RefMut<Option<T>>) -> RefMut<T> {
     RefMut::map(r, |opt| opt.as_mut().expect("Failed unwrap inner RefMut"))
 }
 
-pub trait SaveData: SerBytes {
+pub trait SaveData: SerBytesFs {
     fn get_path(id: Id) -> PathBuf;
 
     fn save_data(&self, id: Id) -> io::Result<()> {

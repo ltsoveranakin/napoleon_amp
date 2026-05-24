@@ -9,7 +9,7 @@ use crate::content::playlist::{
     DynamicPlaylist, PlaylistType, PlaylistTypeVariant, StandardPlaylist,
 };
 use crate::paths::content_folder_file;
-use serbytes::prelude::{MayNotExistOrDefault, SerBytes};
+use serbytes::prelude::{MayNotExistOrDefault, SerBytes, SerBytesFs};
 use simple_id::prelude::Id;
 use std::cell::{OnceCell, Ref, RefCell, RefMut};
 use std::fmt::Debug;
