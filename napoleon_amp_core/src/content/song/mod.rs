@@ -62,8 +62,8 @@ impl Song {
             };
 
             if let Ok(sd_meta) = &song_data.inner.meta.inner {
-                if sd_meta.song_length == 0 {
-                    get_song_data_from_song_file(&self, &mut song_data)
+                if sd_meta.song_length == u32::MAX {
+                    get_song_data_from_song_file(&self, &mut song_data);
                 }
             } else {
                 get_song_data_from_song_file(&self, &mut song_data);
@@ -101,7 +101,11 @@ impl Song {
     }
 
     pub fn save_song_data(&self) {
-        self.get_song_data()
+        self.save_song_data_already_borrowed(&self.get_song_data());
+    }
+
+    pub fn save_song_data_already_borrowed(&self, song_data: &SongData) {
+        song_data
             .write_to_file_path(&self.song_data_path)
             .expect("Write song data to file");
     }

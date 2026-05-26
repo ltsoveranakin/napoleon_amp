@@ -1,17 +1,18 @@
 mod modals;
+mod rating;
 
 use crate::napoleon_client::colors::text_color;
 use crate::napoleon_client::ui::helpers::scroll_area_styled;
 use crate::napoleon_client::ui::panels::get_song_data_display_str;
 use crate::napoleon_client::ui::panels::playlist_panel::modals::PlaylistModals;
+use crate::napoleon_client::ui::panels::playlist_panel::rating::render_rating;
 use crate::napoleon_client::ui::panels::queue_panel::QueuePanel;
 use eframe::egui::*;
-use egui_extras::{Column, TableBuilder, TableRow};
+use egui_extras::{Column, TableBuilder};
 use napoleon_amp_core::content::SaveData;
 use napoleon_amp_core::content::playlist::PlaylistType;
 use napoleon_amp_core::content::playlist::manager::{LoopMode, MusicManager, SongStatus};
 use napoleon_amp_core::content::playlist::song_list::SortByVariant;
-use napoleon_amp_core::content::song::song_data::MAX_RATING;
 use napoleon_amp_core::instance::NapoleonInstance;
 use napoleon_amp_core::paths::show_file_in_explorer;
 use napoleon_amp_core::{Next, read_rwlock};
@@ -191,9 +192,9 @@ impl PlaylistPanel {
         scroll_area_styled(ui, ScrollArea::vertical(), |ui| {
             ui.scope(|ui| {
                 let height_range = if self.current_playlist.get_music_manager().is_some() {
-                    let current_playing_height = ui.ctx().data(|d| {
-                        d.get_temp(current_playing_id).unwrap_or(80.)
-                    });
+                    let current_playing_height = ui
+                        .ctx()
+                        .data(|d| d.get_temp(current_playing_id).unwrap_or(80.));
 
                     let height = ui.available_height() - current_playing_height;
                     height..=height
@@ -204,13 +205,21 @@ impl PlaylistPanel {
                 ui.style_mut().wrap_mode = Some(TextWrapMode::Truncate);
                 ui.set_height_range(height_range);
 
-                TableBuilder::new(ui).striped(true)
+                TableBuilder::new(ui)
+                    .striped(true)
+                    // Title
                     .column(Column::remainder())
+                    // Artist
                     .column(Column::remainder())
+                    // Album
                     .column(Column::remainder())
+                    // Rating
                     .column(Column::remainder())
+                    // User Tag
                     .column(Column::remainder())
+                    // Length
                     .column(Column::remainder())
+                    // Times Listened
                     .column(Column::remainder())
                     .header(20.0, |mut header| {
                         header.col(|ui| {
@@ -248,20 +257,26 @@ impl PlaylistPanel {
                             let song_vec = &*current_playlist.get_song_vec();
                             let songs = read_rwlock(&song_vec);
                             let selected_songs = current_playlist.get_selected_songs();
-                            let current_playing_song_opt = current_playlist.get_current_song_playing();
+                            let current_playing_song_opt =
+                                current_playlist.get_current_song_playing();
 
                             body.rows(20.0, songs.len(), |mut row| {
                                 let song_index = row.index();
                                 let song = &songs[song_index];
                                 let is_selected = selected_songs.is_selected(song_index);
-                                let song_data_vers = song.get_song_data();
-                                let song_data = &song_data_vers.inner;
+                                let mut song_data_vers = song.get_song_data_mut();
 
                                 row.col(|ui| {
-                                    let button_text_color = text_color(is_selected, current_playing_song_opt.as_ref().is_some_and(|current_playing_song| current_playing_song == song));
+                                    let button_text_color = text_color(
+                                        is_selected,
+                                        current_playing_song_opt.as_ref().is_some_and(
+                                            |current_playing_song| current_playing_song == song,
+                                        ),
+                                    );
 
                                     let song_button_text =
-                                        RichText::new(&song_data.title).color(button_text_color);
+                                        RichText::new(&song_data_vers.inner.title)
+                                            .color(button_text_color);
 
                                     let button = Button::new(song_button_text)
                                         .selected(selected_songs.is_selected(song_index))
@@ -284,7 +299,9 @@ impl PlaylistPanel {
                                     Popup::context_menu(&button_response).show(|ui| {
                                         if napoleon_instance.can_queue_song() {
                                             if ui.button("Queue Next").clicked() {
-                                                napoleon_instance.try_queue_song(Arc::clone(song)).expect("Checked can queue song above");
+                                                napoleon_instance
+                                                    .try_queue_song(Arc::clone(song))
+                                                    .expect("Checked can queue song above");
                                             }
                                         }
 
@@ -309,78 +326,49 @@ impl PlaylistPanel {
 
                                         ui.menu_button("Open song location", |ui| {
                                             if ui.button("Audio file").clicked() {
-                                                show_file_in_explorer(&song.song_audio_path).expect("Error showing file in explorer")
+                                                show_file_in_explorer(&song.song_audio_path)
+                                                    .expect("Error showing file in explorer")
                                             }
 
                                             if ui.button("Song data").clicked() {
-                                                show_file_in_explorer(&song.song_data_path).expect("Error showing file in explorer")
+                                                show_file_in_explorer(&song.song_data_path)
+                                                    .expect("Error showing file in explorer")
                                             }
                                         });
                                     });
                                 });
 
                                 row.col(|ui| {
-                                    ui.label(&song_data.meta().artist.full_artist_string);
+                                    ui.label(
+                                        &song_data_vers.inner.meta().artist.full_artist_string,
+                                    );
                                 });
 
                                 row.col(|ui| {
-                                    ui.label(&song_data.meta().album);
+                                    ui.label(&song_data_vers.inner.meta().album);
                                 });
 
-                                let mut rating = song_data.rating as i8;
-
-                                let song_data = &Self::col_return(&mut row, |ui| {
-                                    let mut update_rating = None;
-
-                                    ui.horizontal(|ui| {
-                                        ui.style_mut().spacing.item_spacing.x = 2.;
-
-                                        for star_index in 0..MAX_RATING {
-                                            let image_source = if rating > 0 {
-                                                rating -= 1;
-                                                include_image!(
-                                                "../../../../../../assets/sprites/star_full1.png"
-                                            )
-                                            } else {
-                                                include_image!(
-                                                "../../../../../../assets/sprites/star_empty3.png"
-                                            )
-                                            };
-
-                                            let star_button = ui.add(Image::new(image_source).sense(Sense::click()).max_size(Vec2::splat(10.)));
-
-                                            if star_button.clicked() {
-                                                update_rating = Some(star_index + 1);
-                                            }
-
-                                            if star_button.secondary_clicked() {
-                                                update_rating = Some(0);
-                                            }
-                                        }
-                                    });
-
-                                    if let Some(updated_rating) = update_rating {
-                                        drop(song_data_vers);
-
-                                        song.get_song_data_mut().inner.rating = updated_rating as u8;
-                                        song.save_song_data();
-
-                                        song.get_song_data()
-                                    } else {
-                                        song_data_vers
+                                row.col(|ui| {
+                                    if let Some(updated_rating) =
+                                        render_rating(ui, song_data_vers.inner.rating).inner
+                                    {
+                                        song_data_vers.inner.rating = updated_rating;
+                                        song.save_song_data_already_borrowed(&song_data_vers);
                                     }
-                                }).inner;
-
-                                row.col(|ui| {
-                                    ui.label(&song_data.user_tag);
                                 });
 
                                 row.col(|ui| {
-                                    ui.label(Self::secs_to_str(song_data.meta().song_length as u64));
+                                    ui.label(&song_data_vers.inner.user_tag);
                                 });
 
                                 row.col(|ui| {
-                                    ui.label(song_data.times_listened.to_string());
+                                    ui.label(Self::secs_to_str(
+                                        song_data_vers.inner.meta().song_length as u64,
+                                    ));
+                                });
+
+                                row.col(|ui| {
+                                    ui.label(song_data_vers.inner.times_listened.to_string());
                                 });
                             });
                         }
@@ -404,14 +392,36 @@ impl PlaylistPanel {
 
         if let Some(music_manager) = self.current_playlist.get_music_manager().deref() {
             let song_status = music_manager.get_song_status();
-            let song_data = &song_status.song().get_song_data().inner;
+            let song_data_vers = song_status.song().get_song_data_mut();
 
             let height = ui
                 .scope(|ui| {
-                    ui.heading(get_song_data_display_str(&song_data));
+                    ui.horizontal(|ui| {
+                        ui.heading(get_song_data_display_str(&song_data_vers.inner));
+
+                        // let rating_id = Id::new("Taskbar-Rating");
+                        // let size = ui.ctx().data(|d| d.get_temp(rating_id)).unwrap_or_default();
+                        //
+                        //
+                        // ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                        //     ui.allocate_ui_with_layout(size, Layout::left_to_right(Align::Center), |ui| {
+                        //         let rating_resp = render_rating(ui, song_data_vers.inner.rating);
+                        //         let rating_width = rating_resp.response.rect.width();
+                        //         //
+                        //         ui.ctx().data_mut(|d| d.insert_temp(rating_id, rating_width));
+                        //
+                        //         if let Some(updated_rating) = rating_resp.inner {
+                        //             song_data_vers.inner.rating = updated_rating;
+                        //             song_status.song().save_song_data_already_borrowed(&song_data_vers);
+                        //         }
+                        //     });
+                        // });
+                    });
+
                     ui.label(format!(
                         "By: {}",
-                        song_data
+                        song_data_vers
+                            .inner
                             .meta()
                             .artist
                             .full_artist_string
@@ -545,15 +555,5 @@ impl PlaylistPanel {
         };
 
         format!("{hours_minutes_str}:{:02}", seconds)
-    }
-
-    fn col_return<R>(row: &mut TableRow, add_content: impl FnOnce(&mut Ui) -> R) -> R {
-        let mut value = None;
-
-        row.col(|ui| {
-            value = Some(add_content(ui));
-        });
-
-        value.unwrap()
     }
 }

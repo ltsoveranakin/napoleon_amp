@@ -55,7 +55,7 @@ impl Default for SongDataMeta2 {
         Self {
             artist: Artist::default(),
             album: UNKNOWN_ALBUM_STR.to_string(),
-            song_length: 0,
+            song_length: u32::MAX,
         }
     }
 }
