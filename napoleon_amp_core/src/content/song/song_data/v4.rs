@@ -1,6 +1,6 @@
 use crate::content::song::UNKNOWN_ALBUM_STR;
 use crate::content::song::song_data::Artist;
-use serbytes::prelude::{BBReadResult, ReadError, SerBytes, SizedBlock};
+use serbytes::prelude::{BBReadResult, MayNotExistOrDefault, ReadError, SerBytes, SizedBlock};
 
 /// Data stored for each song which has been registered, contains metadata which is commonly used
 
@@ -15,6 +15,7 @@ pub struct SongDataStdV4 {
     /// Metadata related to a song, this is never of type Err, and can be unwrapped with no issue. Use the helper function [`SongDataStdV4::meta`] where appropriate
     pub meta: SizedBlock<BBReadResult<SongDataMeta2>>,
     pub times_listened: u32,
+    pub times_skipped: MayNotExistOrDefault<u32>,
 }
 
 impl Default for SongDataStdV4 {
@@ -26,6 +27,7 @@ impl Default for SongDataStdV4 {
             user_tag: String::new().into(),
             meta: SizedBlock::new(Err(ReadError::default())),
             times_listened: 0,
+            times_skipped: 0.into(),
         }
     }
 }

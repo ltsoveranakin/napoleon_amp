@@ -258,10 +258,16 @@ impl MusicManager {
                                 true
                             };
 
+                            let mut ls_song_data = ls.get_song_data_mut();
+                            let ls_song_data_inner = &mut ls_song_data.inner;
+
                             if should_increment {
-                                ls.get_song_data_mut().inner.times_listened += 1;
-                                ls.save_song_data()
+                                ls_song_data_inner.times_listened += 1;
+                            } else {
+                                ls_song_data_inner.times_skipped.inner += 1;
                             }
+
+                            ls.save_song_data_already_borrowed(&ls_song_data);
                         }
 
                         let mut queue_mut = write_rwlock(&queue);

@@ -61,11 +61,7 @@ impl Song {
                 }
             };
 
-            if let Ok(sd_meta) = &song_data.inner.meta.inner {
-                if sd_meta.song_length == u32::MAX {
-                    get_song_data_from_song_file(&self, &mut song_data);
-                }
-            } else {
+            if song_data.inner.meta.inner.is_err() {
                 get_song_data_from_song_file(&self, &mut song_data);
             }
 

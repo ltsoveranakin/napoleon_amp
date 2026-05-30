@@ -59,6 +59,7 @@ impl CurrentVersion for SongDataVersion {
                         song_length: sd_v1.meta.unwrap_or_default().length,
                     })),
                     times_listened: 0,
+                    times_skipped: 0.into(),
                 };
 
                 Ok(sd_v4)
@@ -80,6 +81,7 @@ impl CurrentVersion for SongDataVersion {
                         song_length: sd_v2.song_length,
                     })),
                     times_listened: 0,
+                    times_skipped: 0.into(),
                 };
 
                 Ok(sd_v4)
@@ -101,6 +103,7 @@ impl CurrentVersion for SongDataVersion {
                         song_length: sd_v3.song_length,
                     })),
                     times_listened: sd_v3.times_listened,
+                    times_skipped: 0.into(),
                 };
 
                 Ok(sd_v4)
