@@ -52,10 +52,10 @@ impl SongPool {
 
         if registered_songs.last_updated.is_err() {
             registered_songs.last_updated = Ok(time_now().as_secs());
-        }
 
-        // Doesn't matter if we cant save registered songs immediately after loading since it will just reload all the dynamic playlists
-        let _ = registered_songs.save_registered_songs();
+            // Doesn't matter if we cant save registered songs immediately after loading since it will just reload all the dynamic playlists
+            let _ = registered_songs.save_registered_songs();
+        }
 
         RwLock::new(registered_songs)
     }

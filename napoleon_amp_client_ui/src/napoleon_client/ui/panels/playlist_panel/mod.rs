@@ -264,7 +264,7 @@ impl PlaylistPanel {
                                 let song_index = row.index();
                                 let song = &songs[song_index];
                                 let is_selected = selected_songs.is_selected(song_index);
-                                let mut song_data_vers = song.get_song_data_mut();
+                                let song_data_vers = song.get_song_data();
 
                                 row.col(|ui| {
                                     let button_text_color = text_color(
@@ -312,9 +312,11 @@ impl PlaylistPanel {
                                         });
 
                                         if ui.button("Edit song data").clicked() {
+                                            let editing_song_data = song_data_vers.clone();
+
                                             self.playlist_modal = PlaylistModals::EditSong {
                                                 song: Arc::clone(song),
-                                                editing_song_data: song_data_vers.clone(),
+                                                editing_song_data,
                                                 artist_list: current_playlist.get_artist_list(),
                                                 album_list: current_playlist.get_album_list(),
                                             };
@@ -352,8 +354,10 @@ impl PlaylistPanel {
                                     if let Some(updated_rating) =
                                         render_rating(ui, song_data_vers.inner.rating).inner
                                     {
-                                        song_data_vers.inner.rating = updated_rating;
-                                        song.save_song_data_already_borrowed(&song_data_vers);
+                                        let mut song_data_cloned = song_data_vers.clone();
+                                        song_data_cloned.inner.rating = updated_rating;
+
+                                        song.save_song_data_already_borrowed(&song_data_cloned);
                                     }
                                 });
 

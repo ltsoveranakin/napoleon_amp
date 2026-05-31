@@ -95,7 +95,7 @@ impl DynamicPlaylistDataStd {
             // therefore cant used cached song list
             // so recreate the entire song list
             println!(
-                "updated: {} < {}; now: {}",
+                "updated; self: {} < other: {}; now: {}",
                 self_song_list_data.last_updated.get(),
                 song_list_data.last_updated.get(),
                 time_now().as_secs()

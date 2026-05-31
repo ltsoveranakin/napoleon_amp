@@ -232,12 +232,12 @@ pub trait Playlist {
         delete_song_default(self, song_index);
     }
 
-    fn get_string_list(&self, filter: &dyn Fn(&SongData) -> &String) -> Vec<String> {
+    fn get_string_list(&self, map_fn: &dyn Fn(&SongData) -> &String) -> Vec<String> {
         let mut string_set = HashSet::new();
 
         for song in read_rwlock(&self.get_song_vec()).iter() {
             let song_data = song.get_song_data();
-            let string_ref = filter(&song_data);
+            let string_ref = map_fn(&song_data);
 
             if !string_set.contains(string_ref) {
                 string_set.insert(string_ref.clone());

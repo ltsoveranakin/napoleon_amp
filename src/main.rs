@@ -1,7 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use backtrace::Backtrace;
 use eframe::egui::{Vec2, ViewportBuilder};
-use std::backtrace::Backtrace;
 use std::fs::{File, create_dir_all};
 use std::io::Write;
 use std::panic;
@@ -54,18 +54,15 @@ fn init_crash_logger() {
             .payload_as_str()
             .unwrap_or("Unknown panicking reason");
 
-        let bt = Backtrace::capture();
-
         let panic_location =
             panic_info
                 .location()
                 .map_or("Unknown panic location".to_string(), |location| {
                     format!(
-                        "File: {}\nLine: {}\nCol: {}\nTrace: {}",
+                        "File: {}\nLine: {}\nCol: {}",
                         location.file(),
                         location.line(),
                         location.column(),
-                        bt.to_string()
                     )
                 });
 
@@ -87,5 +84,6 @@ fn init_crash_logger() {
         writeln!(log_file, "Crashed at: {:?}", timestamp).ok();
         writeln!(log_file, "Panic payload: {}", panicking_payload).ok();
         writeln!(log_file, "Panic location: {}", panic_location).ok();
+        writeln!(log_file, "Backtrace: \n {:?}", Backtrace::new()).ok();
     }));
 }

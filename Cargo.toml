@@ -7,6 +7,7 @@ edition = "2024"
 members = ["napoleon_amp_android", "napoleon_amp_client_ui", "napoleon_amp_core"]
 
 [dependencies]
+backtrace = "0.3.76"
 eframe = { version = "0.33.3" }
 egui_extras = { version = "0.33", features = ["all_loaders"] }
 image = "0.25.9"
