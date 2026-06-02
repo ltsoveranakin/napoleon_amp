@@ -44,7 +44,7 @@ impl FolderList {
         napoleon_instance: &mut NapoleonInstance,
     ) {
         let bg = ui.scope_builder(UiBuilder::new().sense(Sense::click()), |ui| {
-            self.current_modal.render(ui);
+            self.current_modal.render(ui, napoleon_instance);
 
             self.render_header_buttons(ui);
 

@@ -1,6 +1,6 @@
 pub mod dynamic_playlist_data;
 pub mod filter;
-mod rules;
+pub mod rules;
 
 use crate::content::SaveData;
 use crate::content::folder::Folder;

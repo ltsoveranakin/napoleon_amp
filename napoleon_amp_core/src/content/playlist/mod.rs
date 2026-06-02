@@ -132,7 +132,7 @@ pub trait Playlist {
 
         self.sort_songs(self.get_user_data().inner.sort_by);
 
-        unwrap_inner_ref_mut(self.get_inner().playlist_song_list_data.borrow_mut())
+        unwrap_inner_ref_mut(list_data)
     }
 
     fn save_song_list(&self) {

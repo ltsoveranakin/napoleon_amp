@@ -98,7 +98,7 @@ impl ContentPool {
     pub(crate) fn get_standard_playlist_user_data(
         &self,
         playlist_id: Id,
-    ) -> FromFileResult<'_, PlaylistUserData> {
+    ) -> FromFileResult<'static, PlaylistUserData> {
         if playlist_id == Id::ZERO {
             Ok(PlaylistUserData::new_all_songs().into())
         } else {
@@ -109,7 +109,7 @@ impl ContentPool {
     pub(crate) fn get_dynamic_playlist_user_data(
         &self,
         playlist_id: Id,
-    ) -> FromFileResult<'_, DynamicPlaylistData> {
+    ) -> FromFileResult<'static, DynamicPlaylistData> {
         if playlist_id == Id::ZERO {
             Ok(DynamicPlaylistDataStd::new(PlaylistContentData::new_all_songs()).into())
         } else {
@@ -120,7 +120,7 @@ impl ContentPool {
     pub(crate) fn get_playlist_song_list_data(
         &self,
         playlist_id: Id,
-    ) -> FromFileResult<'_, PlaylistSongListData> {
+    ) -> FromFileResult<'static, PlaylistSongListData> {
         if playlist_id == Id::ZERO {
             let registered_songs = SONG_POOL.get_registered_songs();
 

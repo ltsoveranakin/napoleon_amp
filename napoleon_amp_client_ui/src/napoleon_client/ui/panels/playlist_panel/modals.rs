@@ -90,7 +90,6 @@ impl PlaylistModals {
             }
         } else if clear_modals {
             *self = PlaylistModals::None;
-        } else {
         }
     }
 

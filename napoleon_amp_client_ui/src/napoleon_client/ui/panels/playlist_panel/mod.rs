@@ -128,7 +128,8 @@ impl PlaylistPanel {
             self.current_playlist.set_search_query_filter(search_text);
         }
 
-        self.render_modal(ui);
+        self.playlist_modal
+            .render(ui, &self.current_playlist, &mut self.delete_original_files);
 
         let current_playing_id = ui.make_persistent_id("currently_playing_display");
 
@@ -174,11 +175,6 @@ impl PlaylistPanel {
         if paste_keystroke_pressed {
             napoleon_instance.paste_copied_songs(&*self.current_playlist);
         }
-    }
-
-    fn render_modal(&mut self, ui: &mut Ui) {
-        self.playlist_modal
-            .render(ui, &self.current_playlist, &mut self.delete_original_files);
     }
 
     fn render_song_list(

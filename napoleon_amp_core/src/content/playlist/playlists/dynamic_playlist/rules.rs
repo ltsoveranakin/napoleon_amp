@@ -7,7 +7,7 @@ use std::borrow::Cow;
 #[derive(SerBytes, Debug, Clone)]
 pub enum ImportFrom {
     AllSongs,
-    Playlists(Vec<Id>),
+    PlaylistIds(Vec<Id>),
 }
 
 #[derive(SerBytes, Debug, Clone)]
@@ -28,7 +28,7 @@ impl Rules {
         let ids = match &self.import_from {
             ImportFrom::AllSongs => Cow::Owned(vec![ALL_SONGS_PLAYLIST_ID]),
 
-            ImportFrom::Playlists(playlist_ids) => Cow::Borrowed(playlist_ids),
+            ImportFrom::PlaylistIds(playlist_ids) => Cow::Borrowed(playlist_ids),
         };
 
         ids

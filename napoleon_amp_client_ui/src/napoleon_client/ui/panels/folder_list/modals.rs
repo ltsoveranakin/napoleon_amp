@@ -4,7 +4,9 @@ use napoleon_amp_core::content::playlist::dynamic_playlist_data::DynamicPlaylist
 use napoleon_amp_core::content::playlist::filter::{
     ComparisonMethod, FilterRule, FilterRules, ValuesType,
 };
+use napoleon_amp_core::content::playlist::rules::ImportFrom;
 use napoleon_amp_core::content::playlist::{ClearSongsCache, Playlist, PlaylistType};
+use napoleon_amp_core::instance::NapoleonInstance;
 use std::ops::Deref;
 use std::rc::Rc;
 
@@ -57,17 +59,19 @@ impl FolderListModals {
         }
     }
 
-    pub(super) fn render(&mut self, ui: &mut Ui) {
+    pub(super) fn render(&mut self, ui: &mut Ui, napoleon_instance: &mut NapoleonInstance) {
         let should_clear_modal = match self {
             Self::CreateFolderContent {
                 variant,
                 name,
                 current_folder,
             } => Self::render_create_folder_content(ui, variant, name, current_folder),
+
             Self::EditPlaylist {
                 name,
                 edit_playlist_type: playlist,
-            } => Self::render_edit_playlist(ui, name, playlist),
+            } => Self::render_edit_playlist(ui, name, playlist, napoleon_instance),
+
             Self::None => false,
         };
 
@@ -148,6 +152,7 @@ impl FolderListModals {
         ui: &mut Ui,
         name: &mut String,
         edit_playlist: &mut EditPlaylistType,
+        napoleon_instance: &mut NapoleonInstance,
     ) -> bool {
         let mut should_close = false;
         let mut edit = false;
@@ -161,9 +166,88 @@ impl FolderListModals {
             ui.text_edit_singleline(name);
 
             if let PlaylistType::Dynamic((dyn_user_data, _)) = edit_playlist {
-                // ui.label("wip (all playlist only)");
+                ui.separator();
+
+                let import_from_str = match dyn_user_data.rules.import_from {
+                    ImportFrom::AllSongs => "All songs",
+                    ImportFrom::PlaylistIds(_) => "Select playlists",
+                };
+
+                ui.menu_button(format!("Import from: {}", import_from_str), |ui| {
+                    if ui.button("All Songs").clicked() {
+                        dyn_user_data.rules.import_from = ImportFrom::AllSongs;
+                    }
+
+                    if ui.button("Select playlists").clicked() {
+                        dyn_user_data.rules.import_from = ImportFrom::PlaylistIds(Vec::new());
+                    }
+                });
+
+                match &mut dyn_user_data.rules.import_from {
+                    ImportFrom::PlaylistIds(import_from_playlists) => {
+                        ui.label("Importing from:");
+
+                        let mut delete_index = None;
+
+                        for (i, playlist_id) in import_from_playlists.iter().enumerate() {
+                            ui.horizontal(|ui| {
+                                let playlist_data = napoleon_instance
+                                    .get_cache_dynamic_playlist_user_data(*playlist_id);
+
+                                let playlist_name = match playlist_data {
+                                    Ok(dyn_playlist_data) => {
+                                        &dyn_playlist_data.inner.user_data.inner.content_data.name
+                                    }
+
+                                    Err(_) => "Invalid Playlist",
+                                };
+
+                                ui.horizontal(|ui| {
+                                    ui.label(format!("{} ({})", playlist_name, playlist_id));
+
+                                    if ui.button("Delete").clicked() {
+                                        delete_index = Some(i);
+                                    }
+                                });
+                            });
+                        }
+
+                        if let Some(delete_index) = delete_index {
+                            import_from_playlists.remove(delete_index);
+                        }
+
+                        ui.menu_button("Add playlist", |ui| {
+                            let mut added_playlist = None;
+
+                            for playlist in napoleon_instance
+                                .iter_playlists()
+                                .filter(|playlist| !import_from_playlists.contains(&playlist.id()))
+                            {
+                                let user_data = playlist.get_user_data();
+
+                                if ui.button(&user_data.inner.content_data.name).clicked() {
+                                    added_playlist = Some(playlist.id());
+                                }
+                            }
+
+                            if let Some(added_playlist) = added_playlist {
+                                import_from_playlists.push(added_playlist);
+                            }
+                        });
+                    }
+
+                    ImportFrom::AllSongs => {
+                        // Empty
+                    }
+                }
+
+                ui.separator();
+
+                ui.label("Filters:");
 
                 let len = dyn_user_data.rules.filters.len();
+
+                let mut delete_index = None;
 
                 for (i, filter) in dyn_user_data.rules.filters.iter_mut().enumerate() {
                     let filter_of_str = filter.get_display_str();
@@ -202,11 +286,17 @@ impl FolderListModals {
                                 }
                             });
 
-                            if ui.text_edit_singleline(&mut string_val).changed() {
+                            let edited = if ui.text_edit_singleline(&mut string_val).changed() {
                                 true
                             } else {
                                 false
+                            };
+
+                            if ui.button("Delete").clicked() {
+                                delete_index = Some(i);
                             }
+
+                            edited
                         })
                         .inner;
 
@@ -218,6 +308,10 @@ impl FolderListModals {
                         //TODO: handle this err
                         if filter.try_assign_from_str(&string_val).is_ok() {}
                     }
+                }
+
+                if let Some(delete_index) = delete_index {
+                    dyn_user_data.rules.filters.remove(delete_index);
                 }
 
                 ui.menu_button("Add filter", |ui| {
@@ -262,6 +356,8 @@ impl FolderListModals {
                     }
                 });
             }
+
+            ui.separator();
 
             ui.horizontal(|ui| {
                 if ui.button("Ok").clicked() {

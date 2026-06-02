@@ -35,7 +35,7 @@ impl<P> ContentData<P> {
     }
 }
 
-#[derive(SerBytes, Debug)]
+#[derive(SerBytes, Debug, Copy, Clone)]
 pub struct ContentsListElements {
     pub variant: FolderDataContentVariant,
     pub id: Id,
@@ -229,8 +229,8 @@ impl Folder {
 
             let mut contents = Vec::with_capacity(data_contents.len());
 
-            for ContentsListElements { id, variant } in data_contents {
-                contents.push(self.get_folder_content_variant(*variant, *id));
+            for ContentsListElements { id, variant } in data_contents.iter().copied() {
+                contents.push(self.get_folder_content_variant(variant, id));
             }
 
             RefCell::new(contents)
