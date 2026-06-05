@@ -1,7 +1,8 @@
-mod data;
+mod client_settings;
 mod fixup;
 mod iter_playlists;
 
+use crate::content::SaveData;
 use crate::content::folder::Folder;
 use crate::content::folder::content_pool::CONTENT_POOL;
 use crate::content::playlist::PlaylistType;
@@ -10,13 +11,13 @@ use crate::content::playlist::data::PlaybackMode;
 use crate::content::playlist::dynamic_playlist_data::DynamicPlaylistData;
 use crate::content::song::Song;
 use crate::discord_rpc::discord_rpc_thread;
-use crate::instance::data::InstanceData;
+use crate::instance::client_settings::ClientSettings;
 use crate::instance::iter_playlists::IterPlaylists;
+use crate::paths::client_settings_file_path;
 use crate::read_rwlock;
 use rand::{RngExt, rng};
-use serbytes::prelude::FromFileResult;
+use serbytes::prelude::{FromFileResult, SerBytesFs};
 use simple_id::prelude::Id;
-use std::cell::LazyCell;
 use std::collections::HashMap;
 use std::rc::{Rc, Weak};
 use std::sync::Arc;
@@ -28,8 +29,8 @@ pub struct NapoleonInstance {
     all_songs: Weak<PlaylistType>,
     copied_songs: Option<Vec<Arc<Song>>>,
     currently_playing_playlist: Option<Rc<PlaylistType>>,
-    instance_data: LazyCell<InstanceData>,
     playlist_user_data_cache: HashMap<Id, FromFileResult<'static, DynamicPlaylistData>>,
+    client_settings: Option<ClientSettings>,
     _discord_rpc_thread: Option<JoinHandle<()>>,
 }
 
@@ -41,8 +42,8 @@ impl NapoleonInstance {
             all_songs: Weak::new(),
             copied_songs: None,
             currently_playing_playlist: None,
-            instance_data: LazyCell::new(InstanceData::init_self),
             playlist_user_data_cache: HashMap::new(),
+            client_settings: None,
             _discord_rpc_thread: Some(thread::spawn(|| {
                 if discord_rpc_thread().is_ok() {
                     println!("rpc thread fin ok");
@@ -144,5 +145,16 @@ impl NapoleonInstance {
         self.playlist_user_data_cache
             .entry(id)
             .or_insert_with(|| CONTENT_POOL.get_dynamic_playlist_user_data(id))
+    }
+
+    pub fn get_client_settings(&mut self) -> &mut ClientSettings {
+        self.client_settings.get_or_insert_with(|| {
+            let settings =
+                ClientSettings::from_file_path(client_settings_file_path()).unwrap_or_default();
+
+            let _ = settings.save_data(());
+
+            settings
+        })
     }
 }

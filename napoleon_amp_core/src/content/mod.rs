@@ -21,11 +21,11 @@ pub(super) fn unwrap_inner_ref_mut<T>(r: RefMut<Option<T>>) -> RefMut<T> {
     RefMut::map(r, |opt| opt.as_mut().expect("Failed unwrap inner RefMut"))
 }
 
-pub trait SaveData: SerBytesFs {
-    fn get_path(id: Id) -> PathBuf;
+pub trait SaveData<T = Id>: SerBytesFs {
+    fn get_path(input: T) -> PathBuf;
 
-    fn save_data(&self, id: Id) -> io::Result<()> {
-        self.write_to_file_path(Self::get_path(id))
+    fn save_data(&self, input: T) -> io::Result<()> {
+        self.write_to_file_path(Self::get_path(input))
     }
 }
 

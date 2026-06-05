@@ -21,8 +21,6 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Duration;
 
-const REPAINT_DELAY: f32 = 1.0;
-
 pub(crate) struct PlaylistPanel {
     pub(crate) current_playlist: Rc<PlaylistType>,
     playlist_modal: PlaylistModals,
@@ -433,6 +431,7 @@ impl PlaylistPanel {
                         ui,
                         music_manager,
                         &song_status,
+                        napoleon_instance,
                     );
                 })
                 .response
@@ -453,6 +452,7 @@ impl PlaylistPanel {
         ui: &mut Ui,
         music_manager: &MusicManager,
         song_status: &SongStatus,
+        napoleon_instance: &mut NapoleonInstance,
     ) -> bool {
         let mut volume = (self.current_playlist.get_volume() * 100.) as i32;
         let mut should_stop = false;
@@ -533,7 +533,12 @@ impl PlaylistPanel {
             }
         }
 
-        ctx.request_repaint_after(Duration::from_secs_f32(REPAINT_DELAY));
+        ctx.request_repaint_after(Duration::from_millis(
+            napoleon_instance
+                .get_client_settings()
+                .inner
+                .inactive_render_timeout_ms as u64,
+        ));
 
         should_stop
     }

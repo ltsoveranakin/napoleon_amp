@@ -20,3 +20,21 @@ fn open_location_button(ui: &mut Ui, variant_text: &str, path: impl AsRef<Path>)
         show_file_in_explorer(path).expect("Error showing file in explorer");
     }
 }
+
+pub(super) enum CloseResult {
+    KeepOpen,
+    CloseWithoutSaving,
+    SaveAndClose,
+}
+
+impl CloseResult {
+    pub(super) fn should_close(&self) -> bool {
+        match self {
+            CloseResult::KeepOpen => false,
+
+            CloseResult::CloseWithoutSaving => true,
+
+            CloseResult::SaveAndClose => true,
+        }
+    }
+}

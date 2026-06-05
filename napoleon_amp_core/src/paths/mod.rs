@@ -20,7 +20,7 @@ fn napoleon_amp_dir() -> PathBuf {
     home_dir().join("/napoleon_amp/")
 }
 
-pub(crate) fn instance_data_file_path() -> PathBuf {
+pub(crate) fn client_settings_file_path() -> PathBuf {
     napoleon_amp_dir().join("instance_data").join(DATA_EXT)
 }
 
