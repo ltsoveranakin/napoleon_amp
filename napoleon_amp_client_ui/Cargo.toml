@@ -9,6 +9,7 @@ egui_extras = { version = "0.33" }
 napoleon_amp_core = { path = "../napoleon_amp_core" }
 egui_autocomplete = "12.0.0"
 image = "0.25"
+derive-enum-all-values = { git = "https://github.com/ltsoveranakin/derive-enum-all-values.git" }
 
 [target.'cfg(not(target_os = "android"))'.dependencies]
 rfd = "0.17"

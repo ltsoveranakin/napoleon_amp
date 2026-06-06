@@ -3,15 +3,17 @@ mod rating;
 
 use crate::napoleon_client::colors::text_color;
 use crate::napoleon_client::ui::helpers::scroll_area_styled;
+use crate::napoleon_client::ui::helpers::select_button::select_button;
 use crate::napoleon_client::ui::panels::get_song_data_display_str;
 use crate::napoleon_client::ui::panels::playlist_panel::modals::PlaylistModals;
 use crate::napoleon_client::ui::panels::playlist_panel::rating::render_rating;
 use crate::napoleon_client::ui::panels::queue_panel::QueuePanel;
+use derive_enum_all_values::AllValues;
 use eframe::egui::*;
 use egui_extras::{Column, TableBuilder};
 use napoleon_amp_core::content::SaveData;
 use napoleon_amp_core::content::playlist::PlaylistType;
-use napoleon_amp_core::content::playlist::manager::{LoopMode, MusicManager, SongStatus};
+use napoleon_amp_core::content::playlist::manager::{MusicManager, SongStatus};
 use napoleon_amp_core::content::playlist::song_list::SortByVariant;
 use napoleon_amp_core::instance::NapoleonInstance;
 use napoleon_amp_core::paths::show_file_in_explorer;
@@ -493,12 +495,8 @@ impl PlaylistPanel {
 
             if let Some(total_duration) = song_status.total_duration() {
                 ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                    ui.menu_button(format!("Loop: {}", music_manager.loop_mode()), |ui| {
-                        for loop_mode in LoopMode::all_values() {
-                            if ui.button(loop_mode.to_string()).clicked() {
-                                music_manager.set_loop_mode(*loop_mode);
-                            }
-                        }
+                    select_button(ui, "Loop", &music_manager.loop_mode(), |new_loop_mode| {
+                        music_manager.set_loop_mode(*new_loop_mode);
                     });
 
                     ui.label(format!(

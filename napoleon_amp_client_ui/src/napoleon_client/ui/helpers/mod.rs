@@ -1,3 +1,5 @@
+pub(crate) mod select_button;
+
 use eframe::egui::scroll_area::{ScrollAreaOutput, ScrollSource};
 use eframe::egui::{Button, IntoAtoms, ScrollArea, TextWrapMode, Ui};
 use std::marker::PhantomData;
