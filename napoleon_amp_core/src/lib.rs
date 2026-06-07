@@ -11,6 +11,7 @@ pub mod discord_rpc;
 pub mod instance;
 mod net;
 pub mod paths;
+mod pool;
 mod resetable_once_cell;
 
 pub use simple_id;

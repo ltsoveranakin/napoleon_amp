@@ -22,12 +22,12 @@ use std::{fs, io};
 
 pub(crate) static CONTENT_POOL: LazyLock<ContentPool> = LazyLock::new(ContentPool::new);
 
-struct ContentInner {
+struct ContentPoolInner {
     id_generator: SmallRngIdGenerator,
     provide_assoc_files: Box<dyn Send + Sync + 'static + Fn(Id) -> Vec<PathBuf>>,
 }
 
-impl ContentInner {
+impl ContentPoolInner {
     fn new<F>(provide_assoc_files: F) -> Self
     where
         F: Send + Sync + 'static + Fn(Id) -> Vec<PathBuf>,
@@ -78,15 +78,15 @@ pub struct RemoveAssociatedFileError {
 type RmAssocResult = Result<(), RemoveAssociatedFileError>;
 
 pub(crate) struct ContentPool {
-    folders: RwLock<ContentInner>,
-    playlists: RwLock<ContentInner>,
+    folders: RwLock<ContentPoolInner>,
+    playlists: RwLock<ContentPoolInner>,
 }
 
 impl ContentPool {
     fn new() -> Self {
         Self {
-            folders: RwLock::new(ContentInner::new(|id| vec![content_folder_file(id)])),
-            playlists: RwLock::new(ContentInner::new(|id| {
+            folders: RwLock::new(ContentPoolInner::new(|id| vec![content_folder_file(id)])),
+            playlists: RwLock::new(ContentPoolInner::new(|id| {
                 vec![
                     content_playlist_user_data_file(id),
                     content_playlist_song_list_file(id),
@@ -143,7 +143,7 @@ impl ContentPool {
         Self::delete_content0(&mut self.folders_mut(), folder_id)
     }
 
-    fn delete_content0(content_inner: &mut ContentInner, content_id: Id) -> RmAssocResult {
+    fn delete_content0(content_inner: &mut ContentPoolInner, content_id: Id) -> RmAssocResult {
         content_inner.remove_file_assoc(content_id)?;
 
         Ok(())
@@ -193,15 +193,15 @@ impl ContentPool {
         Ok(id)
     }
 
-    fn playlists_mut(&self) -> WriteWrapper<'_, ContentInner> {
+    fn playlists_mut(&self) -> WriteWrapper<'_, ContentPoolInner> {
         write_rwlock(&self.playlists)
     }
 
-    fn folders_mut(&self) -> WriteWrapper<'_, ContentInner> {
+    fn folders_mut(&self) -> WriteWrapper<'_, ContentPoolInner> {
         write_rwlock(&self.playlists)
     }
 
-    fn generate_unique_id(content_inner: &RwLock<ContentInner>) -> Id {
+    fn generate_unique_id(content_inner: &RwLock<ContentPoolInner>) -> Id {
         let mut content_inner_mut = write_rwlock(content_inner);
 
         loop {

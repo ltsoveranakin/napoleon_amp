@@ -81,14 +81,11 @@ pub trait Playlist {
         if inner.has_loaded_songs.get() {
             inner.songs.borrow().songs_arc()
         } else {
-            // println!("inner not loaded");
             let song_list_data = self.get_song_list_data();
 
             let mut songs = inner.songs.borrow_mut();
 
             songs.push_songs_without_save(&song_list_data.song_ids);
-
-            songs.sort_songs(SortBy::default());
 
             inner.has_loaded_songs.set(true);
 
@@ -463,8 +460,6 @@ pub trait Playlist {
 
     fn sort_songs(&self, sort_by: SortBy) {
         self.get_inner().songs.borrow_mut().sort_songs(sort_by);
-
-        // self.save_song_list();
     }
 }
 
