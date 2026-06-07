@@ -129,6 +129,8 @@ impl SongList {
             Self::push_song0(*song_id, songs_set, &mut songs_vec, None)
                 .expect("Will not fail if original_name is none");
         }
+
+        songs_set.shrink_to_fit();
     }
 
     pub(super) fn push_songs_arc_list(&mut self, song_name_list: &[Arc<Song>]) {

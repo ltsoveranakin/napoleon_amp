@@ -87,6 +87,8 @@ pub trait Playlist {
 
             songs.push_songs_without_save(&song_list_data.song_ids);
 
+            songs.sort_songs(self.get_user_data().inner.sort_by);
+
             inner.has_loaded_songs.set(true);
 
             songs.songs_arc()
