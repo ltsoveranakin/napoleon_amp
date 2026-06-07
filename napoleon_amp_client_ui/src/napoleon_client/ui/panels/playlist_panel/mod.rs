@@ -257,6 +257,7 @@ impl PlaylistPanel {
                                 current_playlist.get_current_song_playing();
 
                             body.rows(20.0, songs.len(), |mut row| {
+                                let mut updated_rating_opt = None;
                                 let song_index = row.index();
                                 let song = &songs[song_index];
                                 let is_selected = selected_songs.is_selected(song_index);
@@ -347,9 +348,10 @@ impl PlaylistPanel {
                                 });
 
                                 row.col(|ui| {
-                                    if let Some(updated_rating) =
-                                        render_rating(ui, song_data_vers.inner.rating).inner
-                                    {
+                                    updated_rating_opt =
+                                        render_rating(ui, song_data_vers.inner.rating).inner;
+
+                                    if let Some(updated_rating) = updated_rating_opt {
                                         let mut song_data_cloned = song_data_vers.clone();
                                         song_data_cloned.inner.rating = updated_rating;
 
@@ -370,6 +372,11 @@ impl PlaylistPanel {
                                 row.col(|ui| {
                                     ui.label(song_data_vers.inner.times_listened.to_string());
                                 });
+
+                                if let Some(updated_rating) = updated_rating_opt {
+                                    drop(song_data_vers);
+                                    song.get_song_data_mut().inner.rating = updated_rating;
+                                }
                             });
                         }
 

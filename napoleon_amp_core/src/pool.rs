@@ -1,3 +1,4 @@
+use crate::{read_rwlock, write_rwlock};
 use serbytes::prelude::{SerBytes, SerBytesFs};
 use std::collections::HashMap;
 use std::collections::hash_map::Entry;
@@ -42,11 +43,23 @@ where
         }
     }
 
-    // fn get_or_load_value<LF, R>(&mut self, input: K, cb: LF) -> R where F: FnOnce(&V) -> R {
-    //     let value_rwlock = self.get_or_load_value_rwlock(input);
-    //
-    //     cb(read_rwlock(value_rwlock))
-    // }
+    fn get_or_load_value<LF, R>(&mut self, input: K, cb: LF) -> R
+    where
+        LF: FnOnce(&V) -> R,
+    {
+        let value_rwlock = self.get_or_load_value_rwlock(input);
+
+        cb(&read_rwlock(&value_rwlock))
+    }
+
+    fn get_or_load_value_mut<LF, R>(&mut self, input: K, cb: LF) -> R
+    where
+        LF: FnOnce(&mut V) -> R,
+    {
+        let value_rwlock = self.get_or_load_value_rwlock(input);
+
+        cb(&mut write_rwlock(&value_rwlock))
+    }
 
     fn get_strong_weak_pair(get_path_fn: &F, key: &K) -> (Arc<RwLock<V>>, WeakArc<RwLock<V>>) {
         let path = get_path_fn(key);
