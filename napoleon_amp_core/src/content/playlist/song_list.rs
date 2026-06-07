@@ -2,7 +2,7 @@ use crate::content::playlist::ClearSongsCacheMut;
 use crate::content::song::Song;
 use crate::content::song::song_data::{MAX_RATING, SongDataStd};
 use crate::content::song::song_pool::SONG_POOL;
-use crate::{ReadWrapper, read_rwlock, write_rwlock};
+use crate::{ReadGuard, read_rwlock, write_rwlock};
 use derive_enum_all_values::AllValues;
 use serbytes::prelude::SerBytes;
 use simple_id::prelude::Id;
@@ -166,7 +166,7 @@ impl SongList {
         write_rwlock(&self.songs_vec).reserve_exact(additional);
     }
 
-    pub(super) fn songs(&self) -> ReadWrapper<'_, Vec<Arc<Song>>> {
+    pub(super) fn songs(&self) -> ReadGuard<'_, Vec<Arc<Song>>> {
         read_rwlock(&self.songs_vec)
     }
 

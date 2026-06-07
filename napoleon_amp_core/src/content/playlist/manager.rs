@@ -3,7 +3,7 @@ use crate::content::playlist::queue::Queue;
 use crate::content::song::Song;
 use crate::discord_rpc::{RPCAction, SetSongData, send_rpc_action};
 use crate::paths::song::song_audio_file_v2;
-use crate::{ReadWrapper, WriteWrapper, read_rwlock, write_rwlock};
+use crate::{ReadGuard, WriteGuard, read_rwlock, write_rwlock};
 use derive_enum_all_values::AllValues;
 use rodio::cpal::traits::HostTrait;
 use rodio::source::SeekError;
@@ -171,9 +171,9 @@ impl MusicManager {
 
                         let (new_sink, new_stream) = create_sink(volume);
 
-                        **sink = new_sink;
+                        *sink = new_sink;
 
-                        **write_rwlock(&stream) = new_stream;
+                        *write_rwlock(&stream) = new_stream;
 
                         if let Ok(source) = get_decoder_for_song(&read_rwlock(&song_status).song) {
                             sink.append(source);
@@ -368,11 +368,11 @@ impl MusicManager {
         })
     }
 
-    pub fn queue(&self) -> ReadWrapper<'_, Queue> {
+    pub fn queue(&self) -> ReadGuard<'_, Queue> {
         read_rwlock(&self.queue)
     }
 
-    pub fn queue_mut(&self) -> WriteWrapper<'_, Queue> {
+    pub fn queue_mut(&self) -> WriteGuard<'_, Queue> {
         write_rwlock(&self.queue)
     }
 
@@ -455,7 +455,7 @@ impl MusicManager {
         self.send_command(MusicCommand::SwitchSong(switch_song_music_command));
     }
 
-    fn get_sink(&self) -> ReadWrapper<'_, Sink> {
+    fn get_sink(&self) -> ReadGuard<'_, Sink> {
         read_rwlock(&self.sink)
     }
 }

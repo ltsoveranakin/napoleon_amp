@@ -1,6 +1,6 @@
 use crate::content::song::Song;
 use crate::paths::song::registered_songs_data_file_v2;
-use crate::{ReadWrapper, read_rwlock, time_now, write_rwlock};
+use crate::{ReadGuard, read_rwlock, time_now, write_rwlock};
 use serbytes::prelude::{ReadError, SerBytes, SerBytesFs};
 use simple_id::prelude::Id;
 use std::collections::HashMap;
@@ -92,7 +92,7 @@ impl SongPool {
         Ok(())
     }
 
-    pub(crate) fn get_registered_songs(&self) -> ReadWrapper<'_, RegisteredSongs> {
+    pub(crate) fn get_registered_songs(&self) -> ReadGuard<'_, RegisteredSongs> {
         read_rwlock(&self.registered_songs)
     }
 

@@ -11,7 +11,7 @@ use crate::content::song::song_pool::SONG_POOL;
 use crate::paths::{
     content_folder_file, content_playlist_song_list_file, content_playlist_user_data_file,
 };
-use crate::{WriteWrapper, write_rwlock};
+use crate::{WriteGuard, write_rwlock};
 use serbytes::prelude::{FromFileResult, SerBytesFs};
 use simple_id::prelude::{Id, SmallRngIdGenerator};
 use std::cell::Cell;
@@ -193,11 +193,11 @@ impl ContentPool {
         Ok(id)
     }
 
-    fn playlists_mut(&self) -> WriteWrapper<'_, ContentPoolInner> {
+    fn playlists_mut(&self) -> WriteGuard<'_, ContentPoolInner> {
         write_rwlock(&self.playlists)
     }
 
-    fn folders_mut(&self) -> WriteWrapper<'_, ContentPoolInner> {
+    fn folders_mut(&self) -> WriteGuard<'_, ContentPoolInner> {
         write_rwlock(&self.playlists)
     }
 

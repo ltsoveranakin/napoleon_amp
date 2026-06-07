@@ -4,8 +4,8 @@ pub(crate) mod song_pool;
 
 use crate::content::song::song_data::{SongData, get_song_data_from_song_file};
 use crate::paths::song::{song_audio_file_v2, song_data_file_v2};
-use crate::{ReadWrapper, WriteWrapper, read_rwlock, write_rwlock};
-use serbytes::prelude::{SerBytes, SerBytesFs};
+use crate::{ReadGuard, WriteGuard, read_rwlock, write_rwlock};
+use serbytes::prelude::SerBytesFs;
 use simple_id::prelude::Id;
 use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
@@ -35,13 +35,13 @@ impl Song {
         }
     }
 
-    pub fn get_song_data(&self) -> ReadWrapper<'_, SongData> {
+    pub fn get_song_data(&self) -> ReadGuard<'_, SongData> {
         let song_data_lock = self.get_song_data_rwlock();
 
         read_rwlock(song_data_lock)
     }
 
-    pub fn get_song_data_mut(&self) -> WriteWrapper<'_, SongData> {
+    pub fn get_song_data_mut(&self) -> WriteGuard<'_, SongData> {
         let song_data_lock = self.get_song_data_rwlock();
 
         write_rwlock(song_data_lock)
@@ -89,7 +89,7 @@ impl Song {
     pub fn set_song_data_and_save(&self, new_song_data: SongData) {
         let mut song_data = self.get_song_data_mut();
 
-        **song_data = new_song_data;
+        *song_data = new_song_data;
 
         drop(song_data);
 

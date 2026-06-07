@@ -37,7 +37,7 @@ pub(super) enum RPCAction {
 pub(super) fn discord_rpc_thread() -> Result<(), Box<dyn std::error::Error>> {
     let (tx, rx) = mpsc::channel();
 
-    **write_rwlock(&RPC_ACTION_TX) = Some(tx);
+    *write_rwlock(&RPC_ACTION_TX) = Some(tx);
 
     let mut client = DiscordIpcClient::new(APPLICATION_ID_STR);
 
@@ -150,7 +150,7 @@ pub(super) fn send_rpc_action(action: RPCAction) {
     {
         let sender_opt = read_rwlock(&RPC_ACTION_TX);
 
-        if let Some(tx) = &**sender_opt {
+        if let Some(tx) = &*sender_opt {
             if tx.send(action).is_err() {
                 kill_sender = true;
             }

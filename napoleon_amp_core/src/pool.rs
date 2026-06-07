@@ -3,12 +3,12 @@ use std::collections::HashMap;
 use std::collections::hash_map::Entry;
 use std::hash::Hash;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Mutex, MutexGuard, RwLock};
 
 type WeakArc<T> = std::sync::Weak<T>;
 
 struct DataPoolInner<K, V, F> {
-    map: HashMap<K, WeakArc<V>>,
+    map: HashMap<K, WeakArc<RwLock<V>>>,
     get_path_fn: F,
 }
 
@@ -18,7 +18,7 @@ where
     V: SerBytes,
     F: Fn(&K) -> PathBuf,
 {
-    fn get_or_load_value(&mut self, input: K) -> Arc<V> {
+    fn get_or_load_value_rwlock(&mut self, input: K) -> Arc<RwLock<V>> {
         match self.map.entry(input) {
             Entry::Vacant(v) => {
                 let (strong, weak) = Self::get_strong_weak_pair(&self.get_path_fn, &v.key());
@@ -42,12 +42,18 @@ where
         }
     }
 
-    fn get_strong_weak_pair(get_path_fn: &F, key: &K) -> (Arc<V>, WeakArc<V>) {
+    // fn get_or_load_value<LF, R>(&mut self, input: K, cb: LF) -> R where F: FnOnce(&V) -> R {
+    //     let value_rwlock = self.get_or_load_value_rwlock(input);
+    //
+    //     cb(read_rwlock(value_rwlock))
+    // }
+
+    fn get_strong_weak_pair(get_path_fn: &F, key: &K) -> (Arc<RwLock<V>>, WeakArc<RwLock<V>>) {
         let path = get_path_fn(key);
 
         let value = V::from_file_path(path).expect("Unable to read data from path into pool");
 
-        let strong = Arc::new(value);
+        let strong = Arc::new(RwLock::new(value));
         let weak = Arc::downgrade(&strong);
 
         (strong, weak)
