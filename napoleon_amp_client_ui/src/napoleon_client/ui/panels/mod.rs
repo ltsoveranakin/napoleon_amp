@@ -37,4 +37,12 @@ impl CloseResult {
             CloseResult::SaveAndClose => true,
         }
     }
+
+    pub(super) fn should_save(&self) -> bool {
+        match self {
+            CloseResult::SaveAndClose => true,
+
+            _ => false,
+        }
+    }
 }

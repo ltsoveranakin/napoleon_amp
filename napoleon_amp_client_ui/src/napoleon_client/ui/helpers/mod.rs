@@ -1,5 +1,6 @@
 pub(crate) mod select_button;
 
+use crate::napoleon_client::ui::panels::CloseResult;
 use eframe::egui::scroll_area::{ScrollAreaOutput, ScrollSource};
 use eframe::egui::{Button, IntoAtoms, ScrollArea, TextWrapMode, Ui};
 use std::marker::PhantomData;
@@ -77,4 +78,19 @@ pub(crate) fn scroll_area_iter<'list, N, A, I>(
             }
         }
     });
+}
+
+pub(super) fn close_ui(ui: &mut Ui) -> CloseResult {
+    ui.horizontal(|ui| {
+        if ui.button("Save").clicked() {
+            return CloseResult::SaveAndClose;
+        }
+
+        if ui.button("Cancel").clicked() {
+            return CloseResult::CloseWithoutSaving;
+        }
+
+        CloseResult::KeepOpen
+    })
+    .inner
 }

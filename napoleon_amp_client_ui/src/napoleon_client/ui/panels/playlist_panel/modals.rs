@@ -1,5 +1,6 @@
-use crate::napoleon_client::ui::helpers::scroll_area_styled;
+use crate::napoleon_client::ui::helpers::{close_ui, scroll_area_styled};
 
+use crate::napoleon_client::ui::panels::CloseResult;
 use eframe::egui::{Id, Modal, ScrollArea, Ui};
 use egui_autocomplete::AutoCompleteTextEdit;
 use napoleon_amp_core::content::playlist::PlaylistType;
@@ -58,15 +59,15 @@ impl PlaylistModals {
                 album_list,
                 ..
             } => {
-                let (should_close_modal, should_save_song_data) = Self::draw_edit_song_modal(
+                let close_result = Self::draw_edit_song_data_modal(
                     ui,
                     &mut editing_song_data.inner,
                     artist_list,
                     album_list,
                 );
 
-                clear_modals = should_close_modal;
-                save_song_data = should_save_song_data;
+                clear_modals = close_result.should_close();
+                save_song_data = close_result.should_save();
             }
 
             PlaylistModals::None => {}
@@ -165,12 +166,12 @@ impl PlaylistModals {
         modal.inner || modal.should_close()
     }
 
-    fn draw_edit_song_modal(
+    fn draw_edit_song_data_modal(
         ui: &mut Ui,
         editing_song_data: &mut SongDataStd,
         artist_list: &[String],
         album_list: &[String],
-    ) -> (bool, bool) {
+    ) -> CloseResult {
         let modal = Modal::new(Id::new("Edit Song")).show(ui.ctx(), |ui| {
             ui.set_width(250.);
 
@@ -194,28 +195,37 @@ impl PlaylistModals {
             ui.label("User Tag:");
             ui.text_edit_singleline(&mut editing_song_data.user_tag);
 
-            let action = ui
-                .horizontal(|ui| {
-                    if ui.button("Save").clicked() {
-                        return (true, true);
-                    }
+            ui.separator();
 
-                    if ui.button("Cancel").clicked() {
-                        return (true, false);
-                    }
+            ui.label(format!(
+                "Times listened: {}",
+                editing_song_data.times_listened
+            ));
+            ui.label(format!(
+                "Times skipped: {}",
+                editing_song_data.times_skipped.inner
+            ));
 
-                    (false, false)
-                })
-                .inner;
+            ui.horizontal(|ui| {
+                if ui.button("Clear times listened").clicked() {
+                    editing_song_data.times_listened = 0;
+                }
 
-            if action.0 {
-                return action;
-            }
+                if ui.button("Clear times skipped").clicked() {
+                    editing_song_data.times_skipped.inner = 0;
+                }
+            });
 
-            (false, false)
+            close_ui(ui)
         });
 
-        (modal.inner.0 || modal.should_close(), modal.inner.1)
+        if modal.inner.should_close() {
+            modal.inner
+        } else if modal.should_close() {
+            CloseResult::CloseWithoutSaving
+        } else {
+            CloseResult::KeepOpen
+        }
     }
 
     fn songs_plural(count: usize) -> &'static str {
