@@ -51,59 +51,55 @@ impl PlaylistPanel {
         self.keystrokes_pressed(napoleon_instance, ctx);
 
         ui.horizontal(|ui| {
-            if !matches!(*self.current_playlist, PlaylistType::AllSongs(_)) {
-                ui.vertical(|ui| {
-                    let mut user_data_v = self.current_playlist.get_user_data_mut();
-                    let mut should_save_song_data = false;
+            ui.vertical(|ui| {
+                let mut user_data_v = self.current_playlist.get_user_data_mut();
+                let mut should_save_song_data = false;
 
-                    let user_data = &mut user_data_v.inner;
+                let user_data = &mut user_data_v.inner;
 
-                    ui.heading(&user_data.content_data.name);
+                ui.heading(&user_data.content_data.name);
 
-                    ui.horizontal(|ui| {
-                        #[cfg(not(target_os = "android"))]
-                        if ui.button("Add Songs").clicked() {
-                            if let Some(paths) = rfd::FileDialog::new().pick_files() {
-                                self.playlist_modal = PlaylistModals::SongsImported {
-                                    paths,
-                                    song_already_exists_indexes: None,
-                                };
-                            }
+                ui.horizontal(|ui| {
+                    #[cfg(not(target_os = "android"))]
+                    if ui.button("Add Songs").clicked() {
+                        if let Some(paths) = rfd::FileDialog::new().pick_files() {
+                            self.playlist_modal = PlaylistModals::SongsImported {
+                                paths,
+                                song_already_exists_indexes: None,
+                            };
                         }
+                    }
 
-                        select_button_mut(ui, "Playback Mode", &mut user_data.playback_mode);
+                    select_button_mut(ui, "Playback Mode", &mut user_data.playback_mode);
 
-                        let sort_by = user_data.sort_by;
+                    let sort_by = user_data.sort_by;
 
-                        ui.menu_button(format!("Sort: {}", sort_by.sort_by_variant), |ui| {
-                            for sort_by_variant in SortByVariant::all_values() {
-                                if ui.button(sort_by_variant.to_string()).clicked() {
-                                    should_save_song_data = true;
-                                    user_data.sort_by.sort_by_variant = *sort_by_variant;
+                    ui.menu_button(format!("Sort: {}", sort_by.sort_by_variant), |ui| {
+                        for sort_by_variant in SortByVariant::all_values() {
+                            if ui.button(sort_by_variant.to_string()).clicked() {
+                                should_save_song_data = true;
+                                user_data.sort_by.sort_by_variant = *sort_by_variant;
 
-                                    self.current_playlist.sort_songs(user_data.sort_by);
-                                }
+                                self.current_playlist.sort_songs(user_data.sort_by);
                             }
-                        });
-
-                        if ui
-                            .checkbox(&mut user_data.sort_by.inverted, "Descending")
-                            .changed()
-                        {
-                            should_save_song_data = true;
-                            self.current_playlist.sort_songs(user_data.sort_by);
                         }
                     });
 
-                    if should_save_song_data {
-                        user_data_v
-                            .save_data(self.current_playlist.id())
-                            .expect("Save playlist user data");
+                    if ui
+                        .checkbox(&mut user_data.sort_by.inverted, "Descending")
+                        .changed()
+                    {
+                        should_save_song_data = true;
+                        self.current_playlist.sort_songs(user_data.sort_by);
                     }
                 });
-            } else {
-                ui.heading("All Songs");
-            }
+
+                if should_save_song_data {
+                    user_data_v
+                        .save_data(self.current_playlist.id())
+                        .expect("Save playlist user data");
+                }
+            });
 
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 ui.label(format!(
