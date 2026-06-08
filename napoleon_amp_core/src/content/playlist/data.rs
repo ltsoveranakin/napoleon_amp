@@ -3,7 +3,8 @@ use crate::content::folder::ContentData;
 use crate::content::playlist::PlaylistData;
 use crate::content::playlist::song_list::SortBy;
 use crate::paths::{content_playlist_song_list_file, content_playlist_user_data_file};
-use crate::{Next, time_now};
+use crate::time_now;
+use derive_enum_all_values::AllValues;
 use serbytes::prelude::{
     BBReadResult, CurrentVersion, ReadByteBufferRefMut, SerBytes, SerBytesFs, VersioningWrapper,
 };
@@ -21,20 +22,11 @@ pub type PlaylistUserData = VersioningWrapper<PlaylistUserDataStd, PlaylistUserD
 
 const DEFAULT_VOLUME: f32 = 1.0;
 
-#[derive(SerBytes, Default, Debug, Copy, Clone)]
+#[derive(SerBytes, AllValues, Default, Debug, Copy, Clone)]
 pub enum PlaybackMode {
     Sequential,
     #[default]
     Shuffle,
-}
-
-impl Next for PlaybackMode {
-    fn get_next(&self) -> Self {
-        match self {
-            PlaybackMode::Sequential => PlaybackMode::Shuffle,
-            PlaybackMode::Shuffle => PlaybackMode::Sequential,
-        }
-    }
 }
 
 impl Display for PlaybackMode {

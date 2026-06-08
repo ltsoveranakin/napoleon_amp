@@ -33,17 +33,6 @@ pub fn read_rwlock<T>(rw_lock: &RwLock<T>) -> RwLockReadGuard<'_, T> {
     rw_lock.read().expect(POISONED_LOCK_MESSAGE)
 }
 
-pub trait Next {
-    fn get_next(&self) -> Self;
-
-    fn assign_next(&mut self)
-    where
-        Self: Sized,
-    {
-        *self = self.get_next();
-    }
-}
-
 pub(crate) fn time_now() -> Duration {
     SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)

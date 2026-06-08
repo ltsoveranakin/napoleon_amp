@@ -3,7 +3,7 @@ mod rating;
 
 use crate::napoleon_client::colors::text_color;
 use crate::napoleon_client::ui::helpers::scroll_area_styled;
-use crate::napoleon_client::ui::helpers::select_button::select_button;
+use crate::napoleon_client::ui::helpers::select_button::{select_button, select_button_mut};
 use crate::napoleon_client::ui::panels::get_song_data_display_str;
 use crate::napoleon_client::ui::panels::playlist_panel::modals::PlaylistModals;
 use crate::napoleon_client::ui::panels::playlist_panel::rating::render_rating;
@@ -17,7 +17,7 @@ use napoleon_amp_core::content::playlist::manager::{MusicManager, SongStatus};
 use napoleon_amp_core::content::playlist::song_list::SortByVariant;
 use napoleon_amp_core::instance::NapoleonInstance;
 use napoleon_amp_core::paths::show_file_in_explorer;
-use napoleon_amp_core::{Next, read_rwlock};
+use napoleon_amp_core::read_rwlock;
 use std::ops::Deref;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -71,12 +71,7 @@ impl PlaylistPanel {
                             }
                         }
 
-                        if ui
-                            .button(format!("Playback Mode: {}", user_data.playback_mode))
-                            .clicked()
-                        {
-                            user_data.playback_mode.assign_next();
-                        }
+                        select_button_mut(ui, "Playback Mode", &mut user_data.playback_mode);
 
                         let sort_by = user_data.sort_by;
 

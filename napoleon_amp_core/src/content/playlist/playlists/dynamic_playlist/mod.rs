@@ -9,7 +9,7 @@ use crate::content::playlist::data::{PlaylistContentData, PlaylistSongListData, 
 use crate::content::playlist::playlists::dynamic_playlist::dynamic_playlist_data::{
     DynamicPlaylistData, DynamicPlaylistDataStd,
 };
-use crate::content::playlist::{ClearSongsCache, InnerPlaylist, Playlist};
+use crate::content::playlist::{ClearSongsCache, InnerPlaylist, Playlist, PlaylistData};
 use crate::content::song::Song;
 use simple_id::prelude::Id;
 use std::cell::{OnceCell, Ref, RefCell, RefMut};
@@ -40,11 +40,8 @@ impl DynamicPlaylist {
             let playlist_data = CONTENT_POOL
                 .get_dynamic_playlist_user_data(inner.id)
                 .unwrap_or_else(|_| {
-                    DynamicPlaylistDataStd::new(PlaylistContentData::new(
-                        "Deleted Playlist".to_string(),
-                        inner.parent.id,
-                    ))
-                    .into()
+                    DynamicPlaylistDataStd::new(PlaylistContentData::new_deleted(inner.parent.id))
+                        .into()
                 });
 
             RefCell::new(playlist_data)
