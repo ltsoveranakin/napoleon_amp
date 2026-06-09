@@ -1,3 +1,4 @@
+mod custom_modal;
 pub(crate) mod select_button;
 
 use crate::napoleon_client::ui::panels::CloseResult;
