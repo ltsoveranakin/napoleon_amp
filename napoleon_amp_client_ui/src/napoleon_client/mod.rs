@@ -10,6 +10,7 @@ use eframe::egui::{CentralPanel, Context, MenuBar, SidePanel, TopBottomPanel};
 use eframe::{App, Frame};
 use napoleon_amp_core::instance::NapoleonInstance;
 use std::rc::Rc;
+use std::time::Duration;
 
 pub struct NapoleonClientApp {
     napoleon_instance: NapoleonInstance,
@@ -63,4 +64,23 @@ impl App for NapoleonClientApp {
             });
         }
     }
+}
+
+pub(super) fn duration_to_str(duration: Duration) -> String {
+    secs_to_str(duration.as_secs())
+}
+
+pub(super) fn secs_to_str(secs: u64) -> String {
+    let seconds = secs % 60;
+    let minutes_total = secs / 60;
+    let minutes = minutes_total % 60;
+    let hours = minutes_total / 60;
+
+    let hours_minutes_str = if hours != 0 {
+        format!("{hours}:{:02}", minutes)
+    } else {
+        minutes.to_string()
+    };
+
+    format!("{hours_minutes_str}:{:02}", seconds)
 }

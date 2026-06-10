@@ -1,5 +1,6 @@
-use crate::napoleon_client::ui::helpers::{close_ui, scroll_area_styled};
+use crate::napoleon_client::ui::helpers::{duration_input, scroll_area_styled};
 
+use crate::napoleon_client::ui::helpers::custom_modal::custom_modal;
 use crate::napoleon_client::ui::panels::CloseResult;
 use eframe::egui::{Id, Modal, ScrollArea, Ui};
 use egui_autocomplete::AutoCompleteTextEdit;
@@ -9,6 +10,7 @@ use napoleon_amp_core::content::song::song_data::{SongData, SongDataStd};
 use std::mem;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Duration;
 
 pub(super) enum PlaylistModals {
     SongsImported {
@@ -172,7 +174,7 @@ impl PlaylistModals {
         artist_list: &[String],
         album_list: &[String],
     ) -> CloseResult {
-        let modal = Modal::new(Id::new("Edit Song")).show(ui.ctx(), |ui| {
+        custom_modal(ui, "Edit Song", |ui| {
             ui.set_width(250.);
 
             ui.heading("Edit song properties");
@@ -197,35 +199,69 @@ impl PlaylistModals {
 
             ui.separator();
 
-            ui.label(format!(
-                "Times listened: {}",
-                editing_song_data.times_listened
-            ));
-            ui.label(format!(
-                "Times skipped: {}",
-                editing_song_data.times_skipped.inner
-            ));
-
             ui.horizontal(|ui| {
-                if ui.button("Clear times listened").clicked() {
+                ui.label(format!(
+                    "Times listened: {}",
+                    editing_song_data.times_listened
+                ));
+
+                if ui.button("Clear").clicked() {
                     editing_song_data.times_listened = 0;
                 }
+            });
 
-                if ui.button("Clear times skipped").clicked() {
+            ui.horizontal(|ui| {
+                ui.label(format!(
+                    "Times skipped: {}",
+                    editing_song_data.times_skipped.inner
+                ));
+
+                if ui.button("Clear").clicked() {
                     editing_song_data.times_skipped.inner = 0;
                 }
             });
 
-            close_ui(ui)
-        });
+            ui.separator();
 
-        if modal.inner.should_close() {
-            modal.inner
-        } else if modal.should_close() {
-            CloseResult::CloseWithoutSaving
-        } else {
-            CloseResult::KeepOpen
-        }
+            Self::time_ui(
+                ui,
+                "Start offset",
+                &mut editing_song_data.start_offset.inner,
+                Duration::ZERO,
+            );
+            Self::time_ui(
+                ui,
+                "End time",
+                &mut editing_song_data.end_time.inner,
+                Duration::from_secs(
+                    editing_song_data.meta.inner.as_ref().unwrap().song_length as u64,
+                ),
+            );
+        })
+        .inner
+    }
+
+    fn time_ui(ui: &mut Ui, label: &str, duration: &mut Option<Duration>, default_value: Duration) {
+        ui.horizontal(|ui| {
+            let mut is_checked = duration.is_some();
+
+            if ui.checkbox(&mut is_checked, label).changed() {
+                if is_checked {
+                    *duration = Some(default_value);
+                } else {
+                    *duration = None;
+                }
+            }
+
+            if is_checked {
+                duration_input(
+                    ui,
+                    duration
+                        .as_mut()
+                        .expect("is_checked is only true if duration is Some"),
+                );
+            }
+        });
     }
 
     fn songs_plural(count: usize) -> &'static str {

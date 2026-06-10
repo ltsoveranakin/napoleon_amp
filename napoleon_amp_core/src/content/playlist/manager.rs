@@ -142,8 +142,6 @@ impl MusicManager {
         let queue = Arc::new(RwLock::new(queue));
         let queue_thread = Arc::clone(&queue);
 
-        // let songs_thread = Arc::clone(&songs_arc);
-
         let playing_handle = thread::Builder::new()
             .name("Music Manager".to_string())
             .spawn(move || {
@@ -242,6 +240,20 @@ impl MusicManager {
                         }
                     }
 
+                    if let Some(end_time) = read_rwlock(&song_status)
+                        .song
+                        .get_song_data()
+                        .inner
+                        .end_time
+                        .inner
+                    {
+                        let pos = sink.get_pos();
+
+                        if pos >= end_time {
+                            sink.clear();
+                        }
+                    }
+
                     if sink.empty() {
                         if let Some(ls) = &last_song {
                             let should_increment = if let Some(pos) = switched_song_pos {
@@ -323,13 +335,20 @@ impl MusicManager {
                             sink.append(source);
 
                             sink.play();
+
+                            if let Some(start_offset) = song_data.start_offset.inner {
+                                sink.try_seek(start_offset)
+                                    .expect("Unable to seek to start offset");
+                            }
                         } else {
                             println!("Invalid or corrupted audio file detected, skipping")
                         }
 
                         last_song = Some(song);
 
-                        queue_mut.next();
+                        if matches!(loop_mode, LoopMode::None) {
+                            queue_mut.next();
+                        }
                     }
 
                     if is_playing {

@@ -77,6 +77,7 @@ impl DynamicPlaylistDataStd {
         }
     }
 
+    // this the slow function (i think)
     pub(super) fn get_song_list(&self, self_id: Id) -> FromFileResult<'_, SongListRes> {
         let mut song_ids_checked = HashSet::new();
 
@@ -120,6 +121,11 @@ impl DynamicPlaylistDataStd {
 
         for song_list_data in playlists_song_lists_data {
             // let song_list_data = CONTENT_POOL.get_playlist_song_list_data(playlist_id)?;
+            if song_ids_checked.capacity() + song_list_data.song_ids.len()
+                < SONG_POOL.get_registered_songs().name_map.len()
+            {
+                song_ids_checked.reserve(song_list_data.song_ids.len());
+            }
 
             for song_id in song_list_data.song_ids {
                 if song_ids_checked.insert(song_id) {

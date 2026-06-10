@@ -8,6 +8,7 @@ use crate::napoleon_client::ui::panels::get_song_data_display_str;
 use crate::napoleon_client::ui::panels::playlist_panel::modals::PlaylistModals;
 use crate::napoleon_client::ui::panels::playlist_panel::rating::render_rating;
 use crate::napoleon_client::ui::panels::queue_panel::QueuePanel;
+use crate::napoleon_client::{duration_to_str, secs_to_str};
 use derive_enum_all_values::AllValues;
 use eframe::egui::*;
 use egui_extras::{Column, TableBuilder};
@@ -105,7 +106,7 @@ impl PlaylistPanel {
                 ui.label(format!(
                     "{} songs, {}",
                     read_rwlock(&self.current_playlist.get_song_vec_unfiltered()).len(),
-                    Self::secs_to_str(self.current_playlist.get_total_song_duration() as u64)
+                    secs_to_str(self.current_playlist.get_total_song_duration() as u64)
                 ))
             });
         });
@@ -355,7 +356,7 @@ impl PlaylistPanel {
                                 });
 
                                 row.col(|ui| {
-                                    ui.label(Self::secs_to_str(
+                                    ui.label(secs_to_str(
                                         song_data_vers.inner.meta().song_length as u64,
                                     ));
                                 });
@@ -499,8 +500,8 @@ impl PlaylistPanel {
 
                     ui.label(format!(
                         "{}/{}",
-                        Self::duration_to_str(music_manager.get_song_pos()),
-                        Self::duration_to_str(total_duration)
+                        duration_to_str(music_manager.get_song_pos()),
+                        duration_to_str(total_duration)
                     ));
                 });
             }
@@ -537,24 +538,5 @@ impl PlaylistPanel {
         ));
 
         should_stop
-    }
-
-    fn duration_to_str(duration: Duration) -> String {
-        Self::secs_to_str(duration.as_secs())
-    }
-
-    fn secs_to_str(secs: u64) -> String {
-        let seconds = secs % 60;
-        let minutes_total = secs / 60;
-        let minutes = minutes_total % 60;
-        let hours = minutes_total / 60;
-
-        let hours_minutes_str = if hours != 0 {
-            format!("{hours}:{:02}", minutes)
-        } else {
-            minutes.to_string()
-        };
-
-        format!("{hours_minutes_str}:{:02}", seconds)
     }
 }

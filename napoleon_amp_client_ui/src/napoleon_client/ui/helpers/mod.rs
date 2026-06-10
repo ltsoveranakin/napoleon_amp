@@ -1,10 +1,13 @@
-mod custom_modal;
+pub(crate) mod custom_modal;
 pub(crate) mod select_button;
 
+use crate::napoleon_client::duration_to_str;
 use crate::napoleon_client::ui::panels::CloseResult;
 use eframe::egui::scroll_area::{ScrollAreaOutput, ScrollSource};
 use eframe::egui::{Button, IntoAtoms, ScrollArea, TextWrapMode, Ui};
 use std::marker::PhantomData;
+use std::str::FromStr;
+use std::time::Duration;
 
 pub(crate) fn scroll_area_styled<O>(
     ui: &mut Ui,
@@ -94,4 +97,42 @@ pub(super) fn close_ui(ui: &mut Ui) -> CloseResult {
         CloseResult::KeepOpen
     })
     .inner
+}
+
+pub(super) fn duration_input(ui: &mut Ui, duration: &mut Duration) {
+    let mut duration_str = duration_to_str(*duration);
+
+    if ui.text_edit_singleline(&mut duration_str).changed() {
+        let duration_spl = duration_str.split(":").collect::<Vec<&str>>();
+
+        let inner = || {
+            let duration_1st: u64 = duration_spl[0].parse()?;
+
+            let duration_2nd: u64 = duration_spl[1].parse()?;
+
+            let hours;
+            let minutes;
+            let seconds;
+
+            if let Some(duration_3rd_str) = duration_spl.get(2) {
+                let duration_3rd: u64 = duration_3rd_str.parse()?;
+
+                hours = duration_1st;
+                minutes = duration_2nd;
+                seconds = duration_3rd;
+            } else {
+                hours = 0;
+                minutes = duration_1st;
+                seconds = duration_2nd;
+            }
+
+            Ok::<Duration, <u64 as FromStr>::Err>(Duration::from_secs(
+                (hours * (60 * 60)) + (minutes * 60) + seconds,
+            ))
+        };
+
+        if let Ok(new_duration) = inner() {
+            *duration = new_duration;
+        }
+    }
 }

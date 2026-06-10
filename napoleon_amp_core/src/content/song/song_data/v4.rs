@@ -1,6 +1,7 @@
 use crate::content::song::UNKNOWN_ALBUM_STR;
 use crate::content::song::song_data::Artist;
 use serbytes::prelude::{BBReadResult, MayNotExistOrDefault, ReadError, SerBytes, SizedBlock};
+use std::time::Duration;
 
 /// Data stored for each song which has been registered, contains metadata which is commonly used
 
@@ -16,6 +17,8 @@ pub struct SongDataStdV4 {
     pub meta: SizedBlock<BBReadResult<SongDataMeta2>>,
     pub times_listened: u32,
     pub times_skipped: MayNotExistOrDefault<u32>,
+    pub start_offset: MayNotExistOrDefault<Option<Duration>>,
+    pub end_time: MayNotExistOrDefault<Option<Duration>>,
 }
 
 impl Default for SongDataStdV4 {
@@ -28,6 +31,8 @@ impl Default for SongDataStdV4 {
             meta: SizedBlock::new(Err(ReadError::default())),
             times_listened: 0,
             times_skipped: 0.into(),
+            start_offset: None.into(),
+            end_time: None.into(),
         }
     }
 }
