@@ -175,10 +175,6 @@ impl PlaylistModals {
         album_list: &[String],
     ) -> CloseResult {
         custom_modal(ui, "Edit Song", |ui| {
-            ui.set_width(250.);
-
-            ui.heading("Edit song properties");
-
             ui.label("Title:");
             ui.text_edit_singleline(&mut editing_song_data.title);
 
@@ -256,6 +252,7 @@ impl PlaylistModals {
             if is_checked {
                 duration_input(
                     ui,
+                    label,
                     duration
                         .as_mut()
                         .expect("is_checked is only true if duration is Some"),

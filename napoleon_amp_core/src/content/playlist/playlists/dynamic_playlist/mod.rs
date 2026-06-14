@@ -33,13 +33,14 @@ impl DynamicPlaylist {
         }
     }
 
-    fn get_data_ref_cell(&self) -> &RefCell<DynamicPlaylistData> {
+    fn get_dyn_user_data_ref_cell(&self) -> &RefCell<DynamicPlaylistData> {
         self.dynamic_playlist_data.get_or_init(|| {
             let inner = self.get_inner();
 
             let playlist_data = CONTENT_POOL
                 .get_dynamic_playlist_user_data(inner.id)
-                .unwrap_or_else(|_| {
+                .unwrap_or_else(|e| {
+                    // panic!("{}", e);
                     DynamicPlaylistDataStd::new(PlaylistContentData::new_deleted(inner.parent.id))
                         .into()
                 });
@@ -49,11 +50,11 @@ impl DynamicPlaylist {
     }
 
     pub fn get_dyn_user_data(&self) -> Ref<'_, DynamicPlaylistData> {
-        self.get_data_ref_cell().borrow()
+        self.get_dyn_user_data_ref_cell().borrow()
     }
 
     pub fn get_dyn_user_data_mut(&self) -> RefMut<'_, DynamicPlaylistData> {
-        self.get_data_ref_cell().borrow_mut()
+        self.get_dyn_user_data_ref_cell().borrow_mut()
     }
 }
 
@@ -63,15 +64,16 @@ impl Playlist for DynamicPlaylist {
     }
 
     fn get_user_data(&self) -> Ref<'_, PlaylistUserData> {
-        Ref::map(self.get_data_ref_cell().borrow(), |dynamic_data| {
+        Ref::map(self.get_dyn_user_data_ref_cell().borrow(), |dynamic_data| {
             &dynamic_data.inner.user_data
         })
     }
 
     fn get_user_data_mut(&self) -> RefMut<'_, PlaylistUserData> {
-        RefMut::map(self.get_data_ref_cell().borrow_mut(), |dynamic_data| {
-            &mut dynamic_data.inner.user_data
-        })
+        RefMut::map(
+            self.get_dyn_user_data_ref_cell().borrow_mut(),
+            |dynamic_data| &mut dynamic_data.inner.user_data,
+        )
     }
 
     fn save_user_data(&self) -> std::io::Result<()> {

@@ -12,9 +12,9 @@ use crate::content::song::song_data::v3::SongDataStdV3;
 use crate::content::song::song_data::v4::{SongDataMeta2, SongDataStdV4};
 use crate::content::song::{Song, UNKNOWN_ARTIST_STR};
 use serbytes::prelude::{
-    BBReadResult, CurrentVersion, ReadByteBufferRefMut, SerBytes, SizedBlock, VersioningWrapper,
+    BBReadResult, CurrentVersion, ReadByteBufferRefMut, SerBytes, SerBytesFs, SizedBlock,
+    VersioningWrapper,
 };
-use std::fs;
 use std::fs::File;
 use std::path::PathBuf;
 use std::time::Duration;
@@ -224,7 +224,9 @@ pub(super) fn get_song_data_from_song_file_with_paths(
         }
     }
 
-    fs::write(song_data_path, song_data.to_bb().buf()).expect("Clean write to song data file");
+    song_data
+        .write_to_file_path(song_data_path)
+        .expect("Clean write to song data file");
 
     did_err
 }

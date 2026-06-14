@@ -559,6 +559,7 @@ pub(crate) trait PlaylistData: Sized {
     fn new_deleted_with_data(content_data: PlaylistContentData) -> Self;
 
     fn new_deleted(parent_id: Id) -> Self {
+        // panic!();
         Self::new_deleted_with_data(PlaylistContentData::new(
             "Deleted Playlist".to_string(),
             parent_id,

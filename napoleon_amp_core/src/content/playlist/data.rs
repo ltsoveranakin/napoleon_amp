@@ -68,6 +68,7 @@ impl PlaylistData for PlaylistContentData {
     }
 
     fn new_deleted_with_data(content_data: PlaylistContentData) -> Self {
+        // panic!();
         Self::new("Deleted Playlist".to_string(), content_data.parent)
     }
 }
