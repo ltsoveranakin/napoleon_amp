@@ -2,7 +2,7 @@ use crate::napoleon_client::ui::helpers::{duration_input, scroll_area_styled};
 
 use crate::napoleon_client::ui::helpers::custom_modal::custom_modal;
 use crate::napoleon_client::ui::panels::CloseResult;
-use eframe::egui::{Id, Modal, ScrollArea, Ui};
+use eframe::egui::{Id, Modal, ScrollArea, Slider, Ui};
 use egui_autocomplete::AutoCompleteTextEdit;
 use napoleon_amp_core::content::playlist::PlaylistType;
 use napoleon_amp_core::content::song::Song;
@@ -233,6 +233,16 @@ impl PlaylistModals {
                     editing_song_data.meta.inner.as_ref().unwrap().song_length as u64,
                 ),
             );
+
+            ui.separator();
+
+            ui.label("Custom Volume:")
+                .on_hover_text("The custom volume which will be multiplied by the playlist volume");
+            ui.add(
+                Slider::new(&mut editing_song_data.custom_volume.inner, 0.0..=4.0).show_value(true),
+            );
+
+            ui.separator();
         })
         .inner
     }
@@ -252,7 +262,7 @@ impl PlaylistModals {
             if is_checked {
                 duration_input(
                     ui,
-                    label,
+                    Id::new(label),
                     duration
                         .as_mut()
                         .expect("is_checked is only true if duration is Some"),

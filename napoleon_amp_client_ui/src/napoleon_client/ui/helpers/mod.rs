@@ -101,10 +101,9 @@ pub(super) fn close_ui(ui: &mut Ui) -> CloseResult {
     .inner
 }
 
-pub(super) fn duration_input(ui: &mut Ui, id_source: impl Hash, duration: &mut Duration) {
+pub(super) fn duration_input(ui: &mut Ui, id: Id, duration: &mut Duration) {
     const NO_COLON_SEP: &str = "No colon separator";
     const FAIL_PARSE_INT: &str = "Failed to parse integer portion";
-    let id = Id::new(id_source);
 
     let (mut duration_str, invalid_msg_opt) = ui.ctx().data_mut(|d| {
         d.get_persisted_mut_or_insert_with(id, || (duration_to_str(*duration), None::<&str>))
@@ -167,9 +166,11 @@ pub(super) fn duration_input(ui: &mut Ui, id_source: impl Hash, duration: &mut D
             ui.colored_label(
                 ui.visuals().error_fg_color,
                 format!("Error parsing: {}", invalid_msg),
-            );
+            )
+            .on_hover_text("There was an error parsing the value from a string");
         } else {
-            ui.label(format!("Parsed duration: {}", duration_to_str(*duration)));
+            ui.label(format!("Parsed duration: {}", duration_to_str(*duration)))
+                .on_hover_text("This is the actual duration after parsing");
         }
     });
 }

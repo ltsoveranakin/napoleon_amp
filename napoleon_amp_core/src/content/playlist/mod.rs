@@ -52,7 +52,7 @@ pub trait Playlist {
 
     fn get_user_data_mut(&self) -> RefMut<'_, PlaylistUserData>;
 
-    /// Saves the [`PlaylistUserData`] to the file at `self.path_named`
+    /// Saves the playlist's user data type to the file at `self.path_named`
 
     fn save_user_data(&self) -> io::Result<()>;
 

@@ -112,7 +112,7 @@ impl MusicManager {
     pub(super) fn try_create(
         songs_arc: Arc<RwLock<Vec<Arc<Song>>>>,
         start_index: usize,
-        volume: f32,
+        mut playlist_volume: f32,
         playback_mode: PlaybackMode,
     ) -> Option<Self> {
         // TODO: return result instead of option
@@ -132,7 +132,7 @@ impl MusicManager {
         }));
         let song_status_thread = Arc::clone(&song_status);
 
-        let (sink, output_stream) = create_sink(volume);
+        let (sink, output_stream) = create_sink();
 
         let stream = RwLock::new(output_stream);
 
@@ -167,13 +167,19 @@ impl MusicManager {
                         let mut sink = write_rwlock(&sink_arc);
                         let song_pos = sink.get_pos();
 
-                        let (new_sink, new_stream) = create_sink(volume);
+                        let (new_sink, new_stream) = create_sink();
+
+                        let song = &read_rwlock(&song_status).song;
+
+                        new_sink.set_volume(
+                            playlist_volume * song.get_song_data().inner.custom_volume.inner,
+                        );
 
                         *sink = new_sink;
 
                         *write_rwlock(&stream) = new_stream;
 
-                        if let Ok(source) = get_decoder_for_song(&read_rwlock(&song_status).song) {
+                        if let Ok(source) = get_decoder_for_song(&song) {
                             sink.append(source);
                             sink.try_seek(song_pos).ok();
                         }
@@ -231,7 +237,16 @@ impl MusicManager {
                             }
 
                             MusicCommand::SetVolume(volume) => {
-                                sink.set_volume(volume);
+                                playlist_volume = volume;
+                                sink.set_volume(
+                                    playlist_volume
+                                        * read_rwlock(&song_status)
+                                            .song
+                                            .get_song_data()
+                                            .inner
+                                            .custom_volume
+                                            .inner,
+                                );
                             }
 
                             MusicCommand::SetLoopMode(lm) => {
@@ -333,6 +348,8 @@ impl MusicManager {
                             }));
 
                             sink.append(source);
+
+                            sink.set_volume(playlist_volume * song_data.custom_volume.inner);
 
                             sink.play();
 
@@ -479,13 +496,11 @@ impl MusicManager {
     }
 }
 
-fn create_sink(volume: f32) -> (Sink, OutputStream) {
+fn create_sink() -> (Sink, OutputStream) {
     let output_stream = OutputStreamBuilder::open_default_stream()
         .expect("Unable to open audio stream to default audio device");
 
     let sink = Sink::connect_new(&output_stream.mixer());
-
-    sink.set_volume(volume);
 
     (sink, output_stream)
 }

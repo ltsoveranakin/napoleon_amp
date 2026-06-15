@@ -1,7 +1,12 @@
 use crate::content::song::UNKNOWN_ALBUM_STR;
 use crate::content::song::song_data::Artist;
-use serbytes::prelude::{BBReadResult, MayNotExistOrDefault, ReadError, SerBytes, SizedBlock};
+use serbytes::prelude::{
+    BBReadResult, MayNotExistDataProvider, MayNotExistOrDefault, MayNotExistOrElse, ReadError,
+    SerBytes, SizedBlock,
+};
 use std::time::Duration;
+
+const DEFAULT_CUSTOM_VOLUME: f32 = 0.75;
 
 /// Data stored for each song which has been registered, contains metadata which is commonly used
 
@@ -19,6 +24,15 @@ pub struct SongDataStdV4 {
     pub times_skipped: MayNotExistOrDefault<u32>,
     pub start_offset: MayNotExistOrDefault<Option<Duration>>,
     pub end_time: MayNotExistOrDefault<Option<Duration>>,
+    pub custom_volume: MayNotExistOrElse<f32, CustomVolumeDataProvider>,
+}
+
+pub struct CustomVolumeDataProvider;
+
+impl MayNotExistDataProvider<f32> for CustomVolumeDataProvider {
+    fn get_data() -> f32 {
+        DEFAULT_CUSTOM_VOLUME
+    }
 }
 
 impl Default for SongDataStdV4 {
@@ -33,6 +47,7 @@ impl Default for SongDataStdV4 {
             times_skipped: 0.into(),
             start_offset: None.into(),
             end_time: None.into(),
+            custom_volume: DEFAULT_CUSTOM_VOLUME.into(),
         }
     }
 }
