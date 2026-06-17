@@ -1,16 +1,17 @@
-use serbytes::prelude::SerBytes;
 use crate::net::server::NapoleonServer;
+use serbytes::prelude::SerBytes;
+use std::cell::LazyCell;
 
-pub(super)mod server;
+mod packet;
+pub(super) mod server;
 
 #[derive(SerBytes)]
 struct NetworkData {
     registered_addresses: Vec<String>,
-    priority: u8
+    priority: u8,
 }
 
-
 struct Network {
-    data: NetworkData,
-    server: NapoleonServer
+    data: LazyCell<NetworkData>,
+    server: NapoleonServer,
 }

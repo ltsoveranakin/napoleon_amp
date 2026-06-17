@@ -32,11 +32,6 @@ use std::rc::Weak;
 use std::sync::Arc;
 use std::{fs, io};
 
-pub type PlaylistTypeVariant = PlaylistType<(), (), ()>;
-
-pub type PlaylistDataTypeVariant =
-    PlaylistType<PlaylistUserData, DynamicPlaylistData, PlaylistUserData>;
-
 pub trait ClearSongsCache {
     fn clear_songs_cache(&self);
 }
@@ -525,6 +520,11 @@ impl<'a, T> Deref for RefCow<'a, T> {
 fn default_save_user_data(playlist_user_data: &PlaylistUserData, id: Id) -> io::Result<()> {
     playlist_user_data.save_data(id)
 }
+
+pub type PlaylistTypeVariant = PlaylistType<(), (), ()>;
+
+pub type PlaylistDataTypeVariant =
+    PlaylistType<PlaylistUserData, DynamicPlaylistData, PlaylistUserData>;
 
 #[derive(SerBytes, Debug, Eq, PartialEq, Copy, Clone)]
 pub enum PlaylistType<S = StandardPlaylist, D = DynamicPlaylist, A = AllSongsPlaylist> {
