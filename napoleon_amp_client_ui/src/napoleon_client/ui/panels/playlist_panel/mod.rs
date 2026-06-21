@@ -10,6 +10,7 @@ use crate::napoleon_client::ui::panels::playlist_panel::rating::render_rating;
 use crate::napoleon_client::ui::panels::queue_panel::QueuePanel;
 use crate::napoleon_client::{duration_to_str, secs_to_str};
 use derive_enum_all_values::AllValues;
+use eframe::egui::load::Bytes;
 use eframe::egui::*;
 use egui_extras::{Column, TableBuilder};
 use napoleon_amp_core::content::SaveData;
@@ -19,6 +20,7 @@ use napoleon_amp_core::content::playlist::song_list::SortByVariant;
 use napoleon_amp_core::instance::NapoleonInstance;
 use napoleon_amp_core::paths::show_file_in_explorer;
 use napoleon_amp_core::read_rwlock;
+use std::collections::HashMap;
 use std::ops::Deref;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -30,6 +32,7 @@ pub(crate) struct PlaylistPanel {
     delete_original_files: bool,
     filter_search_content: String,
     pub(crate) queue_panel: QueuePanel,
+    image_pool: HashMap<String, Bytes>,
 }
 
 impl PlaylistPanel {
@@ -40,6 +43,7 @@ impl PlaylistPanel {
             delete_original_files: false,
             filter_search_content: String::new(),
             queue_panel: QueuePanel::new(),
+            image_pool: HashMap::new(),
         }
     }
 
@@ -195,6 +199,8 @@ impl PlaylistPanel {
 
                 TableBuilder::new(ui)
                     .striped(true)
+                    // Image Cover
+                    .column(Column::remainder())
                     // Title
                     .column(Column::remainder())
                     // Artist
@@ -210,6 +216,10 @@ impl PlaylistPanel {
                     // Times Listened
                     .column(Column::remainder())
                     .header(20.0, |mut header| {
+                        header.col(|ui| {
+                            ui.heading("Cover");
+                        });
+
                         header.col(|ui| {
                             ui.heading("Title");
                         });
@@ -254,6 +264,31 @@ impl PlaylistPanel {
                                 let song = &songs[song_index];
                                 let is_selected = selected_songs.is_selected(song_index);
                                 let song_data_vers = song.get_song_data();
+
+                                row.col(|ui| {
+                                    if let Some(cover_img) =
+                                        song_data_vers.inner.meta.inner.cover.as_ref().unwrap()
+                                    {
+                                        let image_bytes = self
+                                            .image_pool
+                                            .entry(song_data_vers.inner.title.clone())
+                                            .or_insert_with(|| {
+                                                Bytes::Shared(cover_img.data.vec.clone().into())
+                                            })
+                                            .clone();
+
+                                        ui.add(Image::new(ImageSource::Bytes {
+                                            uri: format!(
+                                                "bytes://{}-cover",
+                                                song_data_vers.inner.title
+                                            )
+                                            .into(),
+                                            bytes: image_bytes,
+                                        }));
+                                    } else {
+                                        ui.label("No image");
+                                    }
+                                });
 
                                 row.col(|ui| {
                                     let button_text_color = text_color(
@@ -331,12 +366,21 @@ impl PlaylistPanel {
 
                                 row.col(|ui| {
                                     ui.label(
-                                        &song_data_vers.inner.meta().artist.full_artist_string,
+                                        &song_data_vers
+                                            .inner
+                                            .meta
+                                            .inner
+                                            .artist
+                                            .as_ref()
+                                            .unwrap()
+                                            .full_artist_string,
                                     );
                                 });
 
                                 row.col(|ui| {
-                                    ui.label(&song_data_vers.inner.meta().album);
+                                    ui.label(
+                                        song_data_vers.inner.meta.inner.album.as_ref().unwrap(),
+                                    );
                                 });
 
                                 row.col(|ui| {
@@ -357,7 +401,14 @@ impl PlaylistPanel {
 
                                 row.col(|ui| {
                                     ui.label(secs_to_str(
-                                        song_data_vers.inner.meta().song_length as u64,
+                                        *song_data_vers
+                                            .inner
+                                            .meta
+                                            .inner
+                                            .song_length
+                                            .as_ref()
+                                            .unwrap()
+                                            as u64,
                                     ));
                                 });
 
@@ -421,8 +472,11 @@ impl PlaylistPanel {
                         "By: {}",
                         song_data_vers
                             .inner
-                            .meta()
+                            .meta
+                            .inner
                             .artist
+                            .as_ref()
+                            .unwrap()
                             .full_artist_string
                             .replace("/", ", ")
                     ));

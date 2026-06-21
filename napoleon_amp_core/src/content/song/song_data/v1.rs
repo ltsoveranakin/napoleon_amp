@@ -1,4 +1,5 @@
 use crate::content::song::song_data::Artist;
+use crate::content::song::song_data::meta::SongDataMetaV1;
 use serbytes::prelude::{BBReadResult, MayNotExistOrDefault, SerBytes};
 
 #[derive(SerBytes, Clone, Debug)]
@@ -12,16 +13,5 @@ pub struct SongDataStdV1 {
     /// where 0 represents unrated and 1-5 represent a rating
     pub rating: u8,
     pub user_tag: MayNotExistOrDefault<String>,
-    pub meta: BBReadResult<SongDataMeta>,
-}
-
-#[derive(SerBytes, Clone, Debug)]
-pub struct SongDataMeta {
-    pub length: u32,
-}
-
-impl Default for SongDataMeta {
-    fn default() -> Self {
-        Self { length: 0 }
-    }
+    pub meta: BBReadResult<SongDataMetaV1>,
 }

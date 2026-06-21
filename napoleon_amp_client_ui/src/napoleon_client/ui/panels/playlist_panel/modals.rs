@@ -6,6 +6,7 @@ use eframe::egui::{Id, Modal, ScrollArea, Slider, Ui};
 use egui_autocomplete::AutoCompleteTextEdit;
 use napoleon_amp_core::content::playlist::PlaylistType;
 use napoleon_amp_core::content::song::Song;
+use napoleon_amp_core::content::song::song_data::meta::SongDataMetaV2;
 use napoleon_amp_core::content::song::song_data::{SongData, SongDataStd};
 use std::mem;
 use std::path::PathBuf;
@@ -180,13 +181,19 @@ impl PlaylistModals {
 
             ui.label("Artist:");
             ui.add(AutoCompleteTextEdit::new(
-                &mut editing_song_data.meta_mut().artist.full_artist_string,
+                &mut editing_song_data
+                    .meta
+                    .inner
+                    .artist
+                    .as_mut()
+                    .unwrap()
+                    .full_artist_string,
                 artist_list,
             ));
 
             ui.label("Album:");
             ui.add(AutoCompleteTextEdit::new(
-                &mut editing_song_data.meta_mut().album,
+                editing_song_data.meta.inner.album.as_mut().unwrap(),
                 album_list,
             ));
 
@@ -225,13 +232,14 @@ impl PlaylistModals {
                 &mut editing_song_data.start_offset.inner,
                 Duration::ZERO,
             );
+
+            let song_length = *editing_song_data.meta.inner.song_length.as_ref().unwrap() as u64;
+
             Self::time_ui(
                 ui,
                 "End time",
                 &mut editing_song_data.end_time.inner,
-                Duration::from_secs(
-                    editing_song_data.meta.inner.as_ref().unwrap().song_length as u64,
-                ),
+                Duration::from_secs(song_length),
             );
 
             ui.separator();
@@ -241,6 +249,12 @@ impl PlaylistModals {
             ui.add(
                 Slider::new(&mut editing_song_data.custom_volume.inner, 0.0..=4.0).show_value(true),
             );
+
+            ui.separator();
+
+            if ui.button("Clear metadata cache").clicked() {
+                editing_song_data.meta.inner = SongDataMetaV2::default().into();
+            }
 
             ui.separator();
         })

@@ -9,7 +9,7 @@ pub(crate) fn custom_modal(
     add_contents: impl FnOnce(&mut Ui),
 ) -> ModalResponse<CloseResult> {
     Modal::new(egui::Id::new(title)).show(ui.ctx(), |ui| {
-        ui.set_width(250.);
+        ui.set_width(350.);
         ui.heading(title);
         ui.separator();
 

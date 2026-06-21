@@ -247,11 +247,20 @@ pub trait Playlist {
     }
 
     fn get_artist_list(&self) -> Vec<String> {
-        self.get_string_list(&|song_data| &song_data.inner.meta().artist.full_artist_string)
+        self.get_string_list(&|song_data| {
+            &song_data
+                .inner
+                .meta
+                .inner
+                .artist
+                .as_ref()
+                .unwrap()
+                .full_artist_string
+        })
     }
 
     fn get_album_list(&self) -> Vec<String> {
-        self.get_string_list(&|song_data| &song_data.inner.meta().album)
+        self.get_string_list(&|song_data| song_data.inner.meta.inner.album.as_ref().unwrap())
     }
 
     fn select_all(&self) {
@@ -285,7 +294,14 @@ pub trait Playlist {
                 let mut total_length = 0;
 
                 for song in read_rwlock(&self.get_song_vec_unfiltered()).iter() {
-                    total_length += song.get_song_data().inner.meta().song_length;
+                    total_length += song
+                        .get_song_data()
+                        .inner
+                        .meta
+                        .inner
+                        .song_length
+                        .as_ref()
+                        .unwrap();
                 }
 
                 total_length
@@ -402,16 +418,28 @@ pub trait Playlist {
             let strings_to_search: &[&String] = match parsed_search.search_type {
                 ParsedSearchType::Title => &[&song_data.title],
 
-                ParsedSearchType::Album => &[&song_data.meta().album],
+                ParsedSearchType::Album => &[&song_data.meta.inner.album.as_ref().unwrap()],
 
-                ParsedSearchType::Artist => &[&song_data.meta().artist.full_artist_string],
+                ParsedSearchType::Artist => &[&song_data
+                    .meta
+                    .inner
+                    .artist
+                    .as_ref()
+                    .unwrap()
+                    .full_artist_string],
 
                 ParsedSearchType::UserTag => &[&song_data.user_tag],
 
                 ParsedSearchType::Any => &[
                     &song_data.title,
-                    &song_data.meta().album,
-                    &song_data.meta().artist.full_artist_string,
+                    &song_data.meta.inner.album.as_ref().unwrap(),
+                    &song_data
+                        .meta
+                        .inner
+                        .artist
+                        .as_ref()
+                        .unwrap()
+                        .full_artist_string,
                     &song_data.user_tag,
                 ],
             };

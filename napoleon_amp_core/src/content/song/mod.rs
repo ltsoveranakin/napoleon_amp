@@ -1,7 +1,7 @@
-mod master;
 pub mod song_data;
 pub(crate) mod song_pool;
 
+use crate::content::song::song_data::v4::DEFAULT_CUSTOM_VOLUME;
 use crate::content::song::song_data::{SongData, get_song_data_from_song_file};
 use crate::paths::song::{song_audio_file_v2, song_data_file_v2};
 use crate::{ReadGuard, WriteGuard, read_rwlock, write_rwlock};
@@ -61,18 +61,37 @@ impl Song {
                 }
             };
 
-            if song_data.inner.meta.inner.is_err() {
+            let sdi = &mut song_data.inner;
+
+            let mut reload_song_data = false;
+
+            if sdi.times_listened > 5000 {
+                reload_song_data = true;
+                sdi.times_listened = 0;
+            }
+
+            if sdi.custom_volume.inner == 0.0 {
+                reload_song_data = true;
+                sdi.custom_volume.inner = DEFAULT_CUSTOM_VOLUME;
+            }
+
+            if song_data.inner.times_skipped.inner > 5000 {
+                reload_song_data = true;
+            }
+
+            if song_data.inner.meta.inner.has_err() || reload_song_data {
+                // println!("meta is err");
                 get_song_data_from_song_file(&self, &mut song_data);
             }
 
-            let meta = song_data.inner.meta_mut();
+            let meta = &mut song_data.inner.meta.inner;
 
-            if meta.artist.full_artist_string.is_empty() {
-                meta.artist.full_artist_string = UNKNOWN_ARTIST_STR.to_string();
+            if meta.artist.as_ref().unwrap().full_artist_string.is_empty() {
+                meta.artist.as_mut().unwrap().full_artist_string = UNKNOWN_ARTIST_STR.to_string();
             }
 
-            if meta.album.len() == 0 {
-                meta.album = UNKNOWN_ALBUM_STR.into();
+            if meta.album.as_ref().unwrap().len() == 0 {
+                *meta.album.as_mut().unwrap() = UNKNOWN_ALBUM_STR.into();
             }
 
             if song_data.did_update() {
