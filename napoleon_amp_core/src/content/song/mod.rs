@@ -1,3 +1,4 @@
+pub mod song_cover_pool;
 pub mod song_data;
 pub(crate) mod song_pool;
 
@@ -63,42 +64,40 @@ impl Song {
 
             let sdi = &mut song_data.inner;
 
-            let mut reload_song_data = false;
-
-            if sdi.times_listened > 5000 {
-                reload_song_data = true;
+            if sdi.times_listened > 1000 {
                 sdi.times_listened = 0;
             }
 
-            if sdi.custom_volume.inner == 0.0 {
-                reload_song_data = true;
+            if sdi.times_skipped.inner > 1000 {
+                sdi.times_skipped.inner = 0;
+            }
+
+            if sdi.custom_volume.inner <= 0.0 || sdi.custom_volume.inner > 1.0 {
                 sdi.custom_volume.inner = DEFAULT_CUSTOM_VOLUME;
             }
 
-            if song_data.inner.times_skipped.inner > 5000 {
-                reload_song_data = true;
-            }
+            // sdi.start_offset.inner = None;
+            // sdi.end_time.inner = None;
 
-            if song_data.inner.meta.inner.has_err() || reload_song_data {
-                // println!("meta is err");
+            if sdi.meta.inner.has_err() {
                 get_song_data_from_song_file(&self, &mut song_data);
+            } else {
+                if song_data.did_update() {
+                    println!("updating song data");
+                    song_data
+                        .write_to_file_path(song_data_file_v2(&self.id))
+                        .expect("unable to update song data to latest version");
+                }
             }
 
             let meta = &mut song_data.inner.meta.inner;
 
-            if meta.artist.as_ref().unwrap().full_artist_string.is_empty() {
-                meta.artist.as_mut().unwrap().full_artist_string = UNKNOWN_ARTIST_STR.to_string();
+            if meta.artist.unwrapped_ref().full_artist_string.is_empty() {
+                meta.artist.unwrapped_mut().full_artist_string = UNKNOWN_ARTIST_STR.to_string();
             }
 
-            if meta.album.as_ref().unwrap().len() == 0 {
-                *meta.album.as_mut().unwrap() = UNKNOWN_ALBUM_STR.into();
-            }
-
-            if song_data.did_update() {
-                println!("updating song data");
-                song_data
-                    .write_to_file_path(song_data_file_v2(&self.id))
-                    .expect("unable to update song data to latest version");
+            if meta.album.unwrapped_ref().len() == 0 {
+                *meta.album.unwrapped_mut() = UNKNOWN_ALBUM_STR.into();
             }
 
             RwLock::new(song_data)

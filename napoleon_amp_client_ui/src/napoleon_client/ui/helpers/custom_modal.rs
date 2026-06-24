@@ -15,6 +15,8 @@ pub(crate) fn custom_modal(
 
         add_contents(ui);
 
+        ui.separator();
+
         close_ui(ui)
     })
 }

@@ -12,7 +12,7 @@ fn get_song_data_display_str(song_data: &SongDataStd) -> String {
     format!(
         "{} - [{}]",
         song_data.title,
-        song_data.meta.inner.album.as_ref().unwrap()
+        song_data.meta.inner.album.unwrapped_ref()
     )
 }
 

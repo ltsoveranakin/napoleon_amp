@@ -102,9 +102,9 @@ impl FilterRules {
         match self {
             Self::Title(title) => title.does_value_pass(&song_data.title),
             Self::Artist(artist) => {
-                artist.does_value_pass(&meta.artist.as_ref().unwrap().full_artist_string)
+                artist.does_value_pass(&meta.artist.unwrapped_ref().full_artist_string)
             }
-            Self::Album(album) => album.does_value_pass(meta.album.as_ref().unwrap()),
+            Self::Album(album) => album.does_value_pass(meta.album.unwrapped_ref()),
             Self::Rating(rating) => rating.does_value_pass(&song_data.rating),
         }
     }

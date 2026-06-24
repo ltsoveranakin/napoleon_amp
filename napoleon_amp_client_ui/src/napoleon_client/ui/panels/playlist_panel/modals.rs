@@ -4,10 +4,13 @@ use crate::napoleon_client::ui::helpers::custom_modal::custom_modal;
 use crate::napoleon_client::ui::panels::CloseResult;
 use eframe::egui::{Id, Modal, ScrollArea, Slider, Ui};
 use egui_autocomplete::AutoCompleteTextEdit;
+use napoleon_amp_core::content::SaveData;
 use napoleon_amp_core::content::playlist::PlaylistType;
 use napoleon_amp_core::content::song::Song;
+use napoleon_amp_core::content::song::song_cover_pool::SongCoverData;
 use napoleon_amp_core::content::song::song_data::meta::SongDataMetaV2;
 use napoleon_amp_core::content::song::song_data::{SongData, SongDataStd};
+use napoleon_amp_core::paths::show_file_in_explorer;
 use std::mem;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -185,15 +188,14 @@ impl PlaylistModals {
                     .meta
                     .inner
                     .artist
-                    .as_mut()
-                    .unwrap()
+                    .unwrapped_mut()
                     .full_artist_string,
                 artist_list,
             ));
 
             ui.label("Album:");
             ui.add(AutoCompleteTextEdit::new(
-                editing_song_data.meta.inner.album.as_mut().unwrap(),
+                editing_song_data.meta.inner.album.unwrapped_mut(),
                 album_list,
             ));
 
@@ -233,7 +235,7 @@ impl PlaylistModals {
                 Duration::ZERO,
             );
 
-            let song_length = *editing_song_data.meta.inner.song_length.as_ref().unwrap() as u64;
+            let song_length = *editing_song_data.meta.inner.song_length.unwrapped_ref() as u64;
 
             Self::time_ui(
                 ui,
@@ -256,7 +258,19 @@ impl PlaylistModals {
                 editing_song_data.meta.inner = SongDataMetaV2::default().into();
             }
 
-            ui.separator();
+            ui.label("Cover Id:");
+
+            ui.horizontal(|ui| {
+                if let Some(song_cover_id) = editing_song_data.meta.inner.cover.unwrapped_ref() {
+                    ui.label(song_cover_id.to_string());
+
+                    if ui.button("Open").clicked() {
+                        let _ = show_file_in_explorer(SongCoverData::get_path(song_cover_id));
+                    }
+                } else {
+                    ui.label("No cover image");
+                }
+            });
         })
         .inner
     }

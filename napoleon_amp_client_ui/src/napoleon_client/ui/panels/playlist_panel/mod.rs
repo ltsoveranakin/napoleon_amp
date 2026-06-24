@@ -20,7 +20,6 @@ use napoleon_amp_core::content::playlist::song_list::SortByVariant;
 use napoleon_amp_core::instance::NapoleonInstance;
 use napoleon_amp_core::paths::show_file_in_explorer;
 use napoleon_amp_core::read_rwlock;
-use std::collections::HashMap;
 use std::ops::Deref;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -32,7 +31,6 @@ pub(crate) struct PlaylistPanel {
     delete_original_files: bool,
     filter_search_content: String,
     pub(crate) queue_panel: QueuePanel,
-    image_pool: HashMap<String, Bytes>,
 }
 
 impl PlaylistPanel {
@@ -43,7 +41,6 @@ impl PlaylistPanel {
             delete_original_files: false,
             filter_search_content: String::new(),
             queue_panel: QueuePanel::new(),
-            image_pool: HashMap::new(),
         }
     }
 
@@ -266,24 +263,19 @@ impl PlaylistPanel {
                                 let song_data_vers = song.get_song_data();
 
                                 row.col(|ui| {
-                                    if let Some(cover_img) =
-                                        song_data_vers.inner.meta.inner.cover.as_ref().unwrap()
+                                    if let Some(cover_id) =
+                                        song_data_vers.inner.meta.inner.cover.unwrapped_ref()
                                     {
-                                        let image_bytes = self
-                                            .image_pool
-                                            .entry(song_data_vers.inner.title.clone())
-                                            .or_insert_with(|| {
-                                                Bytes::Shared(cover_img.data.vec.clone().into())
-                                            })
-                                            .clone();
+                                        let image_bytes = Arc::clone(
+                                            &NapoleonInstance::get_song_cover_data(*cover_id)
+                                                .inner
+                                                .bytes
+                                                .inner,
+                                        );
 
                                         ui.add(Image::new(ImageSource::Bytes {
-                                            uri: format!(
-                                                "bytes://{}-cover",
-                                                song_data_vers.inner.title
-                                            )
-                                            .into(),
-                                            bytes: image_bytes,
+                                            uri: format!("bytes://{}-cover.jpg", cover_id).into(),
+                                            bytes: Bytes::Shared(image_bytes),
                                         }));
                                     } else {
                                         ui.label("No image");
@@ -346,6 +338,10 @@ impl PlaylistPanel {
                                             };
                                         }
 
+                                        if ui.button("Debug print song data").clicked() {
+                                            println!("{:?}", song_data_vers);
+                                        }
+
                                         if ui.button("Copy selected").clicked() {
                                             napoleon_instance.copy_selected_songs(current_playlist);
                                         }
@@ -371,16 +367,13 @@ impl PlaylistPanel {
                                             .meta
                                             .inner
                                             .artist
-                                            .as_ref()
-                                            .unwrap()
+                                            .unwrapped_ref()
                                             .full_artist_string,
                                     );
                                 });
 
                                 row.col(|ui| {
-                                    ui.label(
-                                        song_data_vers.inner.meta.inner.album.as_ref().unwrap(),
-                                    );
+                                    ui.label(song_data_vers.inner.meta.inner.album.unwrapped_ref());
                                 });
 
                                 row.col(|ui| {
@@ -401,13 +394,7 @@ impl PlaylistPanel {
 
                                 row.col(|ui| {
                                     ui.label(secs_to_str(
-                                        *song_data_vers
-                                            .inner
-                                            .meta
-                                            .inner
-                                            .song_length
-                                            .as_ref()
-                                            .unwrap()
+                                        *song_data_vers.inner.meta.inner.song_length.unwrapped_ref()
                                             as u64,
                                     ));
                                 });
@@ -475,8 +462,7 @@ impl PlaylistPanel {
                             .meta
                             .inner
                             .artist
-                            .as_ref()
-                            .unwrap()
+                            .unwrapped_ref()
                             .full_artist_string
                             .replace("/", ", ")
                     ));

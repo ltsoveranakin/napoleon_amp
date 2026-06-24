@@ -253,14 +253,13 @@ pub trait Playlist {
                 .meta
                 .inner
                 .artist
-                .as_ref()
-                .unwrap()
+                .unwrapped_ref()
                 .full_artist_string
         })
     }
 
     fn get_album_list(&self) -> Vec<String> {
-        self.get_string_list(&|song_data| song_data.inner.meta.inner.album.as_ref().unwrap())
+        self.get_string_list(&|song_data| song_data.inner.meta.inner.album.unwrapped_ref())
     }
 
     fn select_all(&self) {
@@ -300,8 +299,7 @@ pub trait Playlist {
                         .meta
                         .inner
                         .song_length
-                        .as_ref()
-                        .unwrap();
+                        .unwrapped_ref();
                 }
 
                 total_length
@@ -418,27 +416,25 @@ pub trait Playlist {
             let strings_to_search: &[&String] = match parsed_search.search_type {
                 ParsedSearchType::Title => &[&song_data.title],
 
-                ParsedSearchType::Album => &[&song_data.meta.inner.album.as_ref().unwrap()],
+                ParsedSearchType::Album => &[&song_data.meta.inner.album.unwrapped_ref()],
 
                 ParsedSearchType::Artist => &[&song_data
                     .meta
                     .inner
                     .artist
-                    .as_ref()
-                    .unwrap()
+                    .unwrapped_ref()
                     .full_artist_string],
 
                 ParsedSearchType::UserTag => &[&song_data.user_tag],
 
                 ParsedSearchType::Any => &[
                     &song_data.title,
-                    &song_data.meta.inner.album.as_ref().unwrap(),
+                    &song_data.meta.inner.album.unwrapped_ref(),
                     &song_data
                         .meta
                         .inner
                         .artist
-                        .as_ref()
-                        .unwrap()
+                        .unwrapped_ref()
                         .full_artist_string,
                     &song_data.user_tag,
                 ],

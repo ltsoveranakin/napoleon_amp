@@ -1,7 +1,7 @@
 use crate::content::song::UNKNOWN_ALBUM_STR;
+use crate::content::song::song_cover_pool::SongCoverId;
 use crate::content::song::song_data::Artist;
-use serbytes::prelude::{BBReadResult, ReadError, SerBytes, U8Vec};
-use symphonia::core::meta::Visual;
+use serbytes::prelude::{BBReadResult, ReadError, ResultBlock, SerBytes};
 
 #[derive(SerBytes, Clone, Debug)]
 pub struct SongDataMetaV1 {
@@ -18,52 +18,37 @@ impl Default for SongDataMetaV1 {
 
 #[derive(SerBytes, Clone, Debug)]
 pub struct SongDataMetaV2 {
-    pub artist: BBReadResult<Artist>,
-    pub album: BBReadResult<String>,
-    pub song_length: BBReadResult<u32>,
-    pub cover: BBReadResult<Option<ImageData>>,
+    pub artist: ResultBlock<Artist>,
+    pub album: ResultBlock<String>,
+    pub song_length: ResultBlock<u32>,
+    pub cover: ResultBlock<Option<SongCoverId>>,
 }
 
 impl SongDataMetaV2 {
     pub(super) fn default_ok() -> Self {
         Self {
-            artist: Ok(Artist::default()),
-            album: Ok(UNKNOWN_ALBUM_STR.to_string()),
-            song_length: Ok(0),
-            cover: Ok(None),
+            artist: Artist::default().into(),
+            album: UNKNOWN_ALBUM_STR.to_string().into(),
+            song_length: 0.into(),
+            cover: None.into(),
         }
     }
 
     pub(crate) fn has_err(&self) -> bool {
-        self.artist.is_err()
-            || self.album.is_err()
-            || self.song_length.is_err()
-            || self.cover.is_err()
+        self.artist.inner.is_err()
+            || self.album.inner.is_err()
+            || self.song_length.inner.is_err()
+            || self.cover.inner.is_err()
     }
 }
 
 impl Default for SongDataMetaV2 {
     fn default() -> Self {
         Self {
-            artist: Err(ReadError::default()),
-            album: Err(ReadError::default()),
-            song_length: Err(ReadError::default()),
-            cover: Err(ReadError::default()),
-        }
-    }
-}
-
-#[derive(SerBytes, Clone, Debug)]
-pub struct ImageData {
-    pub media_mime_type: String,
-    pub data: U8Vec<u32>,
-}
-
-impl ImageData {
-    pub(super) fn from_visual(visual: &Visual) -> Self {
-        Self {
-            media_mime_type: visual.media_type.clone(),
-            data: visual.data.to_vec().into(),
+            artist: Err(ReadError::default()).into(),
+            album: Err(ReadError::default()).into(),
+            song_length: Err(ReadError::default()).into(),
+            cover: Err(ReadError::default()).into(),
         }
     }
 }

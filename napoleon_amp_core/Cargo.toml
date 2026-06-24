@@ -15,3 +15,4 @@ chrono = "0.4.43"
 showfile = "0.1.1"
 derive-enum-all-values = { git = "https://github.com/ltsoveranakin/derive-enum-all-values.git" }
 include_dir = "0.7"
+rustc-hash = "2.1"

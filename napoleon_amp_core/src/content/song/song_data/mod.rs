@@ -1,17 +1,21 @@
 mod artist;
 pub mod meta;
+mod util;
 mod v1;
 mod v2;
 mod v3;
 pub(super) mod v4;
+pub mod v5;
 
-use crate::content::song::Song;
+use crate::content::song::song_cover_pool::SONG_COVER_POOL;
 pub(crate) use crate::content::song::song_data::artist::Artist;
-use crate::content::song::song_data::meta::{AssignIfError, ImageData, SongDataMetaV2};
+use crate::content::song::song_data::meta::{AssignIfError, SongDataMetaV2};
 use crate::content::song::song_data::v1::SongDataStdV1;
 use crate::content::song::song_data::v2::SongDataStdV2;
 use crate::content::song::song_data::v3::SongDataStdV3;
 use crate::content::song::song_data::v4::SongDataStdV4;
+use crate::content::song::song_data::v5::SongDataStdV5;
+use crate::content::song::{Song, UNKNOWN_ALBUM_STR};
 use serbytes::prelude::{
     BBReadResult, CurrentVersion, ReadByteBufferRefMut, SerBytes, SerBytesFs, SizedBlock,
     VersioningWrapper,
@@ -27,7 +31,7 @@ use symphonia::default::get_probe;
 
 pub const MAX_RATING: u32 = 5;
 
-pub type SongDataStd = SongDataStdV4;
+pub type SongDataStd = SongDataStdV5;
 pub type SongData = VersioningWrapper<SongDataStd, SongDataVersion>;
 
 #[derive(SerBytes, Default, Debug, Copy, Clone, Eq, PartialEq)]
@@ -35,8 +39,10 @@ pub enum SongDataVersion {
     V1,
     V2,
     V3,
-    #[default]
+
     V4,
+    #[default]
+    V5,
 }
 
 impl CurrentVersion for SongDataVersion {
@@ -47,70 +53,90 @@ impl CurrentVersion for SongDataVersion {
             Self::V1 => {
                 let sd_v1 = SongDataStdV1::from_buf(buf)?;
 
-                let sd_v4 = SongDataStdV4 {
-                    title: sd_v1.title,
+                let sd_v5 = SongDataStdV5 {
+                    title: sd_v1.title.clone(),
+                    original_title: sd_v1.title,
                     custom_tags: sd_v1.custom_tags,
                     rating: sd_v1.rating,
                     user_tag: sd_v1.user_tag.inner,
                     meta: SizedBlock::new(SongDataMetaV2 {
-                        artist: Ok(Artist {
+                        artist: Artist {
                             full_artist_string: sd_v1.artist.full_artist_string,
-                        }),
-                        album: Ok(sd_v1.album),
-                        song_length: Ok(sd_v1.meta.unwrap_or_default().length),
+                        }
+                        .into(),
+                        album: sd_v1.album.into(),
+                        song_length: sd_v1.meta.unwrap_or_default().length.into(),
                         ..Default::default()
                     }),
                     ..Default::default()
                 };
 
-                Ok(sd_v4)
+                Ok(sd_v5)
             }
 
             Self::V2 => {
                 let sd_v2 = SongDataStdV2::from_buf(buf)?;
 
-                let sd_v4 = SongDataStdV4 {
-                    title: sd_v2.title,
+                let sd_v5 = SongDataStdV5 {
+                    title: sd_v2.title.clone(),
+                    original_title: sd_v2.title,
                     custom_tags: sd_v2.custom_tags,
                     rating: sd_v2.rating,
                     user_tag: sd_v2.user_tag,
                     meta: SizedBlock::new(SongDataMetaV2 {
-                        artist: Ok(Artist {
+                        artist: Artist {
                             full_artist_string: sd_v2.artist.full_artist_string,
-                        }),
-                        album: Ok(sd_v2.album),
-                        song_length: Ok(sd_v2.song_length),
+                        }
+                        .into(),
+                        album: sd_v2.album.into(),
+                        song_length: sd_v2.song_length.into(),
                         ..Default::default()
                     }),
                     ..Default::default()
                 };
 
-                Ok(sd_v4)
+                Ok(sd_v5)
             }
 
             Self::V3 => {
                 let sd_v3 = SongDataStdV3::from_buf(buf)?;
 
-                let sd_v4 = SongDataStdV4 {
-                    title: sd_v3.title,
+                let sd_v5 = SongDataStdV5 {
+                    title: sd_v3.title.clone(),
+                    original_title: sd_v3.title,
                     custom_tags: sd_v3.custom_tags,
                     rating: sd_v3.rating,
                     user_tag: sd_v3.user_tag,
                     meta: SizedBlock::new(SongDataMetaV2 {
-                        artist: Ok(Artist {
+                        artist: Artist {
                             full_artist_string: sd_v3.artist.full_artist_string,
-                        }),
-                        album: Ok(sd_v3.album),
-                        song_length: Ok(sd_v3.song_length),
+                        }
+                        .into(),
+                        album: sd_v3.album.into(),
+                        song_length: sd_v3.song_length.into(),
                         ..Default::default()
                     }),
                     ..Default::default()
                 };
 
-                Ok(sd_v4)
+                Ok(sd_v5)
             }
 
-            Self::V4 => SongDataStdV4::from_buf(buf),
+            Self::V4 => {
+                let sd_v4 = SongDataStdV4::from_buf(buf)?;
+
+                Ok(SongDataStdV5 {
+                    title: sd_v4.title.clone(),
+                    original_title: sd_v4.title,
+                    custom_tags: sd_v4.custom_tags,
+                    rating: sd_v4.rating,
+                    user_tag: sd_v4.user_tag,
+                    meta: sd_v4.meta,
+                    ..Default::default()
+                })
+            }
+
+            Self::V5 => SongDataStdV5::from_buf(buf),
         }
     }
 
@@ -158,13 +184,13 @@ pub(super) fn get_song_data_from_song_file_with_paths(
                 {
                     let duration_seconds = total_frames as f64 / sample_rate as f64;
                     let duration = Duration::from_secs_f64(duration_seconds);
-                    song_data_std.meta.inner.song_length = Ok(duration.as_secs() as u32);
+                    song_data_std.meta.inner.song_length.inner = Ok(duration.as_secs() as u32);
                 }
             }
 
             if let Some(meta) = probe_result.metadata.get() {
                 if let Some(meta_revision) = meta.current() {
-                    if song_data_std.meta.inner.cover.is_err() {
+                    if song_data_std.meta.inner.cover.inner.is_err() {
                         let visuals = meta_revision.visuals();
                         let cover = match visuals.len() {
                             0 => None,
@@ -172,7 +198,7 @@ pub(super) fn get_song_data_from_song_file_with_paths(
                             1 => {
                                 let visual = &visuals[0];
 
-                                Some(ImageData::from_visual(visual))
+                                Some(visual)
                             }
 
                             _ => {
@@ -187,35 +213,40 @@ pub(super) fn get_song_data_from_song_file_with_paths(
                                     }
                                 }
 
-                                Some(ImageData::from_visual(pref_visual.1))
+                                Some(pref_visual.1)
                             }
                         };
 
-                        song_data_std.meta.inner.cover = Ok(cover);
+                        song_data_std.meta.inner.cover.inner = Ok(cover.map(|visual| {
+                            SONG_COVER_POOL
+                                .get_or_create_cover_id_from_bytes(&visual.media_type, &visual.data)
+                        }));
                     }
 
                     for tag in meta_revision.tags() {
                         if let Some(std_key) = tag.std_key {
                             match std_key {
-                                StandardTagKey::Artist => {
-                                    match &tag.value {
-                                        Value::String(artist_string) => {
-                                            song_data_std.meta.inner.artist.assign_if_err_callback(
-                                                || Artist::new(artist_string),
-                                            );
-                                        }
-
-                                        _ => {
-                                            unreachable!()
-                                        }
+                                StandardTagKey::Artist => match &tag.value {
+                                    Value::String(artist_string) => {
+                                        song_data_std
+                                            .meta
+                                            .inner
+                                            .artist
+                                            .inner
+                                            .assign_if_err_callback(|| Artist::new(artist_string));
                                     }
-                                }
+
+                                    _ => {
+                                        unreachable!()
+                                    }
+                                },
 
                                 StandardTagKey::Album => match &tag.value {
                                     Value::String(album) => song_data_std
                                         .meta
                                         .inner
                                         .album
+                                        .inner
                                         .assign_if_err_callback(|| album.clone()),
 
                                     _ => {
@@ -254,6 +285,32 @@ pub(super) fn get_song_data_from_song_file_with_paths(
             did_err = true;
         }
     }
+
+    let meta = &mut song_data.inner.meta.inner;
+
+    if meta.song_length.inner.is_err() {
+        meta.song_length.inner = Ok(0);
+    }
+
+    if meta.artist.inner.is_err() {
+        meta.artist.inner = Ok(Artist::default());
+    }
+
+    if meta.album.inner.is_err() {
+        meta.album.inner = Ok(UNKNOWN_ALBUM_STR.to_string());
+    }
+
+    if meta.cover.inner.is_err() {
+        meta.cover.inner = Ok(None);
+    }
+
+    // let cover_id = song_data.inner.meta.inner.cover.unwrapped_ref().unwrap();
+    // println!("sdat: song: {} data: {:?}", song_data.inner.title, cover_id);
+    // SONG_COVER_POOL.get_or_load_value(cover_id, |song_cover_data| {
+    //     println!("byte len: {:?}", song_cover_data.inner.bytes.inner.len());
+    // }, || {
+    //     panic!("No cover");
+    // });
 
     song_data
         .write_to_file_path(song_data_path)

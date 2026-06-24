@@ -10,6 +10,7 @@ use crate::content::playlist::all_songs_playlist::AllSongsPlaylist;
 use crate::content::playlist::data::PlaybackMode;
 use crate::content::playlist::dynamic_playlist_data::DynamicPlaylistData;
 use crate::content::song::Song;
+use crate::content::song::song_cover_pool::{SONG_COVER_POOL, SongCoverData, SongCoverId};
 use crate::discord_rpc::discord_rpc_thread;
 use crate::instance::client_settings::ClientSettings;
 use crate::instance::iter_playlists::IterPlaylists;
@@ -156,5 +157,9 @@ impl NapoleonInstance {
 
             settings
         })
+    }
+
+    pub fn get_song_cover_data(song_cover_id: SongCoverId) -> Arc<SongCoverData> {
+        SONG_COVER_POOL.get_or_load_value_arc_default(song_cover_id)
     }
 }
